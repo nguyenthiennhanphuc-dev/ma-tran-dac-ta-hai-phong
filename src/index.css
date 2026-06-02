@@ -1,0 +1,458 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================================================
+   PROEXAM MAKER — Design System
+   ================================================================ */
+
+:root {
+  /* ─── Color Tokens ─── */
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-primary-light: #EEF2FF;
+  --color-primary-50: #EEF2FF;
+  --color-primary-100: #E0E7FF;
+  --color-primary-600: #4F46E5;
+  --color-primary-700: #4338CA;
+  
+  --color-accent: #10B981;
+  --color-accent-hover: #059669;
+  --color-accent-light: #ECFDF5;
+  
+  --color-warning: #F59E0B;
+  --color-warning-light: #FFFBEB;
+  
+  --color-danger: #EF4444;
+  --color-danger-light: #FEF2F2;
+
+  --color-surface: #F8FAFC;
+  --color-surface-card: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #94A3B8;
+  
+  --color-border: #E2E8F0;
+  --color-border-strong: #CBD5E1;
+  
+  /* ─── Typography ─── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-serif: 'Times New Roman', Georgia, serif;
+  
+  /* ─── Spacing ─── */
+  --header-height: 64px;
+  --stepper-height: 56px;
+  
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+  
+  /* ─── Radius ─── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  
+  /* ─── Transitions ─── */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ================================================================
+   BASE STYLES
+   ================================================================ */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+}
+
+/* ================================================================
+   STEPPER COMPONENT
+   ================================================================ */
+.stepper-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0 16px;
+}
+
+.stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  position: relative;
+  user-select: none;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: 2px solid transparent;
+}
+
+.stepper-item:hover {
+  color: var(--color-text-secondary);
+  background: var(--color-primary-50);
+}
+
+.stepper-item.active {
+  color: var(--color-primary);
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-100);
+}
+
+.stepper-item.completed {
+  color: var(--color-accent);
+}
+
+.stepper-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  font-weight: 800;
+  font-size: 12px;
+  transition: all var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.stepper-item .stepper-number {
+  background: #F1F5F9;
+  color: var(--color-text-tertiary);
+}
+
+.stepper-item.active .stepper-number {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 0 0 4px var(--color-primary-100);
+}
+
+.stepper-item.completed .stepper-number {
+  background: var(--color-accent);
+  color: white;
+}
+
+.stepper-connector {
+  width: 32px;
+  height: 2px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  transition: background var(--transition-normal);
+}
+
+.stepper-connector.filled {
+  background: var(--color-accent);
+}
+
+/* ================================================================
+   STEP CONTENT TRANSITIONS
+   ================================================================ */
+.step-content-enter {
+  animation: stepFadeIn var(--transition-slow) ease-out;
+}
+
+@keyframes stepFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================================================================
+   TOAST NOTIFICATIONS
+   ================================================================ */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 300px;
+  max-width: 480px;
+  animation: toastSlideIn 0.3s ease-out;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.toast-item.toast-exit {
+  animation: toastSlideOut 0.25s ease-in forwards;
+}
+
+.toast-success {
+  background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+  color: #065F46;
+  border-color: #A7F3D0;
+}
+
+.toast-error {
+  background: linear-gradient(135deg, #FEF2F2, #FECACA);
+  color: #991B1B;
+  border-color: #FCA5A5;
+}
+
+.toast-warning {
+  background: linear-gradient(135deg, #FFFBEB, #FEF3C7);
+  color: #92400E;
+  border-color: #FDE68A;
+}
+
+.toast-info {
+  background: linear-gradient(135deg, #EEF2FF, #E0E7FF);
+  color: #3730A3;
+  border-color: #C7D2FE;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+}
+
+/* ================================================================
+   MODAL ANIMATIONS
+   ================================================================ */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-backdrop {
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  animation: modalScaleIn 0.25s ease-out;
+}
+
+/* ================================================================
+   NAVIGATION BUTTONS (Prev/Next)
+   ================================================================ */
+.step-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: white;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+.step-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+}
+
+.step-nav-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.step-nav-btn:active {
+  transform: translateY(0);
+}
+
+.step-nav-btn.prev {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.step-nav-btn.prev:hover {
+  background: #F1F5F9;
+}
+
+.step-nav-btn.next {
+  background: linear-gradient(135deg, var(--color-primary), #6366F1);
+  color: white;
+}
+
+.step-nav-btn.next:hover {
+  background: linear-gradient(135deg, var(--color-primary-hover), #4F46E5);
+}
+
+/* ================================================================
+   UTILITY CLASSES  
+   ================================================================ */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* ================================================================
+   TABLE IMPROVEMENTS
+   ================================================================ */
+.matrix-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.matrix-table thead th {
+  background: linear-gradient(180deg, #F8FAFC, #F1F5F9);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 6px;
+  border: 1px solid var(--color-border-strong);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.matrix-table tbody tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+.matrix-table tbody tr:hover {
+  background-color: rgba(238, 242, 255, 0.4);
+}
+
+.matrix-table tbody td {
+  border: 1px solid var(--color-border);
+  transition: background var(--transition-fast);
+}
+
+.matrix-table tfoot td {
+  border: 1px solid var(--color-border-strong);
+  font-weight: 700;
+}
+
+/* ================================================================
+   INPUT IMPROVEMENTS
+   ================================================================ */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 0.3;
+}
+
+input[type="number"]:hover::-webkit-inner-spin-button,
+input[type="number"]:hover::-webkit-outer-spin-button {
+  opacity: 1;
+}

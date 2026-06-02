@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"f:\\\\2025-2026\\\\du-an-cac-app\\\\Ma-tran-de\\\\Ma-Tran_De-pro5.9 th Huỳnh Hải\" -Force)",
+      "Bash(Select-Object -Property Mode, Name)",
+      "Bash(findstr /R /S \"tuLuanConfig\" src\\\\*)",
+      "Bash(powershell -Command \"Get-Content -Path 'f:\\\\2025-2026\\\\du-an-cac-app\\\\Ma-tran-de\\\\Ma-Tran_De-pro5.9 th Huỳnh Hải\\\\src\\\\utils\\\\exportWordMath.js' -Tail 5\")",
+      "Bash(pip show:*)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(curl -s -X POST http://localhost:8000/api/parse-exam-file)",
+      "Bash(gh auth:*)",
+      "Bash(curl -s https://matran-backend-1.onrender.com/api/health)",
+      "Bash(curl -s \"https://api.github.com/repos/nguyenvanthien1812-ops/matran-backend/commits/main\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('commit',{}\\).get\\('message','?'\\)[:100]\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('endpoint OK:', 'detail' in d or 'text' in d\\)\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/nguyenvanthien1812-ops/matran-backend/main/requirements.txt\")",
+      "Bash(curl -s -X POST https://matran-backend-1.onrender.com/api/parse-exam-file)",
+      "Bash(grep -n \"parseExamFileViaBackend\\\\|parse-exam-file\" \"f:/2025-2026/du-an-cac-app/Ma-tran-de/Ma-Tran_De-pro6.0 th Huỳnh Hải/src/utils/\"*.js)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
