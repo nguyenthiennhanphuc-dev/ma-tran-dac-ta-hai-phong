@@ -1,4 +1,4 @@
-// Tên file: src/components/Step5_AIGenerator.jsx
+Tên file: src/components/Step5_AIGenerator.jsx
 import React, { useState, useMemo } from 'react';
 import { useExamStore } from '../store/useExamStore';
 import { Copy, FileText, CheckCircle2, Wand2, AlertTriangle, ArrowUpCircle, Trash2, CheckSquare } from 'lucide-react';
@@ -91,14 +91,7 @@ export function parseExamDraft(rawText) {
 
     for (const block of blocks) {
       const blockText = '\n' + block.lines.join('\n');
-      let loai = block.loai;
-
-      // Auto-correct Loại 1 -> Loại 2 if the answer explicitly shows True/False format (e.g. a-Đ, b-S)
-      const hasTFAnswerA = /(?:^|\n|\s)(?:a|ý a)\s*[-:]\s*(?:Đ|S|True|False|Đúng|Sai)(?:\s|,|\.|;|\||$)/i.test(blockText);
-      const hasTFAnswerB = /(?:^|\n|\s)(?:b|ý b)\s*[-:]\s*(?:Đ|S|True|False|Đúng|Sai)(?:\s|,|\.|;|\||$)/i.test(blockText);
-      if (loai === 1 && hasTFAnswerA && hasTFAnswerB) {
-        loai = 2;
-      }
+      const loai = block.loai;
 
       try {
         let parsed = [];
@@ -589,7 +582,6 @@ function GraphPreview({ hinhAnh }) {
 // COMPONENT PHỤ: DraftQuestionCard
 // =============================================================================
 function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected, onToggleSelect, onDelete }) {
-  const { examConfig } = useExamStore();
   const [selectedSlot, setSelectedSlot] = useState(() => {
     if (question._fromSimilar && question._originalSlotKey) {
       const exists = availableSlots.some(s => s.key === question._originalSlotKey);
@@ -700,15 +692,12 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
 
       {(() => {
         const cleanNoidung = (text) => text ? text.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '') : '';
-        const getPrefix = (loai, idx) => {
-           return `Câu ${idx + 1}.`;
-        };
         return (
           <>
             {question.loaiCauHoi === 1 && (
               <>
                 <p className="font-semibold mb-3 leading-relaxed text-slate-900 whitespace-pre-wrap">
-                  {getPrefix(question.loaiCauHoi, index)} <MathText content={cleanNoidung(question.noiDung)} />
+                  Câu {index + 1}: <MathText content={cleanNoidung(question.noiDung)} />
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 text-sm text-slate-800 bg-white/40 p-3 rounded">
                   <div><strong>A.</strong> <MathText content={question.dapAnA} /></div>
@@ -723,7 +712,7 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
             {question.loaiCauHoi === 3 && (
               <>
                 <p className="font-semibold mb-3 leading-relaxed text-slate-900 whitespace-pre-wrap">
-                  {getPrefix(question.loaiCauHoi, index)} <MathText content={cleanNoidung(question.noiDung)} />
+                  Câu {index + 1}: <MathText content={cleanNoidung(question.noiDung)} />
                 </p>
               </>
             )}
@@ -732,10 +721,10 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
               <>
                 {question.noiDung && (
                   <p className="font-semibold mb-2 text-slate-900 whitespace-pre-wrap">
-                    {getPrefix(question.loaiCauHoi, index)} <MathText content={question.noiDung} />
+                    Câu {index + 1}: <MathText content={question.noiDung} />
                   </p>
                 )}
-                {!question.noiDung && <p className="font-semibold mb-2 text-slate-900">{getPrefix(question.loaiCauHoi, index)}</p>}
+                {!question.noiDung && <p className="font-semibold mb-2 text-slate-900">Câu {index + 1}:</p>}
                 <div className="space-y-1.5 mb-3 text-sm text-slate-800 bg-white/40 p-3 rounded">
                   <div><strong>a)</strong> <MathText content={cleanNoidung(question.yA)} /></div>
                   <div><strong>b)</strong> <MathText content={question.yB} /></div>
@@ -751,7 +740,7 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
                   /* Multi-ý: hiển thị từng ý riêng */
                   <>
                     <p className="font-semibold mb-2 text-slate-900">
-                      {getPrefix(question.loaiCauHoi, index)} <span className="text-xs font-normal text-slate-500">(Tự luận nhiều ý)</span>
+                      Câu {index + 1}: <span className="text-xs font-normal text-slate-500">(Tự luận nhiều ý)</span>
                       {question.kienThuc === 'hinh_hoc' && <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">📐 Hình học</span>}
                       {question.kienThuc === 'dai_so'   && <span className="ml-2 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">∑ Đại số</span>}
                     </p>
@@ -786,7 +775,7 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
                   /* Single-ý: giữ nguyên như cũ */
                   <>
                     <p className="font-semibold mb-2 leading-relaxed text-slate-900 whitespace-pre-wrap">
-                      {getPrefix(question.loaiCauHoi, index)} <MathText content={cleanNoidung(question.noiDung)} />
+                      Câu {index + 1}: <MathText content={cleanNoidung(question.noiDung)} />
                       {question.kienThuc === 'hinh_hoc' && <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">📐 Hình học</span>}
                       {question.kienThuc === 'dai_so'   && <span className="ml-2 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">∑ Đại số</span>}
                     </p>
@@ -855,7 +844,7 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
 // COMPONENT CHÍNH: Step5_AIGenerator
 // =============================================================================
 export default function Step5_AIGenerator() {
-  const { matrix, config, examConfig, tuLuanConfig, examHeader, draftQuestions, setDraftQuestions, examSlots, pushToExamSlot, updateExamSlot } = useExamStore();
+  const { matrix, config, examConfig, tuLuanConfig, examHeader, draftQuestions, setDraftQuestions, examSlots, pushToExamSlot } = useExamStore();
   const [examContent, setExamContent] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [parseError, setParseError] = useState('');
@@ -1054,15 +1043,13 @@ Giải thích: [Ngắn gọn]
     const totalTuLuan = getFlatCount('tuLuan');
 
     const soCauDungSai = (() => {
-      let totalQ = 0;
+      let totalBiet = 0;
       matrix.forEach(topic => {
-        let topicItems = 0;
         (topic.donViKienThuc || []).forEach(dv => {
-          topicItems += (Number(dv.dungSai?.biet) || 0) + (Number(dv.dungSai?.hieu) || 0) + (Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0);
+          totalBiet += Number(dv.dungSai?.biet) || 0;
         });
-        totalQ += Math.ceil(topicItems / 4);
       });
-      return totalQ;
+      return totalBiet;
     })();
     const soCauTraLoiNgan = totalTraLoiNgan; // NÂNG CẤP: KHÔNG CHIA 4 NỮA
     const soCauTuLuan = (() => {
@@ -1287,8 +1274,7 @@ Giải thích: [Ngắn gọn]
     if (hasContent) {
       prompt += `📊 TỔNG HỢP GOM CÂU BẮT BUỘC:\n`;
       if (soCauDungSai > 0) {
-        prompt += `  → LOẠI 2: Gom thành ${soCauDungSai} Câu (mỗi Câu gồm 1 ĐỀ BÀI CHUNG + 4 ý a, b, c, d xoay quanh đề bài đó).\n`;
-        prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt thứ tự mức độ nhận thức: ý a) Nhận biết, ý b) Thông hiểu, ý c) Vận dụng, ý d) Vận dụng.\n`;
+        prompt += `  → LOẠI 2: Gom thành ${soCauDungSai} Câu (mỗi Câu gồm 1 ĐỀ BÀI CHUNG + 4 ý a, b, c, d xoay quanh đề bài đó)\n`;
         if (config.groupTfByTopic) {
           prompt += `     ⚠️ LƯU Ý: 4 mệnh đề trong mỗi câu Đúng/Sai này được lấy rải rác từ các bài học khác nhau trong cùng chủ đề để đảm bảo tính bao quát.\n`;
         }
@@ -1375,6 +1361,9 @@ Giải thích: [Ngắn gọn]
         (topic.donViKienThuc || []).forEach(dv => {
           const obj = dv[typeKey] || {};
           let count = (Number(obj.biet) || 0) + (Number(obj.hieu) || 0) + (Number(obj.vanDung) || 0);
+          if (typeKey === 'dungSai') {
+            count = Number(obj.biet) || 0;
+          }
           if (count > 0) {
             for (let c = 0; c < count; c++) labels.push(dv.noiDung || '');
           }
@@ -1395,12 +1384,20 @@ Giải thích: [Ngắn gọn]
     }
 
     // --- PHẦN II ---
-    const soCauTF = Math.ceil(getTotalY('dungSai') / 4);
+    const soCauTF = (() => {
+      let totalBiet = 0;
+      matrix.forEach(topic => {
+        (topic.donViKienThuc || []).forEach(dv => {
+          totalBiet += Number(dv.dungSai?.biet) || 0;
+        });
+      });
+      return totalBiet;
+    })();
     const tfDvktLabels = buildDvktLabels('dungSai');
     for (let i = 0; i < soCauTF; i++) {
       const key = `phan2_cau${i + 1}`;
       const daDien = isSlotFilled(key);
-      const dvktName = tfDvktLabels[i * 4] || ''; // Lấy label của ý đầu tiên trong nhóm 4 ý
+      const dvktName = tfDvktLabels[i] || '';
       const dvktSuffix = dvktName ? ` - ${dvktName}` : '';
       slots.push({ key, label: `Phần II - Câu ${i + 1} (Đúng/Sai)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 2, daDien });
     }

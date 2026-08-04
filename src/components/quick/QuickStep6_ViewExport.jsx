@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useExamStore } from '../store/useExamStore';
+import { useQuickStore as useExamStore } from '../../store/useQuickStore';
 import { Trash2, CheckCircle2, Wand2, Loader2, Lock, Unlock, Copy, CopyCheck } from 'lucide-react';
 import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
-import ClientGraph from './ClientGraph';
-import SimilarQuestionModal from './SimilarQuestionModal';
-import { generateFullEquivalentExamPrompt } from '../utils/prompt_generator';
-import { parseExamDraft, extractHinhAnhFromText, autoDetectGraphMetadata } from './Step5_AIGenerator';
+import ClientGraph from '../ClientGraph';
+import SimilarQuestionModal from '../SimilarQuestionModal';
+import { generateFullEquivalentExamPrompt } from '../../utils/prompt_generator';
+import { parseExamDraft, extractHinhAnhFromText, autoDetectGraphMetadata } from './QuickStep5_AIGenerator';
 
 const MathText = ({ content }) => {
   if (!content) return null;
@@ -53,7 +53,7 @@ const findIndicators = (matrix, dvktName, loai, level) => {
 };
 
 export default function Step4_GenerateExam() {
-  const { matrix, config, examConfig, tuLuanConfig, examSlots, examHeader, clearExamSlot, updateExamSlot, draftQuestions, setDraftQuestions, lockedSlots, toggleLockSlot } = useExamStore();
+  const { matrix, config, tuLuanConfig, examSlots, examHeader, clearExamSlot, updateExamSlot, draftQuestions, setDraftQuestions, lockedSlots, toggleLockSlot } = useExamStore();
 
   const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
 
@@ -208,66 +208,34 @@ export default function Step4_GenerateExam() {
   const mcqItems = getFlatItems('nhieuLuaChon');
   const mcqQuestions = chunkArray(mcqItems, 1);
 
-  // 2. Phần Đúng/Sai — Gom 4 ý vào 1 câu theo cấu trúc 1B, 1H, 2VD
+  // 2. Phần Đúng/Sai — Gom 4 ý bất kỳ vào 1 câu
   const tfQuestions = (() => {
-    const chunks = [];
+    // Thu thập toàn bộ ý theo thứ tự
+    const allItems = [];
     const levelLabels = {
       biet: 'Nhận biết',
       hieu: 'Thông hiểu',
       vanDung: 'Vận dụng',
-      vanDungCao: 'Vận dụng' // Luôn hiển thị Vận dụng cao là Vận dụng trên UI
+      vanDungCao: 'Vận dụng cao'
     };
 
     matrix.forEach(topic => {
-      const buckets = { biet: [], hieu: [], vanDung: [], vanDungCao: [] };
       (topic.donViKienThuc || []).forEach(dv => {
         const ds = dv.dungSai || {};
         ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(key => {
           const count = Number(ds[key]) || 0;
           for (let i = 0; i < count; i++) {
-            buckets[key].push({
-              topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
-              level: levelLabels[key],
-              levelKey: key
-            });
+            allItems.push({ topic: topic.tenChuDe || 'Chưa nhập tên chủ đề', level: levelLabels[key] });
           }
         });
       });
-
-      // Gộp vanDungCao vào vanDung để bốc chung
-      const combinedVanDung = [...buckets.vanDung, ...buckets.vanDungCao];
-      buckets.vanDung = combinedVanDung;
-
-      const totalItems = buckets.biet.length + buckets.hieu.length + buckets.vanDung.length;
-      const numQuestions = Math.ceil(totalItems / 4);
-
-      for (let i = 0; i < numQuestions; i++) {
-        const chunk = [];
-        
-        // Cố gắng bốc đúng cấu trúc 1 Nhận biết, 1 Thông hiểu, 2 Vận dụng
-        if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
-        if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
-        if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
-        if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
-
-        // Nếu người dùng cấu hình tay không chuẩn (không đủ cơ cấu trên), lấy bù từ các bucket còn dư
-        while (chunk.length < 4) {
-          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
-          else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
-          else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
-          else break;
-        }
-
-        // Sắp xếp lại chunk theo đúng thứ tự mức độ nhận thức (B -> H -> VD)
-        const order = { 'biet': 1, 'hieu': 2, 'vanDung': 3, 'vanDungCao': 4 };
-        chunk.sort((a, b) => order[a.levelKey] - order[b.levelKey]);
-
-        if (chunk.length > 0) {
-          chunks.push(chunk);
-        }
-      }
     });
 
+    // Gom cứ 4 ý thành 1 câu
+    const chunks = [];
+    for (let i = 0; i < allItems.length; i += 4) {
+      chunks.push(allItems.slice(i, i + 4));
+    }
     return chunks;
   })();
 
@@ -278,6 +246,36 @@ export default function Step4_GenerateExam() {
   // 4. Phần Tự luận — Gom theo ĐVKT (mặc định) hoặc theo tuLuanConfig (khi enabled)
   const tlItems = getFlatItems('tuLuan');
   const tlQuestions = (() => {
+    const chunkTL = (items) => {
+      const total = items.length;
+      if (total === 0) return [];
+      if (total === 1) return [items];
+      if (total === 2) return [items];
+      if (total === 3) return [items];
+      if (total === 4) return [items.slice(0, 2), items.slice(2, 4)];
+      if (total === 5) return [items.slice(0, 3), items.slice(3, 5)];
+      
+      const chunks = [];
+      let i = 0;
+      let remain = total;
+      while (remain > 0) {
+        if (remain === 4) {
+          chunks.push(items.slice(i, i + 2));
+          chunks.push(items.slice(i + 2, i + 4));
+          break;
+        } else if (remain === 2) {
+          chunks.push(items.slice(i, i + 2));
+          break;
+        } else {
+          const take = Math.min(3, remain);
+          chunks.push(items.slice(i, i + take));
+          i += take;
+          remain -= take;
+        }
+      }
+      return chunks;
+    };
+
     if (hasManualTLConfig && tlItems.length > 0) {
       // Khi có manual config: lấy items từ matrix theo thứ tự, nhóm theo cấu trúc câu từ tuLuanConfig
       let itemIdx = 0;
@@ -297,19 +295,20 @@ export default function Step4_GenerateExam() {
       });
       return result;
     }
-    // Mặc định: Nhóm các ý theo ĐVKT (đơn vị kiến thức)
-    const dvktGroups = {};
+    // Mặc định (trong Quick Flow): Nhóm theo Chủ đề (topic) và chunk bằng chunkTL
+    const byTopic = {};
     tlItems.forEach(item => {
-      const key = item.dvkt || '_unknown';
-      if (!dvktGroups[key]) dvktGroups[key] = [];
-      dvktGroups[key].push(item);
+      const key = item.topic || 'Chủ đề chưa đặt tên';
+      if (!byTopic[key]) byTopic[key] = [];
+      byTopic[key].push(item);
     });
-    // Mỗi nhóm ĐVKT: chia thành chunk tối đa 2 ý → mỗi chunk = 1 câu
     const result = [];
-    Object.values(dvktGroups).forEach(group => {
-      for (let i = 0; i < group.length; i += 2) {
-        result.push(group.slice(i, i + 2));
-      }
+    Object.keys(byTopic).forEach(topicName => {
+      const itemsInTopic = byTopic[topicName];
+      const chunks = chunkTL(itemsInTopic);
+      chunks.forEach(chunk => {
+        result.push(chunk);
+      });
     });
     return result;
   })();
@@ -352,13 +351,8 @@ export default function Step4_GenerateExam() {
         {/* PHẦN I. TRẮC NGHIỆM NHIỀU LỰA CHỌN */}
         {mcqQuestions.length > 0 && (
           <div className="mb-10">
-            {examConfig.isCauTruc4213 && (
-              <h2 className="text-xl font-black text-blue-900 mb-6 border-b-2 border-blue-200 pb-2 uppercase">
-                PHẦN A. TRẮC NGHIỆM KHÁCH QUAN
-              </h2>
-            )}
             <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "I. Trắc nghiệm nhiều lựa chọn" : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn"}
+              PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn
             </h3>
             <div className="space-y-4">
               {mcqQuestions.map((qChunk, qIndex) => {
@@ -367,9 +361,7 @@ export default function Step4_GenerateExam() {
                 return (
                   <div key={qIndex} className={`p-4 border rounded-lg text-slate-700 ${slotData ? 'bg-green-50 border-green-300' : 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-bold text-blue-800">
-                        {`Câu ${qIndex + 1}.`}
-                      </span>
+                      <span className="font-bold text-blue-800">Câu {qIndex + 1}.</span>
                       <div className="flex items-center gap-2">
                         {slotData && (
                           <>
@@ -434,7 +426,7 @@ export default function Step4_GenerateExam() {
         {tfQuestions.length > 0 && (
           <div className="mb-10">
             <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "II. Trắc nghiệm đúng sai" : "PHẦN II. Câu trắc nghiệm đúng sai"}
+              PHẦN II. Câu trắc nghiệm đúng sai
             </h3>
             <div className="space-y-6">
               {tfQuestions.map((qChunk, qIndex) => {
@@ -444,10 +436,7 @@ export default function Step4_GenerateExam() {
                   <div key={qIndex} className={`p-4 border rounded-lg text-slate-700 ${slotData ? 'bg-green-50 border-green-300' : 'bg-orange-50/30 border-orange-200'}`}>
                     <div className="flex justify-between items-center font-bold text-orange-800 mb-3 border-b border-orange-200 pb-2">
                       <div className="flex-1 flex flex-col gap-1">
-                        <span>
-                          {`Câu ${qIndex + 1}.`} 
-                          <span className="text-sm font-normal text-slate-500 italic"> (Gồm {qChunk.length} ý)</span>
-                        </span>
+                        <span>Câu {qIndex + 1}. <span className="text-sm font-normal text-slate-500 italic">(Gồm {qChunk.length} ý)</span></span>
                         {slotData?.noiDung && <span className="text-sm font-normal text-slate-700 mt-1">{slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '')}</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -549,7 +538,7 @@ export default function Step4_GenerateExam() {
         {config.hasTraLoiNgan && saQuestions.length > 0 && (
           <div className="mb-10">
             <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "III. Trắc nghiệm trả lời ngắn" : "PHẦN III. Câu trắc nghiệm trả lời ngắn"}
+              PHẦN III. Câu trắc nghiệm trả lời ngắn
             </h3>
             <div className="space-y-4">
               {saQuestions.map((qChunk, qIndex) => {
@@ -558,9 +547,7 @@ export default function Step4_GenerateExam() {
                 return (
                   <div key={qIndex} className={`p-4 border rounded-lg text-slate-700 ${slotData ? 'bg-green-50 border-green-300' : 'bg-emerald-50/30 border-emerald-200'}`}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-bold text-emerald-800">
-                        {`Câu ${qIndex + 1}.`}
-                      </span>
+                      <span className="font-bold text-emerald-800">Câu {qIndex + 1}.</span>
                       <div className="flex items-center gap-2">
                         {slotData && (
                           <>
@@ -640,13 +627,8 @@ export default function Step4_GenerateExam() {
         {/* PHẦN IV. TỰ LUẬN — 3 Ý ĐỘC LẬP a, b, c */}
         {tlQuestions.length > 0 && (
           <div className="mb-10">
-            {examConfig.isCauTruc4213 && (
-              <h2 className="text-xl font-black text-blue-900 mb-6 border-b-2 border-blue-200 pb-2 uppercase mt-8">
-                PHẦN B. TỰ LUẬN
-              </h2>
-            )}
             <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "IV. Tự luận" : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
+              {config.hasTraLoiNgan ? 'PHẦN IV.' : 'PHẦN III.'} Câu hỏi tự luận
             </h3>
             <div className="space-y-4">
               {tlQuestions.map((qChunk, qIndex) => {
@@ -659,8 +641,8 @@ export default function Step4_GenerateExam() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1 flex flex-col gap-1">
                         <span className="font-bold text-purple-800">
-                          {`Câu ${qIndex + 1}.`}
-                          <span className="text-sm font-normal text-red-600 ml-2">({qChunk.reduce((s, item) => s + (item.diem || 0), 0)} điểm)</span>
+                          Câu {qIndex + 1}.
+                          <span className="text-sm font-normal text-red-600 ml-2">({Math.round(qChunk.reduce((s, item) => s + (item.diem || 0), 0) * 100) / 100} điểm)</span>
                           {kienThucQ === 'hinh_hoc' && <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">📐 Hình học</span>}
                           {kienThucQ === 'dai_so'   && <span className="ml-2 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">∑ Đại số</span>}
                         </span>
@@ -685,7 +667,7 @@ export default function Step4_GenerateExam() {
                                 dvkt: qChunk[0].dvkt,
                                 level: qChunk[0].level,
                                 loaiCauHoi: 4,
-                                diem:      qChunk.reduce((s, item) => s + (item.diem || 0), 0),
+                                diem:      Math.round(qChunk.reduce((s, item) => s + (item.diem || 0), 0) * 100) / 100,
                                 diemA:     qChunk[0]?.diem || 0,
                                 diemB:     qChunk[1]?.diem || 0,
                                 diemC:     qChunk[2]?.diem || 0,

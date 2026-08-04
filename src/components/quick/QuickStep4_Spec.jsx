@@ -1,9 +1,9 @@
 // Tên file: src/components/Step3_Specification.jsx
 import React, { useState } from 'react';
-import { useExamStore, getTopicSum, getTopicTuLuanDiem, isNewMathStructure } from '../store/useExamStore';
+import { useQuickStore as useExamStore, getTopicSum, getTopicTuLuanDiem, isNewMathStructure } from '../../store/useQuickStore';
 import { Copy } from 'lucide-react';
-import { mathCompetencyGroups } from './data/mathIndicators';
-import { formatGroupedLabels } from '../utils/labelUtils';
+import { mathCompetencyGroups } from '../data/mathIndicators';
+import { formatGroupedLabels } from '../../utils/labelUtils';
 
 export default function Step3_Specification() {
   const { matrix, config, examConfig, examHeader, updateTopicText, updateDvYccd, importYccdFromAIText } = useExamStore();
@@ -417,8 +417,11 @@ export default function Step3_Specification() {
         const isFirstInTopic = dvIdx === 0;
 
         // Collect question info for the entire ĐVKT
-        const labelsMap = {};
-
+        const mappingCodes = {
+          nlc_biet: '', nlc_hieu: '', nlc_vd: '',
+          ds_biet: '', ds_hieu: '', ds_vd: '',
+          tl_biet: '', tl_hieu: '', tl_vd: ''
+        };
         const summary = {
           nlc: { count: 0, labels: [] },
           ds: { count: 0, labels: [] },
@@ -439,24 +442,27 @@ export default function Step3_Specification() {
               const typeKey = type === 'nhieuLuaChon' ? 'nlc' : (type === 'dungSai' ? 'ds' : (type === 'traLoiNgan' ? 'traLoiNgan' : 'tl'));
               summary[typeKey].count += count;
 
-              const gridLvl = (tl === 'vanDung' || tl === 'vanDungCao') ? 'vd' : tl;
-              const gridKey = `${typeKey === 'tl' ? 'tl' : (typeKey === 'ds' ? 'ds' : 'nlc')}_${gridLvl}`;
-
+              const codes = [];
               for (let i = 0; i < count; i++) {
                 const m = dv.indicatorMap?.[`${type}_${tl}_${i}`];
                 if (m) {
-                  let lab = '';
                   if (m.label) {
-                    lab = m.label.replace('C', '');
+                    const lab = m.label.replace('C', '');
                     if (!summary[typeKey].labels.includes(lab)) summary[typeKey].labels.push(lab);
-                  } else {
-                    lab = `?_${typeKey}`;
                   }
-                  
-                  if (!labelsMap[lab]) labelsMap[lab] = { gridKey, codes: [] };
-                  if (m.code && !labelsMap[lab].codes.includes(m.code)) {
-                    labelsMap[lab].codes.push(m.code);
-                  }
+                  if (m.code) codes.push(m.code);
+                }
+              }
+
+              // Fill grid mapping
+              const gridLvl = (tl === 'vanDung' || tl === 'vanDungCao') ? 'vd' : tl;
+              const gridKey = `${typeKey === 'tl' ? 'tl' : (typeKey === 'ds' ? 'ds' : 'nlc')}_${gridLvl}`;
+              if (mappingCodes[gridKey] !== undefined) {
+                const uniqueCodes = [...new Set(codes)].filter(Boolean).join(', ');
+                if (uniqueCodes) {
+                  mappingCodes[gridKey] = mappingCodes[gridKey] 
+                    ? (mappingCodes[gridKey] + ', ' + uniqueCodes) 
+                    : uniqueCodes;
                 }
               }
             }
@@ -465,18 +471,6 @@ export default function Step3_Specification() {
 
         const totalQuestions = summary.nlc.labels.length + summary.ds.labels.length + summary.tl.labels.length;
         const allLabels = [...new Set([...summary.nlc.labels, ...summary.ds.labels, ...summary.tl.labels])].sort((a,b) => parseInt(a)-parseInt(b) || a.localeCompare(b));
-
-        const renderGridCell = (key) => {
-            return (
-              <div className="flex flex-col">
-                {allLabels.map((lab, i) => {
-                   const info = labelsMap[lab];
-                   const text = (info && info.gridKey === key) ? info.codes.join(', ') : '\u00A0';
-                   return <div key={i} className="min-h-[1.25rem]">{text}</div>;
-                })}
-              </div>
-            );
-        };
 
         rows.push(
           <tr key={`${topic.id}_${dv.id}`} className="hover:bg-slate-50 transition-colors">
@@ -524,21 +518,21 @@ export default function Step3_Specification() {
             {/* CỘT STT (CHIỀU DỌC) */}
             <td className="border border-slate-300 p-1 text-center font-medium text-slate-700 text-[10px] leading-tight">
               <div className="flex flex-col">
-                {allLabels.map((lab, i) => <div key={i} className="min-h-[1.25rem]">{lab}</div>)}
+                {allLabels.map((lab, i) => <div key={i}>{lab}</div>)}
               </div>
             </td>
             {/* Grid mã năng lực */}
-            <td className="border border-slate-300 p-1 text-center font-bold text-blue-800 text-[10px]">{renderGridCell('nlc_biet')}</td>
-            <td className="border border-slate-300 p-1 text-center font-bold text-blue-800 text-[10px]">{renderGridCell('nlc_hieu')}</td>
-            <td className="border border-slate-300 p-1 text-center font-bold text-blue-800 text-[10px]">{renderGridCell('nlc_vd')}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-blue-800 text-[10px]">{mappingCodes.nlc_biet}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-blue-800 text-[10px]">{mappingCodes.nlc_hieu}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-blue-800 text-[10px]">{mappingCodes.nlc_vd}</td>
             
-            <td className="border border-slate-300 p-1 text-center font-bold text-emerald-800 text-[10px]">{renderGridCell('ds_biet')}</td>
-            <td className="border border-slate-300 p-1 text-center font-bold text-emerald-800 text-[10px]">{renderGridCell('ds_hieu')}</td>
-            <td className="border border-slate-300 p-1 text-center font-bold text-emerald-800 text-[10px]">{renderGridCell('ds_vd')}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-emerald-800 text-[10px]">{mappingCodes.ds_biet}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-emerald-800 text-[10px]">{mappingCodes.ds_hieu}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-emerald-800 text-[10px]">{mappingCodes.ds_vd}</td>
             
-            <td className="border border-slate-300 p-1 text-center font-bold text-red-800 text-[10px]">{renderGridCell('tl_biet')}</td>
-            <td className="border border-slate-300 p-1 text-center font-bold text-red-800 text-[10px]">{renderGridCell('tl_hieu')}</td>
-            <td className="border border-slate-300 p-1 text-center font-bold text-red-800 text-[10px]">{renderGridCell('tl_vd')}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-red-800 text-[10px]">{mappingCodes.tl_biet}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-red-800 text-[10px]">{mappingCodes.tl_hieu}</td>
+            <td className="border border-slate-300 p-1 text-center font-bold text-red-800 text-[10px]">{mappingCodes.tl_vd}</td>
           </tr>
         );
       });

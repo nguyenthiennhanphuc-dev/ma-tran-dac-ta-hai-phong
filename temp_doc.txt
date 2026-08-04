@@ -1,0 +1,188 @@
+Họ tên: ................................................ Lớp:  ............. 
+
+PHẦN A. TRẮC NGHIỆM KHÁCH QUAN (7,0 ĐIỂM)
+I. Trắc nghiệm nhiều lựa chọn. Thí sinh trả lời từ câu 1 đến câu 16. Mỗi câu hỏi thí sinh chỉ chọn 1 phương án. (4.0 điểm)
+Câu 1. Vi sinh vật bao gồm?
+A. Vi khuẩn, vi nấm, động vật nguyên sinh, vi tảo.
+B. Vi khuẩn, thực vật, nấm mốc, động vật nguyên sinh.
+C. Nấm men, động vật, vi khuẩn, vi tảo.
+D. Vi khuẩn, nấm mốc, thực vật, động vật.
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: BIẾT – NT1.
+Câu 2. Phương pháp nào sau đây được sử dụng để nghiên cứu hình dạng và cấu trúc của vi sinh vật?
+A. Quan sát bằng kính hiển vi.
+B. Nuôi cấy trong môi trường dinh dưỡng.
+C. Phân tích trình tự DNA.
+D. Đo tốc độ sinh trưởng quần thể.
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: BIẾT - NT2.
+Câu 3. Điểm khác biệt về dinh dưỡng giữa vi sinh vật quang tự dưỡng và hóa dị dưỡng là nhu cầu sử dụng
+A. nguồn năng lượng và nguồn carbon sử dụng.
+B. kích thước tế bào và hình dạng cơ thể.
+C. môi trường sống và khả năng di chuyển.
+D. cấu tạo tế bào và vật chất di truyền.
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: HIỂU – NT5. 
+Câu 4. Khi muốn quan sát hình dạng vi khuẩn trong mẫu nước ao, học sinh nên lựa chọn phương pháp nào là phù hợp nhất?
+A. Làm tiêu bản và quan sát bằng kính hiển vi.
+B. Nuôi cấy trong môi trường đặc rồi đếm khuẩn lạc.
+C. Đo độ pH của mẫu nước trước khi quan sát.
+D. Phân tích thành phần hóa học của mẫu nước.
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: VẬN DỤNG – TH3.
+Câu 5. Trong thực hành, để tách riêng các vi khuẩn từ một mẫu hỗn hợp, phương pháp được sử dụng hiệu quả nhất là
+A. cấy ria trên môi trường thạch.
+B. quan sát trực tiếp dưới kính hiển vi.
+C. đun nóng mẫu trước khi nuôi cấy.
+D. lọc mẫu qua giấy lọc thông thường. 
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: VẬN DỤNG – TH3.
+Câu 6. Khi tiến hành nuôi cấy vi sinh vật trong phòng thí nghiệm, yêu cầu quan trọng nhất để tránh nhiễm tạp là
+A. đảm bảo điều kiện vô trùng.
+B. tăng nhiệt độ môi trường nuôi cấy.
+C. giảm ánh sáng trong phòng thí nghiệm.
+D. tăng lượng chất dinh dưỡng trong môi trường. 
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: VẬN DỤNG – TH4.
+Câu 7. Vi sinh vật có khả năng tổng hợp loại chất nào sau đây? 
+A. Enzyme.
+B. Carbon dioxide.
+C. Amoniac.
+D. Oxygen.
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT - NT1.
+Câu 8. Hoạt động thể hiện quá trình tổng hợp chất hữu cơ ở vi khuẩn là
+A. tổng hợp protein.
+B. phân giải lipid.
+C. hô hấp tạo năng lượng.
+D. lên men tạo sản phẩm.
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT - NT1.
+Câu 9. Hoạt động nào sau đây thể hiện quá trình phân giải chất hữu cơ ở vi sinh vật? 
+A. Lên men rượu từ glucose. 
+B. Tổng hợp enzyme.
+C. Tổng hợp protein.
+D. Tổng hợp lipid.
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT – NT1.
+Câu 10. Khi vi sinh vật phân giải protein, sản phẩm chủ yếu thu được là
+A. amino acid.
+B. glucose.
+C. acid béo.
+D. glycerol.
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT - NT1.
+Câu 11. Quá trình phân giải tinh bột ở vi sinh vật tạo ra 
+A. đường đơn.
+B. amino acid.
+C. acid nucleic.
+D. glycerol và acid béo
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT - NT1.
+Câu 12. Pha nào trong quá trình sinh trưởng của quần thể vi khuẩn có số lượng tế bào tăng nhanh theo cấp số nhân?
+A. Pha lũy thừa.
+B. Pha tiềm phát.
+C. Pha cân bằng.
+D. Pha suy vong. 
+* Kiến thức: Sinh trưởng và sinh sản ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT – NT2.
+Câu 13. Ở pha cân bằng, số lượng vi khuẩn trong quần thể   
+A. giữ ổn định do số tế bào sinh ra bằng số tế bào chết đi.
+B. có số tế bào sinh ra nhanh hơn số tế bào chết đi.
+C. giảm mạnh do thiếu dinh dưỡng.
+D. chưa tăng do vi khuẩn thích nghi.
+* Kiến thức: Sinh trưởng và sinh sản ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT – NT2.
+Câu 14. Ứng dụng thể hiện triển vọng của công nghệ vi sinh vật trong bảo vệ môi trường là sử dụng vi sinh vật để 
+A. xử lí rác thải và làm sạch môi trường.
+B. tăng kích thước tế bào.
+C. thay đổi cấu trúc tế bào động vật và thực vật.
+D. giảm số lượng loài trong hệ sinh thái.
+* Kiến thức: Công nghệ vi sinh vật.
+* NLTD/chỉ báo: HIỂU – NT4.
+Câu 15. Một nhóm học sinh làm tập san về sản phẩm lên men (sữa chua, rượu, bánh mì). Để làm rõ bản chất công nghệ vi sinh trong các sản phẩm lên men, nội dung nào cần được nhấn mạnh?
+A. Vai trò của vi sinh vật trong quá trình tạo sản phẩm.
+B. Màu sắc và hình dạng bên ngoài của sản phẩm.
+C. Giá bán của sản phẩm trên thị trường.
+D. Sở thích cá nhân đối với từng sản phẩm. 
+* Kiến thức: Công nghệ vi sinh vật.
+* NLTD/chỉ báo: VẬN DỤNG – TH4.
+Câu 16. Khi thực hiện dự án tìm hiểu sản phẩm công nghệ vi sinh vật, bước nào sau đây là phù hợp nhất để thu thập thông tin chính xác?
+A. Tìm kiếm tài liệu từ sách giáo khoa, bài báo khoa học và nguồn tin cậy.
+B. Chỉ dựa vào ý kiến cá nhân của các thành viên trong nhóm.
+C. Sao chép toàn bộ nội dung từ một trang mạng bất kỳ.
+D. Thu thập thông tin không cần kiểm chứng nguồn. 
+* Kiến thức: Công nghệ vi sinh vật.
+* NLTD/chỉ báo: VẬN DỤNG – TH4.
+
+II. Trắc nghiệm dạng Đúng/Sai. Thí sinh trả lời từ câu 1 đến câu 2. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn Đúng hoặc Sai. (2.0 điểm)
+Câu 1. Dựa vào Hình 25.3 mô tả các pha sinh trưởng của quần thể vi khuẩn trong điều kiện nuôi cấy không liên tục. 
+
+a) Ở pha (1), vi khuẩn thích nghi với môi trường, số lượng tế bào hầu như chưa tăng.
+b) Ở pha (4), số lượng vi khuẩn tăng nhanh theo cấp số nhân do điều kiện môi trường thuận lợi.
+c) Ở pha (3), nếu cho thêm vào môi trường nuôi cấy các chất kháng sinh thì sẽ nhanh chóng chuyển sang pha (4).
+d) Nhiệt độ, pH và nguồn dinh dưỡng là những yếu tố có thể làm rút ngắn hoặc kéo dài các pha sinh trưởng của vi khuẩn.
+* Kiến thức: Sinh trưởng và sinh sản ở vi sinh vật.
+a) BIẾT - NT2.		b) BIẾT - NT2.	c) HIỂU - NT4.		d) HIỂU – NT4.
+Câu 2. Hình 1 dưới đây mô tả quy trình làm sữa chua tại nhà.
+
+a) Trong quy trình làm sữa chua, vi khuẩn lactic sử dụng đường lactose trong sữa để tạo acid lactic, làm đông tụ protein và tạo vị chua đặc trưng.
+b) Vi khuẩn lactic trong quy trình trên còn được ứng dụng rộng rãi trong lĩnh vực xử lý rác thải sinh hoạt.
+c) Trong tương lai, quy trình trên có thể được áp dụng để sản xuất các chất sinh học như hormone, enzyme có giá trị cao và tiết kiệm chi phí sản xuất.
+d) Khi làm sữa chua tại nhà, nếu ủ ở nhiệt độ quá thấp hoặc quá cao so với khoảng thích hợp (30–40°C) thì quá trình lên men sẽ diễn ra không bình thường và cho sản phẩm không đạt chất lượng.
+* Kiến thức: Ứng dụng vi sinh vật trong thực tiễn.
+a) HIỂU - NT2.		b) HIỂU - NT2.	c) HIỂU - NT2.	d) VẬN DỤNG - TH4.
+III. Trắc nghiệm dạng trả lời ngắn. Thí sinh trả lời từ câu 1 đến câu 4. (1.0 điểm)
+Câu 1. Ý nào là sản phẩm của quá trình tổng hợp carbohydrate ở đa số vi sinh vật?
+monopeptide. 
+polysaccharide. 
+polypeptide. 
+monosaccharide.
+* Đáp án: 2.
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: BIẾT – NT1.
+Câu 2. Hãy viết liền đáp án theo thứ tự số tăng dần các nội dung nói về vai trò của vi sinh vật đối với con người và tự nhiên?
+(1) Phân giải chất hữu cơ trong tự nhiên.
+(2) Gây bệnh cho người.
+(3) Sản xuất thực phẩm lên men (sữa chua, rượu, bánh mì).
+(4) Tổng hợp các chất như kháng sinh, enzyme.
+* Đáp án: 134
+* Kiến thức: Quá trình tổng hợp và phân giải ở vi sinh vật.
+* NLTD/chỉ báo: HIỂU – NT4.
+Câu 3. Trong một buổi thực hành nghiên cứu vi sinh vật, học sinh ghi lại các bước thực hiện như sau:
+(1) Khử trùng dụng cụ trước khi thao tác.
+(2) Cấy vi sinh vật lên môi trường thạch.
+(3) Để mẫu ngoài không khí trong thời gian dài.
+(4) Nuôi cấy và quan sát khuẩn lạc sau thời gian nuôi cấy.
+(5) Nhuộm mẫu để quan sát dưới kính hiển vi.
+Hãy sắp xếp đúng thứ tự các bước trong quy trình nghiên cứu vi sinh vật
+* Đáp án: 1245
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật.
+* NLTD/chỉ báo: VD – TH3.
+Câu 4. Cho các sản phẩm sau:
+(1) Sữa chua.			(2) Dưa chua.			(3) Bánh mì.
+(4) Nước mắm.		(5) Đường tinh luyện.
+Hãy viết liền các sản phẩm theo thứ tự số tăng dần được tạo ra nhờ quá trình lên men của vi sinh vật
+* Đáp án: 1234
+* Kiến thức: Ứng dụng vi sinh vật trong thực tiễn.
+* NLTD/chỉ báo: VD – NT7.
+PHẦN B. TỰ LUẬN (3,0 ĐIỂM)
+Câu 1 (1đ). Em hãy trả lời 2 yêu cầu sau:
+a) Nêu khái niệm vi sinh vật.
+b) Nêu khái niệm sinh trưởng ở vi sinh vật.
+* Kiến thức: Khái quát và một số phương pháp nghiên cứu vi sinh vật; 
+                     Sinh trưởng và sinh sản ở vi sinh vật
+* NLTD/chỉ báo: BIẾT – NT1.
+
+Câu 2 (1đ). Hãy tóm tắt ứng dụng sản xuất bánh mì từ vi sinh vật theo các nội dung: tên ứng dụng, cơ sở khoa học, loại vi sinh vật sử dụng và vai trò trong đời sống.
+* Kiến thức: Ứng dụng vi sinh vật trong thực tiễn
+* NLTD/chỉ báo: HIỂU – NT2.
+
+Câu 3 (1đ). Giải thích vì sao sữa chuyển từ trạng thái lỏng sang dạng đông đặc sau khi lên men?
+* Kiến thức: Ứng dụng vi sinh vật trong thực tiễn.
+* NLTD/chỉ báo: VẬN DỤNG – NT6.
+
+----- HẾT -----
+
+Lưu ý: Thí sinh không được sử dụng tài liệu khi làm bài.
+Cán bộ coi thi không giải thích gì thêm.

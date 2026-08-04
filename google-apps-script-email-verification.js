@@ -129,7 +129,7 @@ function handleCheck(params) {
   const premiumData = sheets.premium.getDataRange().getValues();
   const premiumRow = premiumData.find(row => row[0] === visitorId);
 
-  if (premiumRow && premiumRow[2] === true) {
+  if (premiumRow && (premiumRow[2] === true || String(premiumRow[2]).toUpperCase() === 'TRUE')) {
     return jsonResponse({
       isPremium: true,
       count: 0,
@@ -380,7 +380,7 @@ function handleActivate(params) {
     });
   }
 
-  if (codeRow[2] === true) {
+  if (codeRow[2] === true || String(codeRow[2]).toUpperCase() === 'TRUE') {
     return jsonResponse({
       success: false,
       error: 'Code already used'
@@ -436,7 +436,7 @@ function handleSubmitPayment(data) {
 
   // Kiểm tra user đã được duyệt premium chưa
   const premiumData = sheets.premium.getDataRange().getValues();
-  const existingPremium = premiumData.find(row => row[0] === visitorId && row[2] === true);
+  const existingPremium = premiumData.find(row => row[0] === visitorId && (row[2] === true || String(row[2]).toUpperCase() === 'TRUE'));
 
   if (existingPremium) {
     return jsonResponse({ success: false, error: 'Bạn đã là Premium user.' });

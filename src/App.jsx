@@ -7,10 +7,11 @@ import Step3_Specification from './components/Step3_Specification';
 import Step4_GenerateExam from './components/Step4_GenerateExam';
 import Step5_AIGenerator from './components/Step5_AIGenerator';
 import Step6_SimilarExam from './components/Step6_SimilarExam';
+import QuickFlow from './components/quick/QuickFlow';
 import { exportToWord } from './utils/exportWord';
 import { exportToWordMath, exportToWordMathLatex } from './utils/exportWordMath';
 import { useExamStore } from './store/useExamStore';
-import { FileDown, BookOpenCheck, Save, FolderOpen, Crown, Gift, X, KeyRound, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Check, Settings, TableProperties, FileText, Bot, Eye, Mail, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { FileDown, BookOpenCheck, Save, FolderOpen, Crown, Gift, X, KeyRound, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Check, Settings, TableProperties, FileText, Bot, Eye, Mail, ArrowRight, Loader2, Sparkles, Cpu } from 'lucide-react';
 import UserGuideModal from './components/UserGuideModal';
 import { useToast } from './components/Toast';
 
@@ -60,6 +61,8 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showSimilarModal, setShowSimilarModal] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [activeFlow, setActiveFlow] = useState('standard'); // 'standard' | 'quick'
+  const [quickActiveStep, setQuickActiveStep] = useState(0);
   const toast = useToast();
   const [trialLeft, setTrialLeft] = useState(5);
   const [activationCode, setActivationCode] = useState('');
@@ -68,15 +71,8 @@ export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem('userName') || '');
 
   // ============================================================
-  // EMAIL VERIFICATION STATE (Cấp 2)
+  // EMAIL VERIFICATION ĐÃ BỊ LOẠI BỎ (CHUYỂN SANG DÙNG MÃ MÁY)
   // ============================================================
-  const [showEmailVerify, setShowEmailVerify] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
-  const [verificationCodeInput, setVerificationCodeInput] = useState('');
-  const [emailVerifyStep, setEmailVerifyStep] = useState(1); // 1: nhập email, 2: nhập code
-  const [isSendingCode, setIsSendingCode] = useState(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
-  const [emailVerified, setEmailVerified] = useState(false);
 
   // ============================================================
   // BACKEND HEALTH CHECK STATE
@@ -133,22 +129,12 @@ export default function App() {
             const serverCount = Number(data.count) || 0;
             localStorage.setItem('exportCount', String(serverCount));
 
-            // Kiểm tra email verified
-            if (data.emailVerified) {
-              setEmailVerified(true);
-              const totalLeft = Math.max(0, 10 - serverCount);
-              setTrialLeft(totalLeft);
+            // Không sử dụng email verification nữa, tối đa 5 lượt dùng thử
+            const left = Math.max(0, 5 - serverCount);
+            setTrialLeft(left);
 
-              if (totalLeft > 0 && totalLeft <= 10) {
-                setShowWelcome(true);
-              }
-            } else {
-              const left = Math.max(0, 5 - serverCount);
-              setTrialLeft(left);
-
-              if (localStorage.getItem('isPremium') !== 'true' && left > 0 && left <= 5) {
-                setShowWelcome(true);
-              }
+            if (localStorage.getItem('isPremium') !== 'true' && left > 0 && left <= 5) {
+              setShowWelcome(true);
             }
           } catch {
             // Không kết nối được server → dùng localStorage fallback
@@ -242,22 +228,17 @@ export default function App() {
         }
 
         const serverCount = Number(checkData.count) || 0;
-        const isEmailVerified = checkData.emailVerified === true;
-
-        // ƯU TIÊN: Nếu đã hết 5 lượt đầu nhưng chưa verify email → hiển thị modal verify
-        if (serverCount >= 5 && !isEmailVerified) {
+        // Nếu đã hết 5 lượt đầu → hiển thị modal Paywall
+        if (serverCount >= 5) {
           localStorage.setItem('exportCount', '5');
           setTrialLeft(0);
           setIsCheckingTrial(false);
-          setEmailVerifyStep(1);
-          setEmailInput('');
-          setVerificationCodeInput('');
-          setShowEmailVerify(true);
+          setShowPaywall(true);
           return;
         }
 
-        // Xác định số lượt tối đa (5 nếu chưa verify, 10 nếu đã verify)
-        const totalAllowed = isEmailVerified ? 10 : 5;
+        // Xác định số lượt tối đa (5 lượt)
+        const totalAllowed = 5;
 
         // Bước 2: Tăng lượt trên server
         const incRes = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=increment&visitorId=${visitorId}&userName=${encodeURIComponent(userName)}`);
@@ -313,56 +294,8 @@ export default function App() {
   };
 
   // ============================================================
-  // EMAIL VERIFICATION HANDLERS (Cấp 2)
+  // CÁC HÀM EMAIL VERIFICATION ĐÃ BỊ LOẠI BỎ
   // ============================================================
-  const handleSendVerificationCode = async () => {
-    if (!emailInput || !emailInput.includes('@')) {
-      toast.warning('Vui lòng nhập email hợp lệ!');
-      return;
-    }
-    setIsSendingCode(true);
-    try {
-      const res = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=sendCode&email=${encodeURIComponent(emailInput)}&visitorId=${visitorId}`);
-      const data = await res.json();
-      if (data.success) {
-        setEmailVerifyStep(2);
-        toast.success('Mã xác nhận đã được gửi đến email của bạn!');
-      } else {
-        toast.error(data.error || 'Không thể gửi mã xác nhận.');
-      }
-    } catch (err) {
-      toast.error('Lỗi kết nối: ' + err.message);
-    } finally {
-      setIsSendingCode(false);
-    }
-  };
-
-  const handleVerifyEmailCode = async () => {
-    if (!verificationCodeInput || verificationCodeInput.length !== 6) {
-      toast.warning('Vui lòng nhập đủ 6 chữ số!');
-      return;
-    }
-    setIsVerifyingCode(true);
-    try {
-      const res = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?action=verifyCode&email=${encodeURIComponent(emailInput)}&code=${encodeURIComponent(verificationCodeInput)}&visitorId=${visitorId}&userName=${encodeURIComponent(userName)}`);
-      const data = await res.json();
-      if (data.success) {
-        setEmailVerified(true);
-        setShowEmailVerify(false);
-        setEmailVerifyStep(1);
-        setEmailInput('');
-        setVerificationCodeInput('');
-        setTrialLeft(5);
-        toast.success('Xác nhận email thành công! Bạn được thêm 5 lượt miễn phí (tổng 10 lượt).');
-      } else {
-        toast.error(data.error || 'Mã xác nhận không đúng hoặc đã hết hạn.');
-      }
-    } catch (err) {
-      toast.error('Lỗi kết nối: ' + err.message);
-    } finally {
-      setIsVerifyingCode(false);
-    }
-  };
 
   // Hàm kích hoạt mã Premium (đọc danh sách mã từ Google Sheets CSV + đánh dấu trên server)
   const handleActivate = async () => {
@@ -612,23 +545,50 @@ export default function App() {
             </h1>
           </div>
 
+          {/* Flow Switcher (Tabs) */}
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 shrink-0 ml-4">
+            <button
+              onClick={() => setActiveFlow('standard')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
+                activeFlow === 'standard'
+                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <span>Quy trình chuẩn</span>
+            </button>
+            <button
+              onClick={() => setActiveFlow('quick')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
+                activeFlow === 'quick'
+                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <span>Sinh đề nhanh</span>
+              <span className="bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-0.5 rounded-full font-extrabold uppercase animate-pulse">Hot</span>
+            </button>
+          </div>
+
           {/* Stepper Navigation */}
-          <nav className="stepper-nav flex-1 overflow-x-auto">
-            {STEPS.map((step, idx) => (
-              <React.Fragment key={step.id}>
-                {idx > 0 && <div className={`stepper-connector ${idx <= currentStep ? 'filled' : ''}`} />}
-                <button
-                  className={`stepper-item ${currentStep === idx ? 'active' : ''} ${currentStep > idx ? 'completed' : ''}`}
-                  onClick={() => setCurrentStep(idx)}
-                >
-                  <span className="stepper-number">
-                    {currentStep > idx ? <Check size={14} strokeWidth={3} /> : idx + 1}
-                  </span>
-                  <span className="hidden md:inline">{step.label}</span>
-                </button>
-              </React.Fragment>
-            ))}
-          </nav>
+          {activeFlow === 'standard' && (
+            <nav className="stepper-nav flex-1 overflow-x-auto">
+              {STEPS.map((step, idx) => (
+                <React.Fragment key={step.id}>
+                  {idx > 0 && <div className={`stepper-connector ${idx <= currentStep ? 'filled' : ''}`} />}
+                  <button
+                    className={`stepper-item ${currentStep === idx ? 'active' : ''} ${currentStep > idx ? 'completed' : ''}`}
+                    onClick={() => setCurrentStep(idx)}
+                  >
+                    <span className="stepper-number">
+                      {currentStep > idx ? <Check size={14} strokeWidth={3} /> : idx + 1}
+                    </span>
+                    <span className="hidden md:inline">{step.label}</span>
+                  </button>
+                </React.Fragment>
+              ))}
+            </nav>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-2 shrink-0">
@@ -671,55 +631,65 @@ export default function App() {
       {/* ============================================================ */}
       <main className="w-full flex-grow flex flex-col">
         <div className="flex-grow px-4 py-5">
-          <div className="bg-white shadow-lg rounded-2xl border border-slate-200/80 overflow-hidden">
-            {/* Step Content */}
-            <div className="p-4 md:p-6 step-content-enter" key={currentStep}>
-              {currentStep === 0 && <Step1_HeaderInfo />}
-              {currentStep === 1 && <Step2_MatrixBuilder />}
-              {currentStep === 2 && <Step3_Specification />}
-              {currentStep === 3 && <Step5_AIGenerator />}
-              {currentStep === 4 && (
-                <>
-                  <Step4_GenerateExam />
-                  {/* Nút xuất Word — chỉ hiện ở bước cuối */}
-                  <div className="mt-8 flex flex-wrap items-center justify-center gap-4 pt-6 border-t border-slate-200">
-                    <button
-                      onClick={() => { setPendingExportType('normal'); setShowNumberingModal(true); }}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-indigo-600 to-blue-600 hover:shadow-lg hover:scale-[1.02]">
-                      <FileDown size={20} /> Xuất Word (Môn thường)
-                    </button>
-                    <button
-                      onClick={() => { setPendingExportType('math'); setShowNumberingModal(true); }}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02]">
-                      <FileDown size={20} /> Xuất Word (Toán/Hóa Công thức)
-                    </button>
-                    <button
-                      onClick={() => { setPendingExportType('latex'); setShowNumberingModal(true); }}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-teal-600 to-emerald-600 hover:shadow-lg hover:scale-[1.02]">
-                      <FileDown size={20} /> Xuất Word (LaTeX)
-                    </button>
-                  </div>
-                </>
-              )}
+          {activeFlow === 'quick' ? (
+            <div className="bg-white shadow-lg rounded-2xl border border-slate-200/80 overflow-hidden flex-grow flex flex-col">
+              <QuickFlow 
+                handleExportWrapper={handleExportWrapper} 
+                activeStep={quickActiveStep} 
+                setActiveStep={setQuickActiveStep} 
+              />
             </div>
+          ) : (
+            <div className="bg-white shadow-lg rounded-2xl border border-slate-200/80 overflow-hidden">
+              {/* Step Content */}
+              <div className="p-4 md:p-6 step-content-enter" key={currentStep}>
+                {currentStep === 0 && <Step1_HeaderInfo />}
+                {currentStep === 1 && <Step2_MatrixBuilder />}
+                {currentStep === 2 && <Step3_Specification />}
+                {currentStep === 3 && <Step5_AIGenerator />}
+                {currentStep === 4 && (
+                  <>
+                    <Step4_GenerateExam />
+                    {/* Nút xuất Word — chỉ hiện ở bước cuối */}
+                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4 pt-6 border-t border-slate-200">
+                      <button
+                        onClick={() => { setPendingExportType('normal'); setShowNumberingModal(true); }}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-indigo-600 to-blue-600 hover:shadow-lg hover:scale-[1.02]">
+                        <FileDown size={20} /> Xuất Word (Môn thường)
+                      </button>
+                      <button
+                        onClick={() => { setPendingExportType('math'); setShowNumberingModal(true); }}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02]">
+                        <FileDown size={20} /> Xuất Word (Toán/Hóa Công thức)
+                      </button>
+                      <button
+                        onClick={() => { setPendingExportType('latex'); setShowNumberingModal(true); }}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-teal-600 to-emerald-600 hover:shadow-lg hover:scale-[1.02]">
+                        <FileDown size={20} /> Xuất Word (LaTeX)
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
-            {/* Step Navigation Bar */}
-            <div className="step-nav-bar">
-              <button
-                className={`step-nav-btn prev ${currentStep === 0 ? 'opacity-0 pointer-events-none' : ''}`}
-                onClick={() => setCurrentStep(s => Math.max(0, s - 1))}>
-                <ChevronLeft size={18} /> Quay lại
-              </button>
-              <span className="text-sm font-semibold text-slate-400">
-                Bước {currentStep + 1} / {STEPS.length}
-              </span>
-              <button
-                className={`step-nav-btn next ${currentStep === STEPS.length - 1 ? 'opacity-0 pointer-events-none' : ''}`}
-                onClick={() => setCurrentStep(s => Math.min(STEPS.length - 1, s + 1))}>
-                Tiếp theo <ChevronRight size={18} />
-              </button>
+              {/* Step Navigation Bar */}
+              <div className="step-nav-bar">
+                <button
+                  className={`step-nav-btn prev ${currentStep === 0 ? 'opacity-0 pointer-events-none' : ''}`}
+                  onClick={() => setCurrentStep(s => Math.max(0, s - 1))}>
+                  <ChevronLeft size={18} /> Quay lại
+                </button>
+                <span className="text-sm font-semibold text-slate-400">
+                  Bước {currentStep + 1} / {STEPS.length}
+                </span>
+                <button
+                  className={`step-nav-btn next ${currentStep === STEPS.length - 1 ? 'opacity-0 pointer-events-none' : ''}`}
+                  onClick={() => setCurrentStep(s => Math.min(STEPS.length - 1, s + 1))}>
+                  Tiếp theo <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 
@@ -763,12 +733,12 @@ export default function App() {
             <div className="mb-6">
               <div className="flex justify-between text-xs text-slate-500 mb-1">
                 <span>Lượt đã dùng</span>
-                <span>{emailVerified ? 10 - trialLeft : 5 - trialLeft}/{emailVerified ? 10 : 5}</span>
+                <span>{5 - trialLeft}/5</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2.5">
                 <div
                   className="bg-gradient-to-r from-amber-400 to-orange-500 h-2.5 rounded-full transition-all"
-                  style={{ width: `${(((emailVerified ? 10 : 5) - trialLeft) / (emailVerified ? 10 : 5)) * 100}%` }}
+                  style={{ width: `${((5 - trialLeft) / 5) * 100}%` }}
                 />
               </div>
             </div>
@@ -791,110 +761,8 @@ export default function App() {
       )}
 
       {/* ============================================================ */}
-      {/* MODAL 1.5: XÁC NHẬN EMAIL (Email Verification Modal)         */}
+      {/* MODAL 1.5: EMAIL VERIFICATION ĐÃ LOẠI BỎ                       */}
       {/* ============================================================ */}
-      {showEmailVerify && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 modal-backdrop">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative border border-slate-200 modal-content">
-            {/* Nút đóng */}
-            <button
-              onClick={() => setShowEmailVerify(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              <X size={20} />
-            </button>
-
-            {/* Header */}
-            <div className="flex justify-center mb-4">
-              <div className="bg-blue-100 p-4 rounded-full">
-                <Mail size={36} className="text-blue-500" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-black text-center text-slate-800 mb-2">
-              📧 Xác nhận Email
-            </h2>
-            <p className="text-center text-slate-600 mb-6 text-sm">
-              Bạn đã dùng hết 5 lượt miễn phí. Nhập email để nhận thêm <span className="font-bold text-blue-600">5 lượt</span> miễn phí nữa!
-            </p>
-
-            {/* Step 1: Nhập email */}
-            {emailVerifyStep === 1 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Địa chỉ email của bạn
-                  </label>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="example@gmail.com"
-                    className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  />
-                </div>
-                <button
-                  onClick={handleSendVerificationCode}
-                  disabled={isSendingCode}
-                  className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all text-base flex items-center justify-center gap-2"
-                >
-                  {isSendingCode ? (
-                    <Loader2 size={20} className="animate-spin" />
-                  ) : (
-                    <Mail size={20} />
-                  )}
-                  {isSendingCode ? 'Đang gửi mã...' : 'Gửi mã xác nhận'}
-                </button>
-                <button
-                  onClick={() => { setShowEmailVerify(false); setShowPaywall(true); }}
-                  className="w-full py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-                >
-                  Bỏ qua → Mua Premium
-                </button>
-              </div>
-            )}
-
-            {/* Step 2: Nhập mã xác nhận */}
-            {emailVerifyStep === 2 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Mã xác nhận (6 chữ số)
-                  </label>
-                  <input
-                    type="text"
-                    value={verificationCodeInput}
-                    onChange={(e) => setVerificationCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
-                    maxLength={6}
-                    className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-center text-2xl font-bold tracking-widest"
-                  />
-                  <p className="text-xs text-slate-500 mt-2 text-center">
-                    Mã đã gửi đến <span className="font-semibold">{emailInput}</span>. Hết hạn sau 10 phút.
-                  </p>
-                </div>
-                <button
-                  onClick={handleVerifyEmailCode}
-                  disabled={isVerifyingCode || verificationCodeInput.length !== 6}
-                  className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isVerifyingCode ? (
-                    <Loader2 size={20} className="animate-spin" />
-                  ) : (
-                    <Check size={20} />
-                  )}
-                  {isVerifyingCode ? 'Đang xác nhận...' : 'Xác nhận mã'}
-                </button>
-                <button
-                  onClick={() => setEmailVerifyStep(1)}
-                  className="w-full py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-                >
-                  ← Quay lại nhập email khác
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ============================================================ */}
       {/* MODAL 2: THU PHÍ (Paywall Modal)                            */}
@@ -965,39 +833,35 @@ export default function App() {
               <div className="flex-1 border-t border-slate-200"></div>
             </div>
 
-            {/* Khung nhập mã kích hoạt */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <KeyRound size={18} className="text-slate-600" />
-                <span className="font-bold text-slate-700 text-sm uppercase tracking-wide">Nhập mã kích hoạt</span>
+            {/* Khung nhập mã kích hoạt & Mã máy */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Cpu size={18} className="text-indigo-600" />
+                  <span className="font-bold text-slate-700 text-sm uppercase tracking-wide">Mã Máy Của Bạn</span>
+                </div>
               </div>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => { setUserName(e.target.value); localStorage.setItem('userName', e.target.value); }}
-                placeholder="Họ tên hoặc SĐT..."
-                className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={activationCode}
-                  onChange={(e) => setActivationCode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleActivate()}
-                  placeholder="Nhập mã kích hoạt..."
-                  className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent uppercase"
-                />
-                <button
-                  onClick={handleActivate}
-                  disabled={isCheckingCode}
-                  className={`px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-emerald-700 shadow hover:shadow-md transition-all text-sm whitespace-nowrap ${isCheckingCode ? 'opacity-60 cursor-not-allowed' : ''}`}
-                >
-                  {isCheckingCode ? 'Đang kiểm tra...' : 'Kích hoạt'}
-                </button>
+              <div 
+                onClick={() => {
+                  navigator.clipboard.writeText(visitorId || '');
+                  toast.success('Đã copy Mã máy!');
+                }}
+                className="w-full border border-slate-300 bg-white rounded-lg px-4 py-2.5 text-sm font-mono tracking-widest text-center text-indigo-700 cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition-colors mb-3"
+                title="Click để copy Mã máy"
+              >
+                {visitorId || 'Đang tải...'}
+              </div>
+              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 mb-2 text-center">
+                <p className="text-sm text-indigo-700 leading-relaxed font-medium">
+                  Vui lòng copy <strong className="font-bold">Mã Máy</strong> trên gửi cho Admin.
+                </p>
+                <p className="text-xs text-indigo-600 mt-1">
+                  Sau khi Admin cấp quyền thành công, hãy <strong className="font-bold uppercase bg-indigo-100 px-1 rounded">Bấm F5 (Tải lại trang)</strong> để phần mềm cập nhật bản quyền vĩnh viễn!
+                </p>
               </div>
             </div>
 
-            <p className="text-center text-xs text-slate-500 mt-4 leading-relaxed">
+            <p className="text-center text-xs text-slate-500 leading-relaxed">
               Liên hệ: <span className="font-bold text-slate-700">Nguyễn Thiện</span> — <span className="font-bold text-blue-600">0988250112</span>
             </p>
           </div>

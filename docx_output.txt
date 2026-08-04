@@ -1,0 +1,50 @@
+
+[TABLE] (1 rows)
+  Row 0: SỞ GIÁO DỤC VÀ ĐÀO TẠO... | TRƯỜNG:............................. || ĐỀ KIỂM TRA ĐỊNH KÌ | Môn: Môn: ........................ | Thời gian: Thời gian làm bài: 45 phút | Năm học: Năm học: 202... - 202...
+
+[P] 1. MA TRẬN ĐỀ KIỂM TRA
+
+[TABLE] (19 rows)
+  Row 0: TT || Chủ đề/Chương || Nội dung/Đơn vị KT || Mức độ đánh giá || Tổng (Ý) || Tỉ lệ %
+  Row 1:  ||  ||  || TNKQ || Tự luận ||  || 
+  Row 2:  ||  ||  || Nhiều lựa chọn || Đúng - Sai (Ý) || Trả lời ngắn (Ý) ||  ||  ||  ||  || 
+  Row 3:  ||  ||  || B || H || VD || B || H || VD || B || H || VD || B || H || VD || B || H || VD || 
+  Row 4: 15 || Từ || - Nam châm ||  ||  ||  ||  ||  || 1 ||  ||  ||  ||  ||  ||  || 2 || 2 || 3 || 25%
+  Row 5:  ||  || - Từ trường ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  ||  || 1 ||  ||  ||  || 
+  Row 6:  ||  || - Chế tạo nam châm điện đơn giản ||  ||  ||  || 1 ||  ||  ||  || 1 ||  ||  || 1 ||  ||  ||  ||  || 
+  Row 7: 16 || Trao đổi chất và chuyển hóa năng lượng ở sinh vật || - Khái quát về trao đổi chất và chuyển hóa năng lượng ||  || 1 ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  || 11 || 9 || 6 || 75%
+  Row 8:  ||  || - Quang hợp ở thực vật ||  ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  || 
+  Row 9:  ||  || - Một số yếu tố ảnh hưởng đến quang hợp ||  || 1 ||  ||  || 1 ||  ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+  Row 10:  ||  || - Hô hấp tế bào || 1 ||  || 1 ||  ||  ||  || 1 ||  ||  || 1 ||  ||  ||  ||  ||  || 
+  Row 11:  ||  || - Một số yếu tố ảnh hưởng đến hô hấp tế bào || 1 ||  || 1 ||  ||  ||  || 1 ||  ||  || 1 ||  ||  ||  ||  ||  || 
+  Row 12:  ||  || - Trao đổi khí ở sinh vật || 2 ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  ||  ||  ||  ||  || 
+  Row 13:  ||  || - Vai trò của nước và chất dinh dưỡng đối với sinh vật || 1 || 1 ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  ||  ||  ||  || 
+  Row 14:  ||  || - Trao đổi nước và chất dinh dưỡng ở thực vật ||  || 1 ||  ||  ||  || 1 ||  ||  ||  ||  ||  ||  ||  ||  ||  || 
+  Row 15: Tổng (Ý) || 5 || 4 || 3 || 3 || 3 || 2 || 3 || 3 || 2 || 2 || 1 || 2 || 13 || 11 || 9 || 
+  Row 16: Tổng số câu || 5 || 4 || 3 || 0.75 || 0.75 || 0.5 || 3 || 3 || 2 || 2 || 1 || 2 || 10.75 || 8.75 || 7.5 || 
+  Row 17: Tổng điểm || 3 || 2 || 2 || 3 || 4 || 3 || 3 || 10
+  Row 18: Tỉ lệ % || 30% || 20% || 20% || 30% || 40% || 30% || 30% || 100%
+
+[P] 2. BẢN ĐẶC TẢ ĐỀ KIỂM TRA
+
+[TABLE] (19 rows)
+  Row 0: TT || Chủ đề/Chương || Nội dung/Đơn vị KT || Yêu cầu cần đạt || Số câu hỏi ở các mức độ
+  Row 1:  ||  ||  ||  || TNKQ || Tự luận
+  Row 2:  ||  ||  ||  || Nhiều lựa chọn || Đúng - Sai (Ý) || Trả lời ngắn (Ý) ||  ||  || 
+  Row 3:  ||  ||  ||  || B || H || VD || B || H || VD || B || H || VD || B || H || VD
+  Row 4: 15 || Từ || - Nam châm || * Vận dụng: Giải thích được nguyên tắc hoạt động của một số ứng dụng thực tế sử dụng nam châm như bộ lọc sắt hoặc nam châm dọn rác dưới lòng sông. ||  ||  ||  ||  ||  || 1 ||  ||  ||  ||  ||  || 
+  Row 5:  ||  || - Từ trường || * Nhận biết: Nêu được khái niệm từ trường, từ phổ, đường sức từ và nhận biết được Trái Đất có từ trường.* Vận dụng: Sử dụng được la bàn để xác định chính chính xác các phương hướng địa lí trong thực tiễn. ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  ||  || 1
+  Row 6:  ||  || - Chế tạo nam châm điện đơn giản || * Nhận biết: Nêu được cấu tạo cơ bản của nam châm điện bao gồm ống dây dẫn và một thỏi sắt non lồng bên trong.* Thông hiểu: Giải thích được sự thay đổi của từ trường nam châm điện khi có sự thay đổi của dòng điện chạy trong ống dây. ||  ||  ||  || 1 ||  ||  ||  || 1 ||  ||  || 1 || 
+  Row 7: 16 || Trao đổi chất và chuyển hóa năng lượng ở sinh vật || - Khái quát về trao đổi chất và chuyển hóa năng lượng || * Thông hiểu: Trình bày được vai trò của quá trình trao đổi chất và chuyển hoá năng lượng đối với cơ thể sinh vật.* Vận dụng: Giải thích được nguyên nhân cơ thể nóng lên, đổ mồ hôi và nhịp thở tăng khi vận động mạnh. ||  || 1 ||  ||  || 1 ||  ||  ||  || 1 ||  ||  || 
+  Row 8:  ||  || - Quang hợp ở thực vật || * Nhận biết: Nêu được khái niệm, nguyên liệu, sản phẩm và viết được phương trình tổng quát của quang hợp.* Thông hiểu: Trình bày được mối quan hệ giữa quá trình trao đổi chất và chuyển hoá năng lượng trong quang hợp.* Vận dụng: Vận dụng hiểu biết về quang hợp để giải thích ý nghĩa của việc để cây xanh trong nhà. ||  ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  || 1
+  Row 9:  ||  || - Một số yếu tố ảnh hưởng đến quang hợp || * Thông hiểu: Nêu được ảnh hưởng của các yếu tố chủ yếu như ánh sáng, nước, nhiệt độ và khí carbon dioxide đến quang hợp. ||  || 1 ||  ||  || 1 ||  ||  ||  ||  ||  ||  || 
+  Row 10:  ||  || - Hô hấp tế bào || * Nhận biết: Nêu được khái niệm và viết được phương trình hô hấp tế bào dưới dạng chữ.* Vận dụng: Giải thích được vai trò của khí oxygen và khí carbon dioxide đối với cơ thể sống. || 1 ||  || 1 ||  ||  ||  || 1 ||  ||  || 1 ||  || 
+  Row 11:  ||  || - Một số yếu tố ảnh hưởng đến hô hấp tế bào || * Nhận biết: Nêu được sự ảnh hưởng của nước, nhiệt độ, nồng độ khí oxygen và carbon dioxide đến quá trình hô hấp tế bào.* Vận dụng: Lựa chọn và giải thích được biện pháp bảo quản phù hợp đối với các loại hạt, rau, củ, quả trong thực tiễn. || 1 ||  || 1 ||  ||  ||  || 1 ||  ||  || 1 ||  || 
+  Row 12:  ||  || - Trao đổi khí ở sinh vật || * Nhận biết: Nêu được khái niệm trao đổi khí và mô tả được cấu tạo của tế bào khí khổng ở lá cây.* Thông hiểu: Mô tả được đường đi của khí oxygen và carbon dioxide qua các cơ quan của hệ hô hấp ở người và động vật. || 2 ||  ||  || 1 ||  ||  ||  || 1 ||  ||  ||  || 
+  Row 13:  ||  || - Vai trò của nước và chất dinh dưỡng đối với sinh vật || * Nhận biết: Nêu được thành phần hoá học, cấu trúc, tính chất phân cực của nước và vai trò của chất dinh dưỡng.* Thông hiểu: Trình bày được vai trò của nước đối với các quá trình sống và sự vận chuyển chất dinh dưỡng trong cơ thể sinh vật.* Vận dụng: Nhận biết được biểu hiện của sinh vật khi thiếu hoặc thừa nước và chất dinh dưỡng để có biện pháp điều chỉnh kịp thời. || 1 || 1 ||  ||  || 1 ||  ||  ||  || 1 ||  ||  || 
+  Row 14:  ||  || - Trao đổi nước và chất dinh dưỡng ở thực vật || * Thông hiểu: Mô tả được con đường hấp thụ, vận chuyển nước, chất khoáng từ môi trường ngoài vào rễ lên lá và vai trò của thoát hơi nước.* Vận dụng: Vận dụng hiểu biết về trao đổi nước và chất dinh dưỡng để giải thích cơ sở khoa học của việc tưới nước và bón phân hợp lí. ||  || 1 ||  ||  ||  || 1 ||  ||  ||  ||  ||  || 
+  Row 15: Tổng (Ý) || 5 || 4 || 3 || 3 || 3 || 2 || 3 || 3 || 2 || 2 || 1 || 2
+  Row 16: Tổng số câu || 5 || 4 || 3 || 0.75 || 0.75 || 0.5 || 3 || 3 || 2 || 2 || 1 || 2
+  Row 17: Tổng điểm || 3 || 2 || 2 || 3
+  Row 18: Tỉ lệ % || 30% || 20% || 20% || 30%
+

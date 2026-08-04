@@ -2,12 +2,18 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { mathIndicators } from '../components/data/mathIndicators';
 import { chemistryIndicators } from '../components/data/chemistryIndicators';
+import { biologyIndicators } from '../components/data/biologyIndicators';
+import { physicsIndicators } from '../components/data/physicsIndicators';
+import { geographyIndicators } from '../components/data/geographyIndicators';
 
 // =============================================================================
 // HELPER: Phát hiện môn học hiện tại
 // =============================================================================
 const isMathSubject = (monHoc) => /toán|toan|đại số|hình học|giải tích/i.test(monHoc || '');
-const isChemistrySubject = (monHoc) => /hóa|hoá/i.test(monHoc || '');
+const isChemistrySubject = (monHoc) => /hóa|hoa học|hóa học/i.test(monHoc || '');
+const isBiologySubject = (monHoc) => /sinh|sinh học/i.test(monHoc || '');
+const isPhysicsSubject = (monHoc) => /lý|lí|vật lí|vật lý/i.test(monHoc || '');
+const isGeographySubject = (monHoc) => /địa|địa lí|địa lý/i.test(monHoc || '');
 
 // Kiểm tra cấu trúc 4-2-0 (Toán) và có Tự luận để áp dụng bảng đặc tả mẫu mới
 const isNewMathStructure = (examConfig, config) => {
@@ -226,8 +232,9 @@ export const useExamStore = create(
 
       // Chuyển đổi cấu trúc đề (khi thay đổi dropdown P1)
       setCauTrucDe: (tongDiemP1) => set((state) => {
-        const p1 = Number(tongDiemP1) || 3.0;
-        const newExamConfig = { ...state.examConfig, tongDiemP1: p1 };
+        const isCauTruc4213 = String(tongDiemP1) === '4.01';
+        const p1 = isCauTruc4213 ? 4.0 : (Number(tongDiemP1) || 3.0);
+        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213 };
         const hasTLN = state.config.hasTraLoiNgan !== false;
         const hasTL = state.config.hasTuLuan;
 
@@ -236,7 +243,10 @@ export const useExamStore = create(
           const tnTotal = 10.0 - 3.0; // TNKQ = 7đ
           if (hasTLN) {
             // Có TLN: P1 + P2 + P3 = 7đ
-            if (p1 === 3.5) {
+            if (isCauTruc4213) {
+              newExamConfig.tongDiemP2 = 2.0;
+              newExamConfig.tongDiemP3 = 1.0;
+            } else if (p1 === 3.5) {
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 1.5;
             } else {
@@ -623,7 +633,15 @@ export const useExamStore = create(
             donViKienThuc: (topic.donViKienThuc || []).map(dv => {
               if (dv.id !== dvId) return dv;
               const subItems = (dv.tuLuan?.subItems || []).filter(s => s.id !== subItemId);
-              return { ...dv, tuLuan: { ...(dv.tuLuan || {}), subItems } };
+              const updated = { ...(dv.tuLuan || {}), subItems };
+              // Sync old fields
+              updated.biet = updated.subItems.filter(s => s.level === 'biet').length;
+              updated.hieu = updated.subItems.filter(s => s.level === 'hieu').length;
+              updated.vanDung = updated.subItems.filter(s => s.level === 'vanDung').length;
+              updated.diemBiet = Math.round(updated.subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              updated.diemHieu = Math.round(updated.subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              updated.diemVanDung = Math.round(updated.subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              return { ...dv, tuLuan: updated };
             })
           };
         })
@@ -644,9 +662,9 @@ export const useExamStore = create(
               newTuLuan.biet = subItems.filter(s => s.level === 'biet').length;
               newTuLuan.hieu = subItems.filter(s => s.level === 'hieu').length;
               newTuLuan.vanDung = subItems.filter(s => s.level === 'vanDung').length;
-              newTuLuan.diemBiet = subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (sub.diem || 0), 0);
-              newTuLuan.diemHieu = subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (sub.diem || 0), 0);
-              newTuLuan.diemVanDung = subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (sub.diem || 0), 0);
+              newTuLuan.diemBiet = Math.round(subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              newTuLuan.diemHieu = Math.round(subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              newTuLuan.diemVanDung = Math.round(subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
               return { ...dv, tuLuan: newTuLuan };
             })
           };
@@ -799,28 +817,30 @@ export const useExamStore = create(
         // === BƯỚC 5: PHÂN BỔ P1 VÀ P3 ĐỂ BÙ ĐẠT 40-30-30 ===
         const tongConLai = conLaiBiet + conLaiHieu + conLaiVanDung;
         if (tongConLai > 0) {
-          const tiLeP1P3 = {
-            biet: conLaiBiet / tongConLai,
-            hieu: conLaiHieu / tongConLai,
-            vanDung: conLaiVanDung / tongConLai
-          };
+          const soCauP1 = tP1 > 0 ? Math.round(tP1 / dP1) : 0;
+          const soCauP3 = tP3 > 0 ? Math.round(tP3 / dP3) : 0;
 
-          // Phân bổ P1 (Trắc nghiệm nhiều lựa chọn)
-          if (tP1 > 0) {
-            const soCauP1 = Math.round(tP1 / dP1);
-            const arrP1 = distributeLargestRemainder(soCauP1, [tiLeP1P3.biet, tiLeP1P3.hieu, tiLeP1P3.vanDung]);
-            addPool('nhieuLuaChon', 'biet', arrP1[0], dP1);
-            addPool('nhieuLuaChon', 'hieu', arrP1[1], dP1);
-            addPool('nhieuLuaChon', 'vanDung', arrP1[2], dP1);
-          }
+          let arrP3 = [0, 0, 0];
+          let arrP1 = [0, 0, 0];
 
-          // Phân bổ P3 (Trả lời ngắn)
-          if (tP3 > 0) {
-            const soCauP3 = Math.round(tP3 / dP3);
-            const arrP3 = distributeLargestRemainder(soCauP3, [tiLeP1P3.biet, tiLeP1P3.hieu, tiLeP1P3.vanDung]);
+          // Ưu tiên phân bổ P3 trước vì điểm mỗi câu P3 thường lớn hơn (vd 0.5đ), khó khít điểm hơn P1
+          if (soCauP3 > 0) {
+            arrP3 = distributeLargestRemainder(soCauP3, [conLaiBiet, conLaiHieu, conLaiVanDung]);
             addPool('traLoiNgan', 'biet', arrP3[0], dP3);
             addPool('traLoiNgan', 'hieu', arrP3[1], dP3);
             addPool('traLoiNgan', 'vanDung', arrP3[2], dP3);
+          }
+
+          // Tính lại target điểm CÒN LẠI THỰC TẾ cho P1 sau khi P3 đã chiếm
+          const p1TargetBiet = Math.max(0, conLaiBiet - arrP3[0] * dP3);
+          const p1TargetHieu = Math.max(0, conLaiHieu - arrP3[1] * dP3);
+          const p1TargetVanDung = Math.max(0, conLaiVanDung - arrP3[2] * dP3);
+
+          if (soCauP1 > 0) {
+            arrP1 = distributeLargestRemainder(soCauP1, [p1TargetBiet, p1TargetHieu, p1TargetVanDung]);
+            addPool('nhieuLuaChon', 'biet', arrP1[0], dP1);
+            addPool('nhieuLuaChon', 'hieu', arrP1[1], dP1);
+            addPool('nhieuLuaChon', 'vanDung', arrP1[2], dP1);
           }
         }
 
@@ -870,7 +890,7 @@ export const useExamStore = create(
             if (bestTopicIdx !== -1) {
               const topicDvs = flatDvList.filter(f => f.ti === bestTopicIdx);
               // Phân bổ 4 ý (B, H, VD, VDC) cho các bài trong chủ đề này (theo gap lớn nhất)
-              const levels = ['biet', 'hieu', 'vanDung', 'vanDungCao'];
+              const levels = ['biet', 'hieu', 'vanDung', 'vanDung'];
               levels.forEach(lvl => {
                 let bestDvIdxInTopic = -1, maxDvGap = -Infinity;
                 topicDvs.forEach((dvRef, idx) => {
@@ -899,7 +919,7 @@ export const useExamStore = create(
             if (bestIdx !== -1) {
               const { ti, di } = flatDvList[bestIdx];
               const dv = topics[ti].donViKienThuc[di];
-              dv.dungSai.biet++; dv.dungSai.hieu++; dv.dungSai.vanDung++; dv.dungSai.vanDungCao++;
+              dv.dungSai.biet++; dv.dungSai.hieu++; dv.dungSai.vanDung += 2;
               flatDvList[bestIdx].current += dP2 * 4;
             }
           }
@@ -974,6 +994,13 @@ export const useExamStore = create(
         const p3Pre = isContinuous ? 'C' : 'TLN';
         const tlPre = isContinuous ? 'C' : 'TL';
 
+        const globalIndIdx = {
+          biet: 0,
+          hieu: 0,
+          vanDung: 0,
+          vanDungCao: 0
+        };
+
         // Ta quét theo từng loại câu hỏi để đảm bảo số thứ tự chạy liên tục trong toàn đề
         ['nhieuLuaChon', 'dungSai', 'traLoiNgan', 'tuLuan'].forEach(type => {
           topics.forEach(t => {
@@ -983,7 +1010,10 @@ export const useExamStore = create(
               
               const isMath = isMathSubject(state.examHeader?.monHoc);
               const isChem = isChemistrySubject(state.examHeader?.monHoc);
-              const allSourceData = isMath ? mathIndicators : (isChem ? chemistryIndicators : []);
+              const isBio = isBiologySubject(state.examHeader?.monHoc);
+              const isPhy = isPhysicsSubject(state.examHeader?.monHoc);
+              const isGeo = isGeographySubject(state.examHeader?.monHoc);
+              const allSourceData = isMath ? mathIndicators : (isChem ? chemistryIndicators : (isBio ? biologyIndicators : (isPhy ? physicsIndicators : (isGeo ? geographyIndicators : []))));
 
               ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => {
                 // Tính toán số lượng câu thực tế để gán nhãn
@@ -999,7 +1029,17 @@ export const useExamStore = create(
                 const matchedInds = indicators.filter(code => {
                   const info = allSourceData.find(i => i.code === code);
                   const targetLevel = (isMath && level === 'vanDungCao') ? 'vanDung' : level;
-                  return info && (info.level || '').toLowerCase() === targetLevel.toLowerCase();
+                  if (info) {
+                    return (info.level || '').toLowerCase() === targetLevel.toLowerCase();
+                  } else {
+                    // Fallback for custom indicators (like NT, TH, VD)
+                    const lowerCode = code.toLowerCase();
+                    if (targetLevel === 'biet' && (lowerCode.startsWith('nt') || lowerCode.startsWith('nb'))) return true;
+                    if (targetLevel === 'hieu' && lowerCode.startsWith('th')) return true;
+                    if (targetLevel === 'vanDungCao' && lowerCode.startsWith('vdc')) return true;
+                    if (targetLevel === 'vanDung' && lowerCode.startsWith('vd') && !lowerCode.startsWith('vdc')) return true;
+                    return false;
+                  }
                 });
 
                 for (let i = 0; i < count; i++) {
@@ -1009,22 +1049,53 @@ export const useExamStore = create(
                   // Gán nhãn câu hỏi
                   let label = "";
                   if (type === 'nhieuLuaChon') {
-                    label = `${p1Pre}${p1GlobalCounter++}`;
+                    label = state.examConfig.isCauTruc4213 ? `I.${p1GlobalCounter++}` : `${p1Pre}${p1GlobalCounter++}`;
                   } else if (type === 'dungSai') {
                     const cauNo = p2GlobalCounter + Math.floor(p2ItemCounter / 4);
                     const yChar = String.fromCharCode(97 + (p2ItemCounter % 4));
-                    label = `${p2Pre}${cauNo}${yChar}`;
+                    label = state.examConfig.isCauTruc4213 ? `II.${cauNo}${yChar}` : `${p2Pre}${cauNo}${yChar}`;
                     p2ItemCounter++;
                   } else if (type === 'traLoiNgan') {
-                    label = `${p3Pre}${p3GlobalCounter++}`;
+                    label = state.examConfig.isCauTruc4213 ? `III.${p3GlobalCounter++}` : `${p3Pre}${p3GlobalCounter++}`;
                   } else if (type === 'tuLuan') {
-                    label = `${tlPre}${tlGlobalCounter++}`;
+                    if (state.examConfig.isCauTruc4213) {
+                       let currentIndex = tlGlobalCounter - 1;
+                       let qIdx = 0;
+                       let subIdx = 0;
+                       if (state.config.hasTuLuan && state.tuLuanConfig && state.tuLuanConfig.questions) {
+                           let tmp = currentIndex;
+                           for (let q of state.tuLuanConfig.questions) {
+                               const numY = q.subItems?.length || 1;
+                               if (tmp < numY) {
+                                   subIdx = tmp;
+                                   break;
+                               }
+                               tmp -= numY;
+                               qIdx++;
+                           }
+                       } else {
+                           qIdx = currentIndex;
+                           subIdx = -1; 
+                       }
+                       
+                       const cauNo = qIdx + 1;
+                       const yChar = subIdx >= 0 && state.tuLuanConfig?.questions?.[qIdx]?.subItems?.length > 1 ? String.fromCharCode(97 + subIdx) : '';
+                       label = `TL.${cauNo}${yChar}`;
+                       tlGlobalCounter++;
+                    } else {
+                       label = `${tlPre}${tlGlobalCounter++}`;
+                    }
                   }
 
                   // Gán mã năng lực
-                  const indCode = matchedInds.length > 0 
-                    ? matchedInds[i % matchedInds.length] 
-                    : (indicators.length > 0 ? indicators[i % indicators.length] : null);
+                  let indCode = null;
+                  if (matchedInds.length > 0) {
+                    indCode = matchedInds[globalIndIdx[level] % matchedInds.length];
+                    globalIndIdx[level]++;
+                  } else if (indicators.length > 0) {
+                    indCode = indicators[globalIndIdx[level] % indicators.length];
+                    globalIndIdx[level]++;
+                  }
 
                   dv.indicatorMap[key] = {
                     code: indCode,

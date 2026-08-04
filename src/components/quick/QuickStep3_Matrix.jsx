@@ -1,13 +1,9 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useExamStore, getTopicSum, getTopicTuLuanDiem, getTotalSoTiet } from '../store/useExamStore';
-import { Plus, Trash2, Settings2, Sparkles, PlusCircle, X, Bot, FileSpreadsheet, ClipboardList, Wand2, Maximize2, Minimize2, CheckCircle2, ChevronRight, BookOpen, Brain, Lightbulb, Lock, FileText, Upload, Save, PlayCircle, Info, Link, Check, BookTemplate, HelpCircle, Download } from 'lucide-react';
-
-import { formatGroupedLabels } from '../utils/labelUtils';
-import { searchIndicators, chemistryCompetencyGroups } from './data/chemistryIndicators';
-import { searchMathIndicators, mathCompetencyGroups } from './data/mathIndicators';
-import { biologyCompetencyGroups } from './data/biologyIndicators';
-import { physicsCompetencyGroups } from './data/physicsIndicators';
-import { geographyCompetencyGroups } from './data/geographyIndicators';
+import { useQuickStore as useExamStore, getTopicSum, getTopicTuLuanDiem, getTotalSoTiet } from '../../store/useQuickStore';
+import { Plus, Trash2, Settings2, Sparkles, PlusCircle, X, Bot, FileSpreadsheet, ClipboardList } from 'lucide-react';
+import { searchIndicators, chemistryCompetencyGroups } from '../data/chemistryIndicators';
+import { searchMathIndicators, mathCompetencyGroups } from '../data/mathIndicators';
+import { formatGroupedLabels } from '../../utils/labelUtils';
 
 // Component Autocomplete dùng chung cho mọi môn
 const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry }) => {
@@ -81,11 +77,8 @@ const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
   const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
-  const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
+  const isChemistry = /hóa|hoá/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
-  const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
-  const isPhysics = /lý|lí|vật lí|vật lý/i.test(examHeader?.monHoc || '');
-  const isGeography = /địa|địa lí|địa lý/i.test(examHeader?.monHoc || '');
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
@@ -95,7 +88,7 @@ export default function Step2_MatrixBuilder() {
   const [indicatorModal, setIndicatorModal] = useState({ show: false, topicId: null, dvId: null, selected: [] });
 
   // Nguồn dữ liệu nhóm năng lực tùy theo môn
-  const compGroups = isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : (isBiology ? biologyCompetencyGroups : (isPhysics ? physicsCompetencyGroups : (isGeography ? geographyCompetencyGroups : null))));
+  const compGroups = isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : null);
 
   // =======================================================================
   // HELPERS: Tính tổng từ tất cả ĐVKT của tất cả Chủ đề
@@ -705,7 +698,7 @@ export default function Step2_MatrixBuilder() {
             <select
               className="bg-emerald-50 border-2 border-emerald-200 text-emerald-700 font-bold py-1.5 px-3 rounded-lg outline-none focus:border-emerald-400"
               onChange={(e) => setCauTrucDe(e.target.value)}
-              value={examConfig.isCauTruc4213 ? "4.01" : String(examConfig.tongDiemP1 || 3)}
+              value={String(examConfig.tongDiemP1 || 3)}
               title="Chọn cấu trúc phân bổ điểm TNKQ (phần Tự luận tự động bù)"
             >
               <option value="3">TNKQ: 3-2-2 → Tự luận: 3đ</option>
@@ -1450,25 +1443,6 @@ export default function Step2_MatrixBuilder() {
               </button>
             </div>
             
-            <div className="px-4 pt-4 pb-2 bg-slate-50 flex justify-end gap-2 border-b border-slate-200">
-              <button
-                onClick={() => {
-                  const allCodes = [];
-                  Object.values(compGroups).forEach(group => group.indicators.forEach(ind => allCodes.push(ind.code)));
-                  setIndicatorModal(prev => ({ ...prev, selected: Array.from(new Set([...prev.selected, ...allCodes])) }));
-                }}
-                className="px-3 py-1.5 text-sm font-bold bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors shadow-sm"
-              >
-                Chọn tất cả
-              </button>
-              <button
-                onClick={() => setIndicatorModal(prev => ({ ...prev, selected: [] }))}
-                className="px-3 py-1.5 text-sm font-bold border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition-colors shadow-sm bg-white"
-              >
-                Bỏ chọn tất cả
-              </button>
-            </div>
-
             <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
               <div className="flex flex-col gap-4">
                 {Object.entries(compGroups).map(([groupKey, group]) => (

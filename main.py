@@ -1096,12 +1096,12 @@ async def _parse_docx(content: bytes, filename: str) -> dict:
         for row in table.rows:
             row_texts = []
             for cell in row.cells:
-                cell_text = " | ".join(
+                cell_text = " ".join(
                     p.text.strip() for p in cell.paragraphs if p.text.strip()
                 )
                 row_texts.append(cell_text)
             if any(row_texts):
-                table_lines.append(" \t| ".join(row_texts))
+                table_lines.append("\t".join(row_texts))
         if table_lines:
             paragraphs.append("\n".join(table_lines))
 

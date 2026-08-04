@@ -1,0 +1,46 @@
+1. MA TRẬN ĐỀ KIỂM TRA
+2. BẢN ĐẶC TẢ ĐỀ KIỂM TRA
+| SỞ GIÁO DỤC VÀ ĐÀO TẠO... TRƯỜNG:............................. (Đề thi gồm 03 trang) | ĐỀ KIỂM TRA ĐỊNH KÌ Môn: TOÁN Thời gian làm bài: 45 phút, không kể thời gian phát đề |
+| --- | --- |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Mức độ đánh giá | Tổng (Ý) | Tổng (Ý) | Tổng (Ý) | Tỉ lệ % |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | Tự luận | Tự luận | Tự luận | Tổng (Ý) | Tổng (Ý) | Tổng (Ý) | Tỉ lệ % |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | Nhiều lựa chọn | Nhiều lựa chọn | Nhiều lựa chọn | Đúng - Sai (Ý) | Đúng - Sai (Ý) | Đúng - Sai (Ý) | Trả lời ngắn (Ý) | Trả lời ngắn (Ý) | Trả lời ngắn (Ý) |  |  |  | Tổng (Ý) | Tổng (Ý) | Tổng (Ý) | Tỉ lệ % |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | B | H | VD | B | H | VD | B | H | VD | B | H | VD | B | H | VD | Tỉ lệ % |
+| 19 | Chương 5: Phân số | - Bài 1: Phân số với tử số và mẫu sô là số nguyên |  |  | 1 0.25đ [C1] | 1 ý 0.25đ [C15a] | 1 ý 0.25đ [C15b] |  |  |  |  |  |  | 1 ý 0.5đ | 1 ý | 1 ý | 1c+ 1 ý | 12.5% |
+| 19 | Chương 5: Phân số | - Bài 2: Tính chất cơ bản của phân số |  | 1 0.25đ [C2] |  |  |  |  | 1 ý 0.25đ [C17] |  |  |  |  |  | 1 ý | 1 |  | 5% |
+| 19 | Chương 5: Phân số | - Bài 3: So sánh phân số | 1 0.25đ [C3] |  | 1 0.25đ [C4] |  | 1 ý 0.25đ [C15c] | 1 ý 0.25đ [C15d] | 1 ý 0.25đ [C18] |  |  |  |  |  | 1c+ 1 ý | 1 ý | 1c+ 1 ý | 12.5% |
+| 19 | Chương 5: Phân số | - Bài 4: Phép cộng và phép trừ phân số | 1 0.25đ [C5] |  |  |  |  | 1 ý 0.25đ [C16a] | 1 ý 0.25đ [C19] |  |  |  |  |  | 1c+ 1 ý |  | 2 ý | 10% |
+| 19 | Chương 5: Phân số | - Bài 5: Phép nhân và phép chia phân số |  | 1 0.25đ [C6] |  |  |  |  |  | 1 ý 0.25đ [C20] |  |  |  |  |  | 1c+ 1 ý |  | 5% |
+| 19 | Chương 5: Phân số | - Bài 6: Giá trị phân số của một số | 1 0.25đ [C7] |  |  |  |  |  |  |  |  | 1 ý 0.5đ |  |  | 1c+ 1 ý |  | 1 ý | 10% |
+| 19 | Chương 5: Phân số | - Bài 7: Hỗn số | 1 0.25đ [C8] |  |  | 1 ý 0.25đ [C16d] |  |  |  |  |  |  | 1 ý 0.5đ |  | 1c+ 1 ý | 1 ý |  | 10% |
+| 20 | Chương 6: số thập phân | - Bài 1: Số thập phân | 1 0.25đ [C9] |  |  |  |  |  |  |  |  | 1 ý 0.25đ | 1 ý 0.5đ |  | 1c+ 1 ý | 1 ý |  | 10% |
+| 20 | Chương 6: số thập phân | - Bài 2: Các phép tính với số thập phân |  | 1 0.25đ [C10] |  |  |  |  |  | 1 ý 0.25đ [C21] |  |  |  |  |  | 1c+ 1 ý |  | 5% |
+| 20 | Chương 6: số thập phân | - Bài 3: Làm tròn số thập phân và ước lượng kết quả |  | 1 0.25đ [C11] |  |  |  |  |  |  | 1 ý 0.25đ [C22] |  |  |  |  | 1 | 1 ý | 5% |
+| 20 | Chương 6: số thập phân | - Bài 4: Tỉ số và tỉ số phần trăm | 1 0.25đ [C12] |  | 1 0.25đ [C13] |  |  |  |  |  |  |  |  |  | 1 |  | 1 | 5% |
+| 20 | Chương 6: số thập phân | - Bài 5: Bài toán về tỉ số phần trăm | 1 0.25đ [C14] |  |  |  |  |  |  |  |  | 1 ý 0.25đ |  | 1 ý 0.5đ | 1c+ 1 ý |  | 1 ý | 10% |
+| Tổng (Ý) | Tổng (Ý) | Tổng (Ý) | 7 | 4 | 3 | 2 | 2 | 4 | 3 | 2 | 1 | 3 | 2 | 2 | 15 | 10 | 10 |  |
+| Tổng số câu | Tổng số câu | Tổng số câu | 7 | 4 | 3 | 0,5 (2 ý) | 0,5 (2 ý) | 1 (4 ý) | 3 | 2 | 1 | 3 | 2 | 2 | 7c+ 8 ý | 4c+ 6 ý | 3c+ 7 ý | 29 |
+| Tổng điểm | Tổng điểm | Tổng điểm | 3.5 | 3.5 | 3.5 | 2 | 2 | 2 | 1.5 | 1.5 | 1.5 | 3 | 3 | 3 | 4 | 3 | 3 | 10 |
+| Tỉ lệ % | Tỉ lệ % | Tỉ lệ % | 35% | 35% | 35% | 20% | 20% | 20% | 15% | 15% | 15% | 30% | 30% | 30% | 40% | 30% | 30% | 100% |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | Yêu cầu cần đạt | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ | Số câu hỏi ở các mức độ |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | Yêu cầu cần đạt | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | TNKQ | Tự luận | Tự luận | Tự luận |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | Yêu cầu cần đạt | Nhiều lựa chọn | Nhiều lựa chọn | Nhiều lựa chọn | Đúng - Sai (Ý) | Đúng - Sai (Ý) | Đúng - Sai (Ý) | Trả lời ngắn (Ý) | Trả lời ngắn (Ý) | Trả lời ngắn (Ý) |  |  |  |
+| TT | Chủ đề/Chương | Nội dung/Đơn vị KT | Yêu cầu cần đạt | B | H | VD | B | H | VD | B | H | VD | B | H | VD |
+| 19 | Chương 5: Phân số | - Bài 1: Phân số với tử số và mẫu sô là số nguyên |  |  |  | 1 (VD) Câu 1 | 1 ý (NT) Câu 15 | 1 ý (TH) Câu 15 |  |  |  |  |  |  | 1 ý (VD) Câu 23 |
+| 19 | Chương 5: Phân số | - Bài 2: Tính chất cơ bản của phân số |  |  | 1 (TH) Câu 2 |  |  |  |  | 1 ý (NT) Câu 17 |  |  |  |  |  |
+| 19 | Chương 5: Phân số | - Bài 3: So sánh phân số |  | 1 (NT) Câu 3 |  | 1 (VD) Câu 4 |  | 1 ý (TH) Câu 15 | 1 ý (VD) Câu 15 | 1 ý (NT) Câu 18 |  |  |  |  |  |
+| 19 | Chương 5: Phân số | - Bài 4: Phép cộng và phép trừ phân số |  | 1 (NT) Câu 5 |  |  |  |  | 1 ý (VD) Câu 16 | 1 ý (NT) Câu 19 |  |  |  |  |  |
+| 19 | Chương 5: Phân số | - Bài 5: Phép nhân và phép chia phân số |  |  | 1 (TH) Câu 6 |  |  |  |  |  | 1 ý (TH) Câu 20 |  |  |  |  |
+| 19 | Chương 5: Phân số | - Bài 6: Giá trị phân số của một số |  | 1 (NT) Câu 7 |  |  |  |  |  |  |  |  | 1 ý (NT) Câu 24 |  |  |
+| 19 | Chương 5: Phân số | - Bài 7: Hỗn số |  | 1 (NT) Câu 8 |  |  | 1 ý (NT) Câu 16 |  |  |  |  |  |  | 1 ý (TH) Câu 25 |  |
+| 20 | Chương 6: số thập phân | - Bài 1: Số thập phân |  | 1 (NT) Câu 9 |  |  |  |  |  |  |  |  | 1 ý (NT) Câu 26 | 1 ý (TH) Câu 27 |  |
+| 20 | Chương 6: số thập phân | - Bài 2: Các phép tính với số thập phân |  |  | 1 (TH) Câu 10 |  |  |  |  |  | 1 ý (TH) Câu 21 |  |  |  |  |
+| 20 | Chương 6: số thập phân | - Bài 3: Làm tròn số thập phân và ước lượng kết quả |  |  | 1 (TH) Câu 11 |  |  |  |  |  |  | 1 ý (VD) Câu 22 |  |  |  |
+| 20 | Chương 6: số thập phân | - Bài 4: Tỉ số và tỉ số phần trăm |  | 1 (NT) Câu 12 |  | 1 (VD) Câu 13 |  |  |  |  |  |  |  |  |  |
+| 20 | Chương 6: số thập phân | - Bài 5: Bài toán về tỉ số phần trăm |  | 1 (NT) Câu 14 |  |  |  |  |  |  |  |  | 1 ý (NT) Câu 28 |  | 1 ý (VD) Câu 29 |
+| Tổng (Ý) | Tổng (Ý) | Tổng (Ý) | Tổng (Ý) | 7 | 4 | 3 | 2 | 2 | 2 | 3 | 2 | 1 | 3 | 2 | 2 |
+| Tổng số câu | Tổng số câu | Tổng số câu | Tổng số câu | 7 | 4 | 3 | 0.5 | 0.5 | 0.5 | 3 | 2 | 1 | 3 | 2 | 2 |
+| Tổng điểm | Tổng điểm | Tổng điểm | Tổng điểm | 3.5 | 3.5 | 3.5 | 2 | 2 | 2 | 1.5 | 1.5 | 1.5 | 3 | 3 | 3 |
+| Tỉ lệ % | Tỉ lệ % | Tỉ lệ % | Tỉ lệ % | 35% | 35% | 35% | 20% | 20% | 20% | 15% | 15% | 15% | 30% | 30% | 30% |
