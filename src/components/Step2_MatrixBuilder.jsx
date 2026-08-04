@@ -80,7 +80,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
   const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
@@ -1598,15 +1598,111 @@ export default function Step2_MatrixBuilder() {
                   const lopChon = ct2018Dialog.lop;
                   applyCtToan2018(lopChon);
                   setCt2018Dialog({ show: false, lop: lopChon });
-                  alert(
-                    `✅ Đã áp dụng YCCĐ chuẩn CT Toán 2018 cho Lớp ${lopChon}!\n\n` +
-                    `➡ Chuyển sang Tab "Bảng Đặc Tả" (Step 3) để xem kết quả.\n` +
-                    `📝 Mở Console trình duyệt (F12) để xem chi tiết ĐVKT đã khớp/không khớp.`
-                  );
                 }}
                 className="flex-2 flex-grow py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold hover:from-amber-600 hover:to-orange-600 shadow-lg transition-all"
               >
                 📚 Áp dụng cho Lớp {ct2018Dialog.lop}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ [MOI] MODAL KET QUA CT TOAN 2018 ============ */}
+      {ct2018LastResult && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">✅</span>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">Kết quả gợi ý YCCĐ Lớp {ct2018LastResult.lop}</h3>
+                  <p className="text-sm text-slate-500">Đã áp dụng CT Toán 2018 vào các ĐVKT còn trống</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {ct2018LastResult.error ? (
+                <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200">
+                  <strong className="block mb-1">Lỗi:</strong>
+                  {ct2018LastResult.error}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                      <div className="text-3xl font-black text-green-600 mb-1">{ct2018LastResult.updatedCount}</div>
+                      <div className="text-sm font-semibold text-green-800">ĐVKT được cập nhật</div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                      <div className="text-3xl font-black text-slate-600 mb-1">{ct2018LastResult.skipped?.length || 0}</div>
+                      <div className="text-sm font-semibold text-slate-700">ĐVKT không khớp CT2018</div>
+                    </div>
+                  </div>
+
+                  {/* Chi tiet Khop */}
+                  {ct2018LastResult.filled?.length > 0 && (
+                    <div>
+                      <h4 className="font-bold text-green-700 mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span> Đã khớp và điền YCCĐ ({ct2018LastResult.filled.length})
+                      </h4>
+                      <div className="bg-slate-50 rounded-lg p-3 max-h-40 overflow-y-auto text-sm border border-slate-200">
+                        <ul className="space-y-1 text-slate-600 list-disc list-inside">
+                          {ct2018LastResult.filled.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chi tiet Khong khop */}
+                  {ct2018LastResult.skipped?.length > 0 && (
+                    <div>
+                      <h4 className="font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-400"></span> Không tìm thấy trong CT2018 ({ct2018LastResult.skipped.length})
+                      </h4>
+                      <div className="bg-slate-50 rounded-lg p-3 max-h-40 overflow-y-auto text-sm border border-slate-200">
+                        <ul className="space-y-1 text-slate-500 list-disc list-inside">
+                          {ct2018LastResult.skipped.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Canh bao (neu co) */}
+                  {ct2018LastResult.warnings?.length > 0 && (
+                    <div>
+                      <h4 className="font-bold text-amber-600 mb-2 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span> Cảnh báo & Placeholder ({ct2018LastResult.warnings.length})
+                      </h4>
+                      <div className="bg-amber-50 rounded-lg p-3 max-h-40 overflow-y-auto text-sm border border-amber-200">
+                        <ul className="space-y-1 text-amber-800 list-disc list-inside">
+                          {ct2018LastResult.warnings.map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="p-3 bg-blue-50 text-blue-800 text-sm rounded-lg border border-blue-200">
+                    <strong>Mẹo:</strong> Hãy chuyển sang Tab "Bảng Đặc Tả" (Step 3) để xem và chỉnh sửa các YCCĐ vừa được điền. Những ô có chữ <code>[Giao vien tu dien...]</code> cần bạn bổ sung nội dung thủ công.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={clearCt2018Result}
+                className="px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 shadow-md transition-all"
+              >
+                Đóng
               </button>
             </div>
           </div>

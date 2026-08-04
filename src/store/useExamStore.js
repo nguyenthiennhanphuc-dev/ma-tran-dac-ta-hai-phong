@@ -1116,11 +1116,24 @@ export const useExamStore = create(
       // lop: number 6-12, passed explicitly from UI dialog
       // Completely independent - does NOT touch any existing logic
       // =========================================================
+      ct2018LastResult: null, // stores result of last applyCtToan2018 call
+
       applyCtToan2018: (lop) => set((state) => {
         const result = applyCtToan2018Helper(state, lop);
-        if (result.error || !result.matrix) return {};
-        return { matrix: result.matrix };
+        if (result.error || !result.matrix) return { ct2018LastResult: { error: result.error } };
+        return {
+          matrix: result.matrix,
+          ct2018LastResult: {
+            updatedCount: result.updatedCount,
+            filled: result.filled,
+            skipped: result.skipped,
+            warnings: result.warnings,
+            lop: result.lop,
+          }
+        };
       }),
+
+      clearCt2018Result: () => set({ ct2018LastResult: null }),
 
       smartImportData: (rawText) => set((state) => {
         try {

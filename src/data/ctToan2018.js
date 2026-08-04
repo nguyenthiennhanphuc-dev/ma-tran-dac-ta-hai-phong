@@ -14,37 +14,66 @@
 // =========================================================
 // HELPER: Tìm ĐVKT theo tên (tìm kiếm mờ - fuzzy search)
 // =========================================================
+// =========================================================
+// HELPER INTERNAL: Normalize tiếng Việt để matching tốt hơn
+// =========================================================
+function normalizeVN(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0111/g, 'd')
+    .replace(/\u0110/g, 'd')
+    .trim();
+}
+
 export function findYCCD(monHoc, lop, tenDVKT) {
   if (!monHoc || !lop || !tenDVKT) return null;
-  const monKey = monHoc.toLowerCase();
-  const isToan = /toán|toan/i.test(monKey);
-  if (!isToan) return null; // Hiện tại chỉ hỗ trợ môn Toán
+  // Accept both 'toan' and 'toán'
+  const monKey = normalizeVN(monHoc);
+  if (!monKey.includes('toan')) return null;
 
   const lopData = CT_TOAN_2018[`lop${lop}`];
   if (!lopData) return null;
 
-  const search = tenDVKT.toLowerCase().trim();
-  // Tìm ĐVKT khớp nhất
+  const searchNorm = normalizeVN(tenDVKT);
+  const searchWords = searchNorm.split(/\s+/).filter(w => w.length >= 2);
+
   let bestMatch = null;
   let bestScore = 0;
 
   for (const dvkt of lopData) {
-    const name = dvkt.ten.toLowerCase();
-    // Tính điểm khớp đơn giản
+    const nameNorm = normalizeVN(dvkt.ten);
     let score = 0;
-    const searchWords = search.split(/\s+/);
-    for (const w of searchWords) {
-      if (w.length >= 3 && name.includes(w)) score++;
+
+    // Exact substring match (highest priority)
+    if (nameNorm.includes(searchNorm)) score += 20;
+    if (searchNorm.includes(nameNorm)) score += 15;
+
+    // Word-by-word matching
+    const nameWords = nameNorm.split(/\s+/).filter(w => w.length >= 2);
+    for (const sw of searchWords) {
+      for (const nw of nameWords) {
+        if (sw === nw) score += 3;                          // exact word match
+        else if (nw.includes(sw) || sw.includes(nw)) score += 1; // partial word match
+      }
     }
-    if (name.includes(search)) score += 10;
+
+    // Boost score by ratio of matching words
+    const matchedWords = searchWords.filter(sw => nameNorm.includes(sw)).length;
+    if (searchWords.length > 0) score += (matchedWords / searchWords.length) * 5;
+
     if (score > bestScore) {
       bestScore = score;
       bestMatch = dvkt;
     }
   }
 
-  return bestScore > 0 ? bestMatch : null;
+  // Require minimum score of 2 to avoid false positives
+  return bestScore >= 2 ? bestMatch : null;
 }
+
 
 // =========================================================
 // HELPER: Lấy danh sách ĐVKT gợi ý cho dropdown theo lớp
