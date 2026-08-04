@@ -1,5 +1,6 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { findYCCD, getSuggestedDVKT } from '../data/ctToan2018';
 import { mathIndicators } from '../components/data/mathIndicators';
 import { chemistryIndicators } from '../components/data/chemistryIndicators';
 import { biologyIndicators } from '../components/data/biologyIndicators';
@@ -7,15 +8,15 @@ import { physicsIndicators } from '../components/data/physicsIndicators';
 import { geographyIndicators } from '../components/data/geographyIndicators';
 
 // =============================================================================
-// HELPER: Phát hiện môn học hiện tại
+// HELPER: PhÃ¡t hiá»‡n mÃ´n há»c hiá»‡n táº¡i
 // =============================================================================
-const isMathSubject = (monHoc) => /toán|toan|đại số|hình học|giải tích/i.test(monHoc || '');
-const isChemistrySubject = (monHoc) => /hóa|hoa học|hóa học/i.test(monHoc || '');
-const isBiologySubject = (monHoc) => /sinh|sinh học/i.test(monHoc || '');
-const isPhysicsSubject = (monHoc) => /lý|lí|vật lí|vật lý/i.test(monHoc || '');
-const isGeographySubject = (monHoc) => /địa|địa lí|địa lý/i.test(monHoc || '');
+const isMathSubject = (monHoc) => /toÃ¡n|toan|Ä‘áº¡i sá»‘|hÃ¬nh há»c|giáº£i tÃ­ch/i.test(monHoc || '');
+const isChemistrySubject = (monHoc) => /hÃ³a|hoa há»c|hÃ³a há»c/i.test(monHoc || '');
+const isBiologySubject = (monHoc) => /sinh|sinh há»c/i.test(monHoc || '');
+const isPhysicsSubject = (monHoc) => /lÃ½|lÃ­|váº­t lÃ­|váº­t lÃ½/i.test(monHoc || '');
+const isGeographySubject = (monHoc) => /Ä‘á»‹a|Ä‘á»‹a lÃ­|Ä‘á»‹a lÃ½/i.test(monHoc || '');
 
-// Kiểm tra cấu trúc 4-2-0 (Toán) và có Tự luận để áp dụng bảng đặc tả mẫu mới
+// Kiá»ƒm tra cáº¥u trÃºc 4-2-0 (ToÃ¡n) vÃ  cÃ³ Tá»± luáº­n Ä‘á»ƒ Ã¡p dá»¥ng báº£ng Ä‘áº·c táº£ máº«u má»›i
 const isNewMathStructure = (examConfig, config) => {
   const ec = examConfig || {};
   const c = config || {};
@@ -26,20 +27,20 @@ const isNewMathStructure = (examConfig, config) => {
 };
 
 // =============================================================================
-// TẠO ĐVKT MẶC ĐỊNH — BÂY GIỜ CHỨA CẢ SỐ LƯỢNG CÂU HỎI
+// Táº O ÄVKT Máº¶C Äá»ŠNH â€” BÃ‚Y GIá»œ CHá»¨A Cáº¢ Sá» LÆ¯á»¢NG CÃ‚U Há»ŽI
 // =============================================================================
 const createDefaultDonVi = () => ({
   id: crypto.randomUUID(),
   noiDung: '',
-  yeuCauCanDat: '', // <--- THÊM TRƯỜNG YCCĐ CẤP ĐVKT
+  yeuCauCanDat: '', // <--- THÃŠM TRÆ¯á»œNG YCCÄ Cáº¤P ÄVKT
   soTiet: 1,
-  isNuaDauKi: false, // <--- DI CHUYỂN TỪ CẤP CHỦ ĐỀ XUỐNG CẤP ĐVKT
+  isNuaDauKi: false, // <--- DI CHUYá»‚N Tá»ª Cáº¤P CHá»¦ Äá»€ XUá»NG Cáº¤P ÄVKT
   nhieuLuaChon: { biet: 0, hieu: 0, vanDung: 0 },
   dungSai: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
   traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
   tuLuan: { biet: 0, hieu: 0, vanDung: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, subItems: [] },
-  selectedIndicators: [], // Mã năng lực chỉ báo đã chọn
-  indicatorMap: {},       // Gán mã cho từng câu
+  selectedIndicators: [], // MÃ£ nÄƒng lá»±c chá»‰ bÃ¡o Ä‘Ã£ chá»n
+  indicatorMap: {},       // GÃ¡n mÃ£ cho tá»«ng cÃ¢u
 });
 
 const defaultTopic = {
@@ -50,7 +51,7 @@ const defaultTopic = {
 };
 
 // =============================================================================
-// THUẬT TOÁN LARGEST REMAINDER METHOD (Số dư lớn nhất) — CHUẨN XÁC
+// THUáº¬T TOÃN LARGEST REMAINDER METHOD (Sá»‘ dÆ° lá»›n nháº¥t) â€” CHUáº¨N XÃC
 // =============================================================================
 const distributeLargestRemainder = (totalItems, weights) => {
   const sumWeights = weights.reduce((a, b) => a + b, 0);
@@ -69,7 +70,7 @@ const distributeLargestRemainder = (totalItems, weights) => {
   return intPart;
 };
 
-// Helper: Tính tổng số tiết của 1 Chủ đề từ các ĐVKT bên trong
+// Helper: TÃ­nh tá»•ng sá»‘ tiáº¿t cá»§a 1 Chá»§ Ä‘á» tá»« cÃ¡c ÄVKT bÃªn trong
 const getTotalSoTiet = (topic) => {
   if (!topic.donViKienThuc || topic.donViKienThuc.length === 0) {
     return Number(topic.soTiet) || 0;
@@ -78,14 +79,14 @@ const getTotalSoTiet = (topic) => {
 };
 
 // =============================================================================
-// HELPER: Tính tổng số câu hỏi của 1 Chủ đề = SUM các ĐVKT bên trong
+// HELPER: TÃ­nh tá»•ng sá»‘ cÃ¢u há»i cá»§a 1 Chá»§ Ä‘á» = SUM cÃ¡c ÄVKT bÃªn trong
 // =============================================================================
 const getTopicSum = (topic, type, level) => {
   if (!topic.donViKienThuc) return 0;
   return topic.donViKienThuc.reduce((sum, dv) => {
     const obj = dv[type];
     if (!obj) return sum;
-    // Hỗ trợ subItems cho tuLuan (cấu trúc mới)
+    // Há»— trá»£ subItems cho tuLuan (cáº¥u trÃºc má»›i)
     if (type === 'tuLuan' && Array.isArray(obj.subItems) && obj.subItems.length > 0) {
       return sum + obj.subItems.filter(s => s.level === level).length;
     }
@@ -97,7 +98,7 @@ const getTopicTuLuanDiem = (topic, diemField) => {
   if (!topic.donViKienThuc) return 0;
   return topic.donViKienThuc.reduce((sum, dv) => {
     const tl = dv.tuLuan || {};
-    // Nếu có subItems (cấu trúc mới), tính từ subItems
+    // Náº¿u cÃ³ subItems (cáº¥u trÃºc má»›i), tÃ­nh tá»« subItems
     if (Array.isArray(tl.subItems) && tl.subItems.length > 0) {
       const levelMap = { diemBiet: 'biet', diemHieu: 'hieu', diemVanDung: 'vanDung' };
       const level = levelMap[diemField];
@@ -105,7 +106,7 @@ const getTopicTuLuanDiem = (topic, diemField) => {
         return sum + tl.subItems.filter(s => s.level === level).reduce((s2, sub) => s2 + (sub.diem || 0), 0);
       }
     }
-    // Fallback: dùng field cũ
+    // Fallback: dÃ¹ng field cÅ©
     return sum + (tl[diemField] ? (Number(tl[diemField]) || 0) : 0);
   }, 0);
 };
@@ -114,11 +115,11 @@ export const useExamStore = create(
   persist(
     (set, get) => ({
       examHeader: {
-        soGD: 'SỞ GIÁO DỤC VÀ ĐÀO TẠO...',
-        truong: 'TRƯỜNG:.............................',
-        kyThi: 'ĐỀ KIỂM TRA ĐỊNH KÌ',
+        soGD: 'Sá»ž GIÃO Dá»¤C VÃ€ ÄÃ€O Táº O...',
+        truong: 'TRÆ¯á»œNG:.............................',
+        kyThi: 'Äá»€ KIá»‚M TRA Äá»ŠNH KÃŒ',
         monHoc: '........................',
-        thoiGian: 'làm bài: 45 phút',
+        thoiGian: 'lÃ m bÃ i: 45 phÃºt',
         namHoc: '202... - 202...'
       },
       updateExamHeader: (field, value) => set((state) => ({
@@ -127,7 +128,7 @@ export const useExamStore = create(
 
       matrix: [{ ...defaultTopic }],
 
-      // State cho tính năng Sinh đề tương đương
+      // State cho tÃ­nh nÄƒng Sinh Ä‘á» tÆ°Æ¡ng Ä‘Æ°Æ¡ng
       lockedSlots: [],
       toggleLockSlot: (slotKey) => set((state) => ({
         lockedSlots: state.lockedSlots.includes(slotKey)
@@ -144,23 +145,23 @@ export const useExamStore = create(
         hasTraLoiNgan: true,
         hasTuLuan: true,
         isCuoiKi: false,  // false | '30-70' | '25-75' | '20-80' | '2.25-7.75'
-        isContinuousNumbering: true, // true = đánh số câu hỏi liên tục từ 1 đến hết, false = reset mỗi phần
+        isContinuousNumbering: true, // true = Ä‘Ã¡nh sá»‘ cÃ¢u há»i liÃªn tá»¥c tá»« 1 Ä‘áº¿n háº¿t, false = reset má»—i pháº§n
         exportTemplate: 'ministry',
-        showCompetencySymbol: true, // Toggle ký hiệu năng lực trong bảng đặc tả
-        showCompetencyCode: true, // Toggle mã năng lực [HH1.1] trong cột Yêu cầu cần đạt
-        groupTfByTopic: false, // Gom 4 ý Đúng/Sai từ các bài khác nhau trong cùng chủ đề
+        showCompetencySymbol: true, // Toggle kÃ½ hiá»‡u nÄƒng lá»±c trong báº£ng Ä‘áº·c táº£
+        showCompetencyCode: true, // Toggle mÃ£ nÄƒng lá»±c [HH1.1] trong cá»™t YÃªu cáº§u cáº§n Ä‘áº¡t
+        groupTfByTopic: false, // Gom 4 Ã½ ÄÃºng/Sai tá»« cÃ¡c bÃ i khÃ¡c nhau trong cÃ¹ng chá»§ Ä‘á»
       },
 
       // =====================================================================
-      // CẤU HÌNH TỰ LUẬN CHI TIẾT (số câu, số ý mỗi câu, điểm mỗi ý)
+      // Cáº¤U HÃŒNH Tá»° LUáº¬N CHI TIáº¾T (sá»‘ cÃ¢u, sá»‘ Ã½ má»—i cÃ¢u, Ä‘iá»ƒm má»—i Ã½)
       // =====================================================================
       tuLuanConfig: {
-        enabled: false, // true = dùng cấu hình tự do, false = autofill tự tính
+        enabled: false, // true = dÃ¹ng cáº¥u hÃ¬nh tá»± do, false = autofill tá»± tÃ­nh
         questions: [
-          { id: 'tl_q1', label: 'Câu 1', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
-          { id: 'tl_q2', label: 'Câu 2', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 1.0 }] },
-          { id: 'tl_q3', label: 'Câu 3', kienThuc: '', subItems: [{ diem: 1.0 }] },
-          { id: 'tl_q4', label: 'Câu 4', kienThuc: '', subItems: [{ diem: 1.0 }] },
+          { id: 'tl_q1', label: 'CÃ¢u 1', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
+          { id: 'tl_q2', label: 'CÃ¢u 2', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 1.0 }] },
+          { id: 'tl_q3', label: 'CÃ¢u 3', kienThuc: '', subItems: [{ diem: 1.0 }] },
+          { id: 'tl_q4', label: 'CÃ¢u 4', kienThuc: '', subItems: [{ diem: 1.0 }] },
         ],
       },
 
@@ -170,14 +171,14 @@ export const useExamStore = create(
       }),
 
       // =====================================================================
-      // CẤU HÌNH ĐIỂM LINH HOẠT CHO 3 PHẦN TNKQ
+      // Cáº¤U HÃŒNH ÄIá»‚M LINH HOáº T CHO 3 PHáº¦N TNKQ
       // =====================================================================
       examConfig: {
-        tongDiem: 10.0,                        // Tổng điểm toàn bài
-        tongDiemP1: 3.0, diemMoiCauP1: 0.25,  // Phần I: TN nhiều lựa chọn
-        tongDiemP2: 2.0, diemMoiYP2: 0.25,    // Phần II: Đúng/Sai (điểm 1 ý)
-        tongDiemP3: 2.0, diemMoiYP3: 0.25,    // Phần III: Trả lời ngắn (điểm 1 ý)
-        diemMoiYTuLuan: 0.5,                  // Điểm mỗi ý Tự luận
+        tongDiem: 10.0,                        // Tá»•ng Ä‘iá»ƒm toÃ n bÃ i
+        tongDiemP1: 3.0, diemMoiCauP1: 0.25,  // Pháº§n I: TN nhiá»u lá»±a chá»n
+        tongDiemP2: 2.0, diemMoiYP2: 0.25,    // Pháº§n II: ÄÃºng/Sai (Ä‘iá»ƒm 1 Ã½)
+        tongDiemP3: 2.0, diemMoiYP3: 0.25,    // Pháº§n III: Tráº£ lá»i ngáº¯n (Ä‘iá»ƒm 1 Ã½)
+        diemMoiYTuLuan: 0.5,                  // Äiá»ƒm má»—i Ã½ Tá»± luáº­n
         tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 }
       },
 
@@ -189,36 +190,36 @@ export const useExamStore = create(
         const newExamConfig = { ...state.examConfig };
         const p1 = Number(newExamConfig.tongDiemP1) || 3.0;
         if (val) {
-          // Bật Tự luận -> Cấu hình P2, P3 theo tongDiemP1 hiện tại
+          // Báº­t Tá»± luáº­n -> Cáº¥u hÃ¬nh P2, P3 theo tongDiemP1 hiá»‡n táº¡i
           if (p1 === 3.5) {
-            // Cấu trúc 3.5 - 2.0 - 1.5 (có Tự luận)
+            // Cáº¥u trÃºc 3.5 - 2.0 - 1.5 (cÃ³ Tá»± luáº­n)
             newExamConfig.tongDiemP2 = 2.0;
             newExamConfig.tongDiemP3 = 1.5;
           } else {
-            // Mặc định: P1-2-2-TL
+            // Máº·c Ä‘á»‹nh: P1-2-2-TL
             newExamConfig.tongDiemP2 = 2.0;
             newExamConfig.tongDiemP3 = 2.0;
           }
         } else {
-          // Tắt Tự luận → 100% Trắc nghiệm, chia phần còn lại cho P2+P3
+          // Táº¯t Tá»± luáº­n â†’ 100% Tráº¯c nghiá»‡m, chia pháº§n cÃ²n láº¡i cho P2+P3
           if (p1 === 3 || p1 === 3.0) {
-            // Cấu trúc 3 - 4 - 3
+            // Cáº¥u trÃºc 3 - 4 - 3
             newExamConfig.tongDiemP2 = 4.0;
             newExamConfig.tongDiemP3 = 3.0;
           } else if (p1 === 3.5) {
-            // Cấu trúc 3.5 - 4.0 - 2.5 (100% TN)
+            // Cáº¥u trÃºc 3.5 - 4.0 - 2.5 (100% TN)
             newExamConfig.tongDiemP2 = 4.0;
             newExamConfig.tongDiemP3 = 2.5;
           } else if (p1 === 4.5) {
-            // Cấu trúc 4.5 - 4 - 1.5
+            // Cáº¥u trÃºc 4.5 - 4 - 1.5
             newExamConfig.tongDiemP2 = 4.0;
             newExamConfig.tongDiemP3 = 1.5;
           } else if (p1 === 5.5) {
-            // Cấu trúc 5.5 - 3 - 1.5
+            // Cáº¥u trÃºc 5.5 - 3 - 1.5
             newExamConfig.tongDiemP2 = 3.0;
             newExamConfig.tongDiemP3 = 1.5;
           } else {
-            // Fallback: chia đều phần còn lại
+            // Fallback: chia Ä‘á»u pháº§n cÃ²n láº¡i
             const remaining = 10.0 - p1;
             newExamConfig.tongDiemP2 = Math.round(remaining * 0.6 * 100) / 100;
             newExamConfig.tongDiemP3 = Math.round(remaining * 0.4 * 100) / 100;
@@ -230,7 +231,7 @@ export const useExamStore = create(
         };
       }),
 
-      // Chuyển đổi cấu trúc đề (khi thay đổi dropdown P1)
+      // Chuyá»ƒn Ä‘á»•i cáº¥u trÃºc Ä‘á» (khi thay Ä‘á»•i dropdown P1)
       setCauTrucDe: (tongDiemP1) => set((state) => {
         const isCauTruc4213 = String(tongDiemP1) === '4.01';
         const p1 = isCauTruc4213 ? 4.0 : (Number(tongDiemP1) || 3.0);
@@ -239,10 +240,10 @@ export const useExamStore = create(
         const hasTL = state.config.hasTuLuan;
 
         if (hasTL) {
-          // === CHẾ ĐỘ CÓ TỰ LUẬN (TL = 3đ) ===
-          const tnTotal = 10.0 - 3.0; // TNKQ = 7đ
+          // === CHáº¾ Äá»˜ CÃ“ Tá»° LUáº¬N (TL = 3Ä‘) ===
+          const tnTotal = 10.0 - 3.0; // TNKQ = 7Ä‘
           if (hasTLN) {
-            // Có TLN: P1 + P2 + P3 = 7đ
+            // CÃ³ TLN: P1 + P2 + P3 = 7Ä‘
             if (isCauTruc4213) {
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 1.0;
@@ -250,14 +251,14 @@ export const useExamStore = create(
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 1.5;
             } else {
-              // Mặc định: P1=3, P2=2, P3=2
+              // Máº·c Ä‘á»‹nh: P1=3, P2=2, P3=2
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 2.0;
             }
           } else {
-            // Không TLN: P1 + P2 = 7đ, P3=0
+            // KhÃ´ng TLN: P1 + P2 = 7Ä‘, P3=0
             if (p1 === 4.0 || p1 === 4) {
-              // Cấu trúc Toán 4-2-0 (P1=4đ, P2=2đ, P3=0, TL=4đ)
+              // Cáº¥u trÃºc ToÃ¡n 4-2-0 (P1=4Ä‘, P2=2Ä‘, P3=0, TL=4Ä‘)
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 0;
             } else if (p1 === 3.5) {
@@ -269,9 +270,9 @@ export const useExamStore = create(
             }
           }
         } else {
-          // === CHẾ ĐỘ 100% TRẮC NGHIỆM (TN = 10đ) ===
+          // === CHáº¾ Äá»˜ 100% TRáº®C NGHIá»†M (TN = 10Ä‘) ===
           if (hasTLN) {
-            // Có TLN: P1 + P2 + P3 = 10đ
+            // CÃ³ TLN: P1 + P2 + P3 = 10Ä‘
             if (p1 === 3 || p1 === 3.0) {
               newExamConfig.tongDiemP2 = 4.0;
               newExamConfig.tongDiemP3 = 3.0;
@@ -279,7 +280,7 @@ export const useExamStore = create(
               newExamConfig.tongDiemP2 = 4.0;
               newExamConfig.tongDiemP3 = 2.5;
             } else if (p1 === 4.0 || p1 === 4) {
-              // Cấu trúc Toán 4-2-0 → Tự luận 4đ
+              // Cáº¥u trÃºc ToÃ¡n 4-2-0 â†’ Tá»± luáº­n 4Ä‘
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 0;
             } else if (p1 === 4.5) {
@@ -294,7 +295,7 @@ export const useExamStore = create(
               newExamConfig.tongDiemP3 = Math.round(remaining * 0.4 * 100) / 100;
             }
           } else {
-            // Không TLN: P1 + P2 = 10đ, P3=0
+            // KhÃ´ng TLN: P1 + P2 = 10Ä‘, P3=0
             if (p1 === 3 || p1 === 3.0) {
               newExamConfig.tongDiemP2 = 7.0;
               newExamConfig.tongDiemP3 = 0;
@@ -319,17 +320,17 @@ export const useExamStore = create(
         return { examConfig: newExamConfig };
       }),
 
-      // Toggle Trả lời ngắn - xử lý trong 1 lần set để tránh race condition
+      // Toggle Tráº£ lá»i ngáº¯n - xá»­ lÃ½ trong 1 láº§n set Ä‘á»ƒ trÃ¡nh race condition
       toggleTraLoiNgan: (val) => set((state) => {
         const newExamConfig = { ...state.examConfig };
         const p1 = Number(newExamConfig.tongDiemP1) || 3.0;
         const hasTL = state.config.hasTuLuan;
 
         if (hasTL) {
-          // === CÓ TỰ LUẬN (TL = 3đ, TNKQ = 7đ) ===
+          // === CÃ“ Tá»° LUáº¬N (TL = 3Ä‘, TNKQ = 7Ä‘) ===
           const tnTotal = 7.0;
           if (val) {
-            // Bật TLN
+            // Báº­t TLN
             if (p1 === 3.5) {
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 1.5;
@@ -338,11 +339,11 @@ export const useExamStore = create(
               newExamConfig.tongDiemP3 = 2.0;
             }
           } else if (p1 === 4.0 || p1 === 4) {
-            // Cấu trúc Toán 4-2-0 (TL giữ 4đ)
+            // Cáº¥u trÃºc ToÃ¡n 4-2-0 (TL giá»¯ 4Ä‘)
             newExamConfig.tongDiemP2 = 2.0;
             newExamConfig.tongDiemP3 = 0;
           } else {
-            // Tắt TLN: P3 → P2, TL giữ nguyên 3đ
+            // Táº¯t TLN: P3 â†’ P2, TL giá»¯ nguyÃªn 3Ä‘
             if (p1 === 3.5) {
               newExamConfig.tongDiemP2 = 3.5; // 2.0 + 1.5
               newExamConfig.tongDiemP3 = 0;
@@ -352,9 +353,9 @@ export const useExamStore = create(
             }
           }
         } else {
-          // === 100% TRẮC NGHIỆM (TN = 10đ) ===
+          // === 100% TRáº®C NGHIá»†M (TN = 10Ä‘) ===
           if (val) {
-            // Bật TLN
+            // Báº­t TLN
             if (p1 === 3 || p1 === 3.0) {
               newExamConfig.tongDiemP2 = 4.0;
               newExamConfig.tongDiemP3 = 3.0;
@@ -376,7 +377,7 @@ export const useExamStore = create(
               newExamConfig.tongDiemP3 = Math.round(remaining * 0.4 * 100) / 100;
             }
           } else {
-            // Tắt TLN: P3 → P2
+            // Táº¯t TLN: P3 â†’ P2
             if (p1 === 3 || p1 === 3.0) {
               newExamConfig.tongDiemP2 = 7.0;
               newExamConfig.tongDiemP3 = 0;
@@ -468,7 +469,7 @@ export const useExamStore = create(
       })),
 
       // =======================================================================
-      // ACTIONS CHO ĐƠN VỊ KIẾN THỨC (ĐVKT)
+      // ACTIONS CHO ÄÆ N Vá»Š KIáº¾N THá»¨C (ÄVKT)
       // =======================================================================
       addDonVi: (topicId) => set((state) => ({
         matrix: state.matrix.map(topic =>
@@ -498,7 +499,7 @@ export const useExamStore = create(
         })
       })),
 
-      // Hành động cập nhật YCCĐ cho từng ĐVKT
+      // HÃ nh Ä‘á»™ng cáº­p nháº­t YCCÄ cho tá»«ng ÄVKT
       updateDvYccd: (topicId, dvId, text) => set((state) => ({
         matrix: state.matrix.map(topic => {
           if (topic.id !== topicId) return topic;
@@ -511,7 +512,7 @@ export const useExamStore = create(
         })
       })),
 
-      // Cập nhật mã chỉ báo được chọn cho ĐVKT
+      // Cáº­p nháº­t mÃ£ chá»‰ bÃ¡o Ä‘Æ°á»£c chá»n cho ÄVKT
       updateDvIndicators: (topicId, dvId, indicators) => set((state) => ({
         matrix: state.matrix.map(topic => {
           if (topic.id !== topicId) return topic;
@@ -529,29 +530,29 @@ export const useExamStore = create(
         const topicIndex = newMatrix.findIndex(t => t.id === topicId);
         if (topicIndex === -1) return state;
 
-        // Chia văn bản thành các dòng
+        // Chia vÄƒn báº£n thÃ nh cÃ¡c dÃ²ng
         const lines = rawText.split('\n');
         let currentDvIndex = -1;
         let yccdBlocks = {};
 
         for (let line of lines) {
-          // Dò tìm các dòng tiêu đề có chứa số thứ tự: "1.", "**1.**", "1)", "**1**"
-          // Regex này bắt chữ số đứng đầu (có thể bọc bởi dấu in đậm/gạch chân)
+          // DÃ² tÃ¬m cÃ¡c dÃ²ng tiÃªu Ä‘á» cÃ³ chá»©a sá»‘ thá»© tá»±: "1.", "**1.**", "1)", "**1**"
+          // Regex nÃ y báº¯t chá»¯ sá»‘ Ä‘á»©ng Ä‘áº§u (cÃ³ thá»ƒ bá»c bá»Ÿi dáº¥u in Ä‘áº­m/gáº¡ch chÃ¢n)
           const match = line.match(/^\s*(?:\*\*|__)?(\d+)(?:\.|\))?(?:\*\*|__)?\s+/);
 
           if (match) {
             const num = parseInt(match[1], 10);
-            currentDvIndex = num - 1; // Mảng bắt đầu từ 0
+            currentDvIndex = num - 1; // Máº£ng báº¯t Ä‘áº§u tá»« 0
             if (!yccdBlocks[currentDvIndex]) yccdBlocks[currentDvIndex] = [];
           } else {
-            // Nếu đang ở trong block của một Bài học và dòng không trống, thì lưu dòng đó lại
+            // Náº¿u Ä‘ang á»Ÿ trong block cá»§a má»™t BÃ i há»c vÃ  dÃ²ng khÃ´ng trá»‘ng, thÃ¬ lÆ°u dÃ²ng Ä‘Ã³ láº¡i
             if (currentDvIndex >= 0 && line.trim() !== '') {
               yccdBlocks[currentDvIndex].push(line.trim());
             }
           }
         }
 
-        // Đổ dữ liệu YCCĐ vào đúng ĐVKT tương ứng
+        // Äá»• dá»¯ liá»‡u YCCÄ vÃ o Ä‘Ãºng ÄVKT tÆ°Æ¡ng á»©ng
         const dvList = newMatrix[topicIndex].donViKienThuc || [];
         dvList.forEach((dv, index) => {
           if (yccdBlocks[index] && yccdBlocks[index].length > 0) {
@@ -562,7 +563,7 @@ export const useExamStore = create(
         return { matrix: newMatrix };
       }),
 
-      // ĐẠI PHẪU: Cập nhật số câu hỏi ở CẤP ĐVKT
+      // Äáº I PHáºªU: Cáº­p nháº­t sá»‘ cÃ¢u há»i á»Ÿ Cáº¤P ÄVKT
       updateDvQuestionCount: (topicId, dvId, type, level, value) => set((state) => ({
         matrix: state.matrix.map(topic => {
           if (topic.id !== topicId) return topic;
@@ -579,7 +580,7 @@ export const useExamStore = create(
         })
       })),
 
-      // ĐẠI PHẪU: Cập nhật điểm tự luận ở CẤP ĐVKT
+      // Äáº I PHáºªU: Cáº­p nháº­t Ä‘iá»ƒm tá»± luáº­n á»Ÿ Cáº¤P ÄVKT
       updateDvTuLuanPoint: (topicId, dvId, field, value) => set((state) => ({
         matrix: state.matrix.map(topic => {
           if (topic.id !== topicId) return topic;
@@ -596,7 +597,7 @@ export const useExamStore = create(
         })
       })),
 
-      // --- ACTIONS CHO TỰ LUẬN SUB-ITEMS (linh hoạt điểm theo ý) ---
+      // --- ACTIONS CHO Tá»° LUáº¬N SUB-ITEMS (linh hoáº¡t Ä‘iá»ƒm theo Ã½) ---
       addTuLuanSubItem: (topicId, dvId, level) => set((state) => ({
         matrix: state.matrix.map(topic => {
           if (topic.id !== topicId) return topic;
@@ -679,7 +680,7 @@ export const useExamStore = create(
             dv.dungSai = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
             dv.traLoiNgan = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
             dv.tuLuan = { biet: 0, hieu: 0, vanDung: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, subItems: [] };
-            dv.indicatorMap = {}; // Reset mapping cũ
+            dv.indicatorMap = {}; // Reset mapping cÅ©
           });
         });
 
@@ -687,7 +688,7 @@ export const useExamStore = create(
           sum + t.donViKienThuc.reduce((s, dv) => s + (Number(dv.soTiet) || 0), 0), 0);
 
         if (tongSoTietToanBai === 0) {
-          alert("Vui lòng nhập 'Số tiết' lớn hơn 0!");
+          alert("Vui lÃ²ng nháº­p 'Sá»‘ tiáº¿t' lá»›n hÆ¡n 0!");
           return {};
         }
 
@@ -698,7 +699,7 @@ export const useExamStore = create(
         const dTL = Number(ec.diemMoiYTuLuan) || 0.5;
 
         let pool = [];
-        let tuLuanPool = []; // Pool riêng cho tự luận để ưu tiên phân bổ
+        let tuLuanPool = []; // Pool riÃªng cho tá»± luáº­n Ä‘á»ƒ Æ°u tiÃªn phÃ¢n bá»•
         const addPool = (type, lvl, count, pts) => {
           for (let i = 0; i < count; i++) pool.push({ type, lvl, pts: Math.round(pts * 100) / 100 });
         };
@@ -711,32 +712,32 @@ export const useExamStore = create(
         const tP3 = state.config.hasTraLoiNgan ? (Number(ec.tongDiemP3) || 0.0) : 0;
         const tTL = state.config.hasTuLuan ? (10 - tP1 - tP2 - tP3) : 0;
 
-        // === CÂN ĐỐI TỔNG THỂ THEO TỈ LỆ 40-30-30 ===
+        // === CÃ‚N Äá»I Tá»”NG THá»‚ THEO Tá»ˆ Lá»† 40-30-30 ===
         const tiLe = state.examConfig.tiLeNhanThuc || { biet: 40, hieu: 30, vanDung: 30 };
         const tongDiemDe = 10.0;
         const tongDiemBiet = Math.round(tongDiemDe * tiLe.biet / 100 * 100) / 100;
         const tongDiemHieu = Math.round(tongDiemDe * tiLe.hieu / 100 * 100) / 100;
         const tongDiemVanDung = Math.round((tongDiemDe - tongDiemBiet - tongDiemHieu) * 100) / 100;
 
-        console.log(`🎯 Tỉ lệ tổng thể: ${tiLe.biet}% Biết (${tongDiemBiet}đ), ${tiLe.hieu}% Hiểu (${tongDiemHieu}đ), ${tiLe.vanDung}% Vận dụng (${tongDiemVanDung}đ)`);
+        console.log(`ðŸŽ¯ Tá»‰ lá»‡ tá»•ng thá»ƒ: ${tiLe.biet}% Biáº¿t (${tongDiemBiet}Ä‘), ${tiLe.hieu}% Hiá»ƒu (${tongDiemHieu}Ä‘), ${tiLe.vanDung}% Váº­n dá»¥ng (${tongDiemVanDung}Ä‘)`);
 
-        // === BƯỚC 1: CHIA TỪ LUẬN TRƯỚC THEO TỈ LỆ TỔNG THỂ ===
+        // === BÆ¯á»šC 1: CHIA Tá»ª LUáº¬N TRÆ¯á»šC THEO Tá»ˆ Lá»† Tá»”NG THá»‚ ===
         let tlBiet = 0, tlHieu = 0, tlVanDung = 0;
         if (tTL > 0) {
           tlBiet = Math.round((tTL * tiLe.biet / 100) * 100) / 100;
           tlHieu = Math.round((tTL * tiLe.hieu / 100) * 100) / 100;
           tlVanDung = Math.round((tTL - tlBiet - tlHieu) * 100) / 100;
-          console.log(`📘 Tự luận: ${tlBiet}đ Biết, ${tlHieu}đ Hiểu, ${tlVanDung}đ Vận dụng`);
+          console.log(`ðŸ“˜ Tá»± luáº­n: ${tlBiet}Ä‘ Biáº¿t, ${tlHieu}Ä‘ Hiá»ƒu, ${tlVanDung}Ä‘ Váº­n dá»¥ng`);
         }
 
-        // === BƯỚC 2: PHÂN BỔ TỪ LUẬN VÀO POOL ===
+        // === BÆ¯á»šC 2: PHÃ‚N Bá»” Tá»ª LUáº¬N VÃ€O POOL ===
         if (tTL > 0) {
           const tlCfg = state.tuLuanConfig;
           const hasManualConfig = tlCfg?.enabled && tlCfg?.questions && tlCfg.questions.length > 0 && tlCfg.questions.some(q => q.subItems && q.subItems.length > 0);
 
           if (hasManualConfig) {
-            console.log('🔧 Autofill: Tự luận - chế độ cấu hình thủ công');
-            // Thu thập tất cả subItems từ config
+            console.log('ðŸ”§ Autofill: Tá»± luáº­n - cháº¿ Ä‘á»™ cáº¥u hÃ¬nh thá»§ cÃ´ng');
+            // Thu tháº­p táº¥t cáº£ subItems tá»« config
             const allSubItems = [];
             tlCfg.questions.forEach((q) => {
               if (q.subItems && q.subItems.length > 0) {
@@ -752,7 +753,7 @@ export const useExamStore = create(
 
             const totalItems = allSubItems.length;
             if (totalItems > 0) {
-              // Phân bổ số lượng ý theo tỉ lệ 40-30-30
+              // PhÃ¢n bá»• sá»‘ lÆ°á»£ng Ã½ theo tá»‰ lá»‡ 40-30-30
               const counts = distributeLargestRemainder(totalItems, [tiLe.biet, tiLe.hieu, tiLe.vanDung]);
               const levels = ['biet', 'hieu', 'vanDung'];
 
@@ -765,12 +766,12 @@ export const useExamStore = create(
               }
             }
           } else {
-            console.log('🤖 Autofill: Tự luận - chế độ tự động');
-            // Xác định số ý sao cho soY × dTL = tTL (ưu tiên đúng tổng điểm)
+            console.log('ðŸ¤– Autofill: Tá»± luáº­n - cháº¿ Ä‘á»™ tá»± Ä‘á»™ng');
+            // XÃ¡c Ä‘á»‹nh sá»‘ Ã½ sao cho soY Ã— dTL = tTL (Æ°u tiÃªn Ä‘Ãºng tá»•ng Ä‘iá»ƒm)
             const soYTuLuan = Math.max(3, Math.min(10, Math.round(tTL / dTL)));
-            // Điểm thực mỗi ý = tTL / soY (có thể không tròn 0.25)
+            // Äiá»ƒm thá»±c má»—i Ã½ = tTL / soY (cÃ³ thá»ƒ khÃ´ng trÃ²n 0.25)
             const diemMoiY = Math.round((tTL / soYTuLuan) * 100) / 100;
-            // Phân bổ ý theo tỉ lệ 40-30-30 (bằng số lượng)
+            // PhÃ¢n bá»• Ã½ theo tá»‰ lá»‡ 40-30-30 (báº±ng sá»‘ lÆ°á»£ng)
             const arrTL = distributeLargestRemainder(soYTuLuan, [tiLe.biet, tiLe.hieu, tiLe.vanDung]);
             const levels = ['biet', 'hieu', 'vanDung'];
             let totalAdded = 0;
@@ -778,7 +779,7 @@ export const useExamStore = create(
             for (let li = 0; li < 3; li++) {
               for (let i = 0; i < arrTL[li]; i++) {
                 yIdx++;
-                // Ý cuối cùng (tổng thể): bù sai số để tổng = tTL chính xác
+                // Ã cuá»‘i cÃ¹ng (tá»•ng thá»ƒ): bÃ¹ sai sá»‘ Ä‘á»ƒ tá»•ng = tTL chÃ­nh xÃ¡c
                 const pts = (yIdx === soYTuLuan)
                   ? Math.round((tTL - totalAdded) * 100) / 100
                   : diemMoiY;
@@ -789,32 +790,32 @@ export const useExamStore = create(
           }
         }
 
-        // === BƯỚC 3: TÍNH SỐ CÂU ĐÚNG/SAI TRỰC TIẾP ===
-        // Mỗi câu ĐS = 4 ý (1B + 1H + 1VD + 1VDC), cố định theo quy định Bộ GD-ĐT
-        // Tính trực tiếp từ tổng điểm P2, không qua pool (tránh mất ý do rounding)
+        // === BÆ¯á»šC 3: TÃNH Sá» CÃ‚U ÄÃšNG/SAI TRá»°C TIáº¾P ===
+        // Má»—i cÃ¢u ÄS = 4 Ã½ (1B + 1H + 1VD + 1VDC), cá»‘ Ä‘á»‹nh theo quy Ä‘á»‹nh Bá»™ GD-ÄT
+        // TÃ­nh trá»±c tiáº¿p tá»« tá»•ng Ä‘iá»ƒm P2, khÃ´ng qua pool (trÃ¡nh máº¥t Ã½ do rounding)
         const numTfBlocks = Math.round(tP2 / (dP2 * 4));
 
-        // Điểm ĐS THỰC TẾ per level (VDC gộp vào VD khi tính tỉ lệ nhận thức)
+        // Äiá»ƒm ÄS THá»°C Táº¾ per level (VDC gá»™p vÃ o VD khi tÃ­nh tá»‰ lá»‡ nháº­n thá»©c)
         const dsActualBiet = Math.round(numTfBlocks * dP2 * 100) / 100;
         const dsActualHieu = Math.round(numTfBlocks * dP2 * 100) / 100;
         const dsActualVD   = Math.round(numTfBlocks * dP2 * 2 * 100) / 100; // VD + VDC
 
-        console.log(`📗 Đúng/Sai: ${numTfBlocks} câu × 4 ý = ${numTfBlocks * 4} ý = ${dsActualBiet + dsActualHieu + dsActualVD}đ (B=${dsActualBiet}đ, H=${dsActualHieu}đ, VD=${dsActualVD}đ)`);
+        console.log(`ðŸ“— ÄÃºng/Sai: ${numTfBlocks} cÃ¢u Ã— 4 Ã½ = ${numTfBlocks * 4} Ã½ = ${dsActualBiet + dsActualHieu + dsActualVD}Ä‘ (B=${dsActualBiet}Ä‘, H=${dsActualHieu}Ä‘, VD=${dsActualVD}Ä‘)`);
 
-        // === TÍNH ĐIỂM TỰ LUẬN THỰC TẾ TỪ POOL (không dùng giá trị lý thuyết) ===
+        // === TÃNH ÄIá»‚M Tá»° LUáº¬N THá»°C Táº¾ Tá»ª POOL (khÃ´ng dÃ¹ng giÃ¡ trá»‹ lÃ½ thuyáº¿t) ===
         const tlActualBiet = Math.round(tuLuanPool.filter(p => p.lvl === 'biet').reduce((s, p) => s + p.pts, 0) * 100) / 100;
         const tlActualHieu = Math.round(tuLuanPool.filter(p => p.lvl === 'hieu').reduce((s, p) => s + p.pts, 0) * 100) / 100;
         const tlActualVanDung = Math.round(tuLuanPool.filter(p => p.lvl === 'vanDung').reduce((s, p) => s + p.pts, 0) * 100) / 100;
-        console.log(`📘 TL thực tế: ${tlActualBiet}đ Biết, ${tlActualHieu}đ Hiểu, ${tlActualVanDung}đ VD (tổng=${Math.round((tlActualBiet+tlActualHieu+tlActualVanDung)*100)/100}đ)`);
+        console.log(`ðŸ“˜ TL thá»±c táº¿: ${tlActualBiet}Ä‘ Biáº¿t, ${tlActualHieu}Ä‘ Hiá»ƒu, ${tlActualVanDung}Ä‘ VD (tá»•ng=${Math.round((tlActualBiet+tlActualHieu+tlActualVanDung)*100)/100}Ä‘)`);
 
-        // === BƯỚC 4: TÍNH TARGET CÒN LẠI CHO P1+P3 (dựa trên ĐS + TL THỰC TẾ) ===
+        // === BÆ¯á»šC 4: TÃNH TARGET CÃ’N Láº I CHO P1+P3 (dá»±a trÃªn ÄS + TL THá»°C Táº¾) ===
         const conLaiBiet = Math.max(0, Math.round((tongDiemBiet - tlActualBiet - dsActualBiet) * 100) / 100);
         const conLaiHieu = Math.max(0, Math.round((tongDiemHieu - tlActualHieu - dsActualHieu) * 100) / 100);
         const conLaiVanDung = Math.max(0, Math.round((tongDiemVanDung - tlActualVanDung - dsActualVD) * 100) / 100);
 
-        console.log(`📊 Target còn lại P1+P3: ${conLaiBiet}đ Biết, ${conLaiHieu}đ Hiểu, ${conLaiVanDung}đ Vận dụng`);
+        console.log(`ðŸ“Š Target cÃ²n láº¡i P1+P3: ${conLaiBiet}Ä‘ Biáº¿t, ${conLaiHieu}Ä‘ Hiá»ƒu, ${conLaiVanDung}Ä‘ Váº­n dá»¥ng`);
 
-        // === BƯỚC 5: PHÂN BỔ P1 VÀ P3 ĐỂ BÙ ĐẠT 40-30-30 ===
+        // === BÆ¯á»šC 5: PHÃ‚N Bá»” P1 VÃ€ P3 Äá»‚ BÃ™ Äáº T 40-30-30 ===
         const tongConLai = conLaiBiet + conLaiHieu + conLaiVanDung;
         if (tongConLai > 0) {
           const soCauP1 = tP1 > 0 ? Math.round(tP1 / dP1) : 0;
@@ -823,7 +824,7 @@ export const useExamStore = create(
           let arrP3 = [0, 0, 0];
           let arrP1 = [0, 0, 0];
 
-          // Ưu tiên phân bổ P3 trước vì điểm mỗi câu P3 thường lớn hơn (vd 0.5đ), khó khít điểm hơn P1
+          // Æ¯u tiÃªn phÃ¢n bá»• P3 trÆ°á»›c vÃ¬ Ä‘iá»ƒm má»—i cÃ¢u P3 thÆ°á»ng lá»›n hÆ¡n (vd 0.5Ä‘), khÃ³ khÃ­t Ä‘iá»ƒm hÆ¡n P1
           if (soCauP3 > 0) {
             arrP3 = distributeLargestRemainder(soCauP3, [conLaiBiet, conLaiHieu, conLaiVanDung]);
             addPool('traLoiNgan', 'biet', arrP3[0], dP3);
@@ -831,7 +832,7 @@ export const useExamStore = create(
             addPool('traLoiNgan', 'vanDung', arrP3[2], dP3);
           }
 
-          // Tính lại target điểm CÒN LẠI THỰC TẾ cho P1 sau khi P3 đã chiếm
+          // TÃ­nh láº¡i target Ä‘iá»ƒm CÃ’N Láº I THá»°C Táº¾ cho P1 sau khi P3 Ä‘Ã£ chiáº¿m
           const p1TargetBiet = Math.max(0, conLaiBiet - arrP3[0] * dP3);
           const p1TargetHieu = Math.max(0, conLaiHieu - arrP3[1] * dP3);
           const p1TargetVanDung = Math.max(0, conLaiVanDung - arrP3[2] * dP3);
@@ -844,7 +845,7 @@ export const useExamStore = create(
           }
         }
 
-        // Pool giờ chỉ chứa NLC + TLN (ĐS tính trực tiếp, không qua pool)
+        // Pool giá» chá»‰ chá»©a NLC + TLN (ÄS tÃ­nh trá»±c tiáº¿p, khÃ´ng qua pool)
         pool.sort((a, b) => b.pts - a.pts);
         const otherItems = pool;
 
@@ -874,11 +875,11 @@ export const useExamStore = create(
           }));
         }
 
-        // numTfBlocks đã tính ở bước 3
+        // numTfBlocks Ä‘Ã£ tÃ­nh á»Ÿ bÆ°á»›c 3
         if (state.config.groupTfByTopic) {
-          // CHẾ ĐỘ GOM THEO CHỦ ĐỀ: Phân bổ 4 ý Đúng/Sai ra các Bài khác nhau trong cùng Chủ đề
+          // CHáº¾ Äá»˜ GOM THEO CHá»¦ Äá»€: PhÃ¢n bá»• 4 Ã½ ÄÃºng/Sai ra cÃ¡c BÃ i khÃ¡c nhau trong cÃ¹ng Chá»§ Ä‘á»
           for (let i = 0; i < numTfBlocks; i++) {
-            // Tìm chủ đề đang "đói" điểm nhất
+            // TÃ¬m chá»§ Ä‘á» Ä‘ang "Ä‘Ã³i" Ä‘iá»ƒm nháº¥t
             let bestTopicIdx = -1, maxTopicGap = -Infinity;
             topics.forEach((topic, ti) => {
               const topicTarget = flatDvList.filter(f => f.ti === ti).reduce((s, f) => s + f.target, 0);
@@ -889,7 +890,7 @@ export const useExamStore = create(
 
             if (bestTopicIdx !== -1) {
               const topicDvs = flatDvList.filter(f => f.ti === bestTopicIdx);
-              // Phân bổ 4 ý (B, H, VD, VDC) cho các bài trong chủ đề này (theo gap lớn nhất)
+              // PhÃ¢n bá»• 4 Ã½ (B, H, VD, VDC) cho cÃ¡c bÃ i trong chá»§ Ä‘á» nÃ y (theo gap lá»›n nháº¥t)
               const levels = ['biet', 'hieu', 'vanDung', 'vanDung'];
               levels.forEach(lvl => {
                 let bestDvIdxInTopic = -1, maxDvGap = -Infinity;
@@ -908,7 +909,7 @@ export const useExamStore = create(
             }
           }
         } else {
-          // CHẾ ĐỘ MẶC ĐỊNH: Dồn cả 4 ý vào 1 Bài
+          // CHáº¾ Äá»˜ Máº¶C Äá»ŠNH: Dá»“n cáº£ 4 Ã½ vÃ o 1 BÃ i
           for (let i = 0; i < numTfBlocks; i++) {
             let bestIdx = -1, maxGap = -Infinity;
             flatDvList.forEach((item, idx) => {
@@ -925,8 +926,8 @@ export const useExamStore = create(
           }
         }
 
-        // === ƯU TIÊN PHÂN BỔ TỰ LUẬN TRƯỚC ===
-        console.log('🎯 Autofill: Phân bổ tự luận trước (ưu tiên)');
+        // === Æ¯U TIÃŠN PHÃ‚N Bá»” Tá»° LUáº¬N TRÆ¯á»šC ===
+        console.log('ðŸŽ¯ Autofill: PhÃ¢n bá»• tá»± luáº­n trÆ°á»›c (Æ°u tiÃªn)');
         tuLuanPool.forEach(item => {
           let bestIdx = -1, maxGap = -Infinity;
           flatDvList.forEach((u, idx) => {
@@ -937,7 +938,7 @@ export const useExamStore = create(
           if (bestIdx === -1) return;
           const { ti, di } = flatDvList[bestIdx];
           const dv = topics[ti].donViKienThuc[di];
-          // Luôn tạo subItem với điểm chính xác từ pool
+          // LuÃ´n táº¡o subItem vá»›i Ä‘iá»ƒm chÃ­nh xÃ¡c tá»« pool
           if (!Array.isArray(dv.tuLuan.subItems)) dv.tuLuan.subItems = [];
           dv.tuLuan.subItems.push({
             id: crypto.randomUUID(),
@@ -945,7 +946,7 @@ export const useExamStore = create(
             diem: Math.round(item.pts * 100) / 100,
             level: item.lvl
           });
-          // Sync old fields từ subItems (để backward compat)
+          // Sync old fields tá»« subItems (Ä‘á»ƒ backward compat)
           dv.tuLuan.biet = dv.tuLuan.subItems.filter(s => s.level === 'biet').length;
           dv.tuLuan.hieu = dv.tuLuan.subItems.filter(s => s.level === 'hieu').length;
           dv.tuLuan.vanDung = dv.tuLuan.subItems.filter(s => s.level === 'vanDung').length;
@@ -955,8 +956,8 @@ export const useExamStore = create(
           flatDvList[bestIdx].current += item.pts;
         });
 
-        // === SAU ĐÓ MỚI PHÂN BỔ CÁC LOẠI CÂU KHÁC ===
-        console.log('📝 Autofill: Phân bổ các loại câu khác');
+        // === SAU ÄÃ“ Má»šI PHÃ‚N Bá»” CÃC LOáº I CÃ‚U KHÃC ===
+        console.log('ðŸ“ Autofill: PhÃ¢n bá»• cÃ¡c loáº¡i cÃ¢u khÃ¡c');
         otherItems.forEach(item => {
           let bestIdx = -1, maxGap = -Infinity;
           flatDvList.forEach((u, idx) => {
@@ -967,13 +968,13 @@ export const useExamStore = create(
           if (bestIdx === -1) return;
           const { ti, di } = flatDvList[bestIdx];
           const dv = topics[ti].donViKienThuc[di];
-          // Chỉ xử lý các loại câu không phải tự luận (đã xử lý riêng ở trên)
+          // Chá»‰ xá»­ lÃ½ cÃ¡c loáº¡i cÃ¢u khÃ´ng pháº£i tá»± luáº­n (Ä‘Ã£ xá»­ lÃ½ riÃªng á»Ÿ trÃªn)
           dv[item.type][item.lvl]++;
           flatDvList[bestIdx].current += item.pts;
         });
 
-        // === GÁN MÃ NĂNG LỰC CHỈ BÁO VÀ SỐ THỨ TỰ CÂU HỎI TỰ ĐỘNG ===
-        console.log('🔗 Autofill: Gán mã năng lực và nhãn câu hỏi');
+        // === GÃN MÃƒ NÄ‚NG Lá»°C CHá»ˆ BÃO VÃ€ Sá» THá»¨ Tá»° CÃ‚U Há»ŽI Tá»° Äá»˜NG ===
+        console.log('ðŸ”— Autofill: GÃ¡n mÃ£ nÄƒng lá»±c vÃ  nhÃ£n cÃ¢u há»i');
         
         const isContinuous = state.config.isContinuousNumbering;
         const numP1 = Math.round(tP1 / dP1);
@@ -985,12 +986,12 @@ export const useExamStore = create(
         let p3GlobalCounter = isContinuous ? (p2GlobalCounter + numP2) : 1;
         let tlGlobalCounter = isContinuous ? (p3GlobalCounter + numP3) : 1;
 
-        // Biến đếm số ý cho phần Đúng/Sai (để tính số câu)
+        // Biáº¿n Ä‘áº¿m sá»‘ Ã½ cho pháº§n ÄÃºng/Sai (Ä‘á»ƒ tÃ­nh sá»‘ cÃ¢u)
         let p2ItemCounter = 0;
 
-        // Tiền tố (Prefix)
+        // Tiá»n tá»‘ (Prefix)
         const p1Pre = isContinuous ? 'C' : 'TN';
-        const p2Pre = isContinuous ? 'C' : 'ĐS';
+        const p2Pre = isContinuous ? 'C' : 'ÄS';
         const p3Pre = isContinuous ? 'C' : 'TLN';
         const tlPre = isContinuous ? 'C' : 'TL';
 
@@ -1001,7 +1002,7 @@ export const useExamStore = create(
           vanDungCao: 0
         };
 
-        // Ta quét theo từng loại câu hỏi để đảm bảo số thứ tự chạy liên tục trong toàn đề
+        // Ta quÃ©t theo tá»«ng loáº¡i cÃ¢u há»i Ä‘á»ƒ Ä‘áº£m báº£o sá»‘ thá»© tá»± cháº¡y liÃªn tá»¥c trong toÃ n Ä‘á»
         ['nhieuLuaChon', 'dungSai', 'traLoiNgan', 'tuLuan'].forEach(type => {
           topics.forEach(t => {
             t.donViKienThuc.forEach(dv => {
@@ -1016,7 +1017,7 @@ export const useExamStore = create(
               const allSourceData = isMath ? mathIndicators : (isChem ? chemistryIndicators : (isBio ? biologyIndicators : (isPhy ? physicsIndicators : (isGeo ? geographyIndicators : []))));
 
               ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => {
-                // Tính toán số lượng câu thực tế để gán nhãn
+                // TÃ­nh toÃ¡n sá»‘ lÆ°á»£ng cÃ¢u thá»±c táº¿ Ä‘á»ƒ gÃ¡n nhÃ£n
                 let count = 0;
                 if (type === 'tuLuan') {
                   count = dv.tuLuan?.subItems?.filter(s => s.level === level).length || 0;
@@ -1046,7 +1047,7 @@ export const useExamStore = create(
                   // Key cho indicatorMap
                   const key = `${type}_${level}_${i}`;
                   
-                  // Gán nhãn câu hỏi
+                  // GÃ¡n nhÃ£n cÃ¢u há»i
                   let label = "";
                   if (type === 'nhieuLuaChon') {
                     label = state.examConfig.isCauTruc4213 ? `I.${p1GlobalCounter++}` : `${p1Pre}${p1GlobalCounter++}`;
@@ -1087,7 +1088,7 @@ export const useExamStore = create(
                     }
                   }
 
-                  // Gán mã năng lực
+                  // GÃ¡n mÃ£ nÄƒng lá»±c
                   let indCode = null;
                   if (matchedInds.length > 0) {
                     indCode = matchedInds[globalIndIdx[level] % matchedInds.length];
@@ -1110,6 +1111,75 @@ export const useExamStore = create(
         return { matrix: topics };
       }),
 
+      // =====================================================================
+      // [Má»šI - CT TOÃN 2018] Tra cá»©u vÃ  Ä‘iá»n tá»± Ä‘á»™ng YCCÄ tá»« CT2018
+      // HÃ m nÃ y HOÃ€N TOÃ€N Äá»˜C Láº¬P - khÃ´ng sá»­a báº¥t ká»³ logic cÅ© nÃ o
+      // Chá»‰ hoáº¡t Ä‘á»™ng khi: mÃ´n ToÃ¡n + lá»›p 6-12 + cáº¥u trÃºc 4-2-1-3
+      // =====================================================================
+      applyCtToan2018: () => set((state) => {
+        // Chá»‰ kÃ­ch hoáº¡t vá»›i mÃ´n ToÃ¡n
+        const monHoc = state.examHeader?.monHoc || '';
+        if (!/toÃ¡n|toan/i.test(monHoc)) return {};
+
+        // Láº¥y lá»›p tá»« examHeader (tÃ¬m trong chuá»—i: "Lá»›p 8", "lá»›p10", "8", ...)
+        const lopMatch = monHoc.match(/\b(6|7|8|9|10|11|12)\b/) ||
+                         (state.examHeader?.kyThi || '').match(/\b(6|7|8|9|10|11|12)\b/);
+        // Thá»­ tÃ¬m trong táº¥t cáº£ cÃ¡c field cá»§a examHeader
+        const allHeaderText = Object.values(state.examHeader || {}).join(' ');
+        const lopFromHeader = allHeaderText.match(/lá»›p\s*(6|7|8|9|10|11|12)\b/i) ||
+                              allHeaderText.match(/\bkhá»‘i\s*(6|7|8|9|10|11|12)\b/i) ||
+                              allHeaderText.match(/\b(6|7|8|9|10|11|12)\b/);
+        const lop = lopFromHeader ? parseInt(lopFromHeader[1]) : null;
+
+        if (!lop || lop < 6 || lop > 12) {
+          console.warn('âš ï¸ CT2018: KhÃ´ng xÃ¡c Ä‘á»‹nh Ä‘Æ°á»£c lá»›p. Vui lÃ²ng ghi rÃµ lá»›p trong header Ä‘á» (vÃ­ dá»¥: "ToÃ¡n 8", "Lá»›p 9").');
+          return {};
+        }
+
+        const topics = JSON.parse(JSON.stringify(state.matrix));
+        let updatedCount = 0;
+
+        topics.forEach(topic => {
+          (topic.donViKienThuc || []).forEach(dv => {
+            const tenDVKT = dv.noiDung || '';
+            if (!tenDVKT.trim()) return;
+
+            // Tra cá»©u YCCÄ tá»« cÆ¡ sá»Ÿ dá»¯ liá»‡u CT2018
+            const found = findYCCD('toÃ¡n', lop, tenDVKT);
+            if (!found) return;
+
+            // Tá»•ng há»£p YCCÄ theo má»©c Ä‘á»™ nháº­n thá»©c
+            const lines = [];
+            if (found.yccD.biet?.length) {
+              lines.push('â¶ Nháº­n biáº¿t:');
+              found.yccD.biet.forEach(y => lines.push(`  - ${y}`));
+            }
+            if (found.yccD.hieu?.length) {
+              lines.push('â· ThÃ´ng hiá»ƒu:');
+              found.yccD.hieu.forEach(y => lines.push(`  - ${y}`));
+            }
+            if (found.yccD.vanDung?.length) {
+              lines.push('â¸ Váº­n dá»¥ng:');
+              found.yccD.vanDung.forEach(y => lines.push(`  - ${y}`));
+            }
+
+            // Chá»‰ ghi Ä‘Ã¨ náº¿u YCCÄ hiá»‡n táº¡i trá»‘ng hoáº·c lÃ  máº·c Ä‘á»‹nh
+            if (!dv.yeuCauCanDat || dv.yeuCauCanDat.trim() === '') {
+              dv.yeuCauCanDat = lines.join('\n');
+              updatedCount++;
+            }
+          });
+        });
+
+        console.log(`âœ… CT2018: ÄÃ£ Ä‘iá»n YCCÄ cho ${updatedCount} Ä‘Æ¡n vá»‹ kiáº¿n thá»©c (Lá»›p ${lop})`);
+        return { matrix: topics };
+      }),
+
+      // Láº¥y danh sÃ¡ch gá»£i Ã½ ÄVKT theo mÃ´n vÃ  lá»›p (dÃ¹ng cho dropdown gá»£i Ã½ á»Ÿ Step2)
+      getSuggestedDVKTList: (monHoc, lop) => {
+        return getSuggestedDVKT(monHoc, lop);
+      },
+
       smartImportData: (rawText) => set((state) => {
         try {
           let newMatrix = [...state.matrix];
@@ -1119,14 +1189,14 @@ export const useExamStore = create(
 
           const text = rawText.trim();
           
-          // --- CẢI TIẾN 1: TÌM JSON TRONG VĂN BẢN ---
+          // --- Cáº¢I TIáº¾N 1: TÃŒM JSON TRONG VÄ‚N Báº¢N ---
           let jsonData = null;
           const jsonMatch = text.match(/\[\s*\{.*\}\s*\]|\{\s*".*"\s*:\s*.*\}/s);
           if (jsonMatch) {
             try {
               jsonData = JSON.parse(jsonMatch[0]);
             } catch (e) {
-              console.warn("Tìm thấy block giống JSON nhưng parse lỗi:", e);
+              console.warn("TÃ¬m tháº¥y block giá»‘ng JSON nhÆ°ng parse lá»—i:", e);
             }
           }
 
@@ -1135,12 +1205,12 @@ export const useExamStore = create(
             dataArray.forEach(topicData => {
               newMatrix.push({
                 id: crypto.randomUUID(),
-                tenChuDe: topicData.tenChuDe || topicData.topic || "Chủ đề mới",
+                tenChuDe: topicData.tenChuDe || topicData.topic || "Chá»§ Ä‘á» má»›i",
                 isNuaDauKi: false,
                 yeuCauCanDat: '',
                 donViKienThuc: (topicData.donViKienThucs || topicData.donViKienThuc || []).map(dv => ({
                   id: crypto.randomUUID(),
-                  noiDung: dv.tenDonVi || dv.noiDung || dv.content || "Bài mới",
+                  noiDung: dv.tenDonVi || dv.noiDung || dv.content || "BÃ i má»›i",
                   soTiet: Number(dv.soTiet) || 1,
                   isNuaDauKi: false,
                   yeuCauCanDat: dv.yccd || dv.yeuCauCanDat || "",
@@ -1154,7 +1224,7 @@ export const useExamStore = create(
             return { matrix: newMatrix };
           }
 
-          // --- CẢI TIẾN 2: XỬ LÝ DỮ LIỆU BẢNG (EXCEL/WORD/TEXT) ---
+          // --- Cáº¢I TIáº¾N 2: Xá»¬ LÃ Dá»® LIá»†U Báº¢NG (EXCEL/WORD/TEXT) ---
           const rows = text.split('\n').map(r => r.trim()).filter(r => r);
           let currentTopicIndex = newMatrix.length > 0 ? newMatrix.length - 1 : -1;
 
@@ -1163,18 +1233,18 @@ export const useExamStore = create(
             let tenChuDe = "", tenDonVi = "", soTiet = 1, yccd = "";
 
             if (columns.length === 1) {
-              // CHỈ CÓ 1 CỘT: Kiểm tra gắt gao hơn để tránh nhận nhầm Bài học là Chủ đề
-              const isTopic = /^(chương|chuong|chủ đề|chu de|phần|phan)\s+(\d+|[IVX]+)/i.test(columns[0]);
+              // CHá»ˆ CÃ“ 1 Cá»˜T: Kiá»ƒm tra gáº¯t gao hÆ¡n Ä‘á»ƒ trÃ¡nh nháº­n nháº§m BÃ i há»c lÃ  Chá»§ Ä‘á»
+              const isTopic = /^(chÆ°Æ¡ng|chuong|chá»§ Ä‘á»|chu de|pháº§n|phan)\s+(\d+|[IVX]+)/i.test(columns[0]);
               if (isTopic) {
                 tenChuDe = columns[0];
               } else {
                 tenDonVi = columns[0];
-                if (currentTopicIndex === -1) tenChuDe = "Chương/Chủ đề 1";
+                if (currentTopicIndex === -1) tenChuDe = "ChÆ°Æ¡ng/Chá»§ Ä‘á» 1";
               }
             } else if (columns.length === 2) {
               tenDonVi = columns[0];
               soTiet = columns[1];
-              if (currentTopicIndex === -1) tenChuDe = "Chương/Chủ đề 1";
+              if (currentTopicIndex === -1) tenChuDe = "ChÆ°Æ¡ng/Chá»§ Ä‘á» 1";
             } else if (columns.length === 3) {
               tenChuDe = columns[0]; tenDonVi = columns[1]; soTiet = columns[2];
             } else {
@@ -1182,7 +1252,7 @@ export const useExamStore = create(
             }
 
             if (tenChuDe) {
-              // Nếu đang có chủ đề mặc định trống, thì dùng luôn nó thay vì push mới
+              // Náº¿u Ä‘ang cÃ³ chá»§ Ä‘á» máº·c Ä‘á»‹nh trá»‘ng, thÃ¬ dÃ¹ng luÃ´n nÃ³ thay vÃ¬ push má»›i
               if (newMatrix.length === 1 && !newMatrix[0].tenChuDe && newMatrix[0].donViKienThuc.length === 1 && !newMatrix[0].donViKienThuc[0].noiDung) {
                 newMatrix[0].tenChuDe = tenChuDe;
                 currentTopicIndex = 0;
@@ -1207,12 +1277,12 @@ export const useExamStore = create(
           });
           return { matrix: newMatrix };
         } catch (error) {
-          alert("Lỗi phân tích dữ liệu!");
+          alert("Lá»—i phÃ¢n tÃ­ch dá»¯ liá»‡u!");
           return state;
         }
       }),
 
-      // Hàm mới: Chỉ nhập ĐVKT vào một Chủ đề nhất định
+      // HÃ m má»›i: Chá»‰ nháº­p ÄVKT vÃ o má»™t Chá»§ Ä‘á» nháº¥t Ä‘á»‹nh
       importDonVisToTopic: (topicId, rawText) => set((state) => {
         const text = rawText.trim();
         const rows = text.split('\n').map(r => r.trim()).filter(r => r);
@@ -1222,7 +1292,7 @@ export const useExamStore = create(
             if (topic.id !== topicId) return topic;
             
             const newDvs = [...topic.donViKienThuc];
-            // Nếu ĐVKT duy nhất đang trống, xóa nó đi để thay bằng list mới
+            // Náº¿u ÄVKT duy nháº¥t Ä‘ang trá»‘ng, xÃ³a nÃ³ Ä‘i Ä‘á»ƒ thay báº±ng list má»›i
             if (newDvs.length === 1 && !newDvs[0].noiDung) {
               newDvs.pop();
             }
@@ -1250,7 +1320,7 @@ export const useExamStore = create(
       removeTopic: (id) => set((state) => ({ matrix: state.matrix.filter(topic => topic.id !== id) })),
       updateTopicText: (id, field, value) => set((state) => ({ matrix: state.matrix.map(topic => topic.id === id ? { ...topic, [field]: value } : topic) })),
 
-      // GIỮ LẠI cho backward compatibility — nhưng KHÔNG DÙNG trong UI mới
+      // GIá»® Láº I cho backward compatibility â€” nhÆ°ng KHÃ”NG DÃ™NG trong UI má»›i
       updateQuestionCount: (id, type, level, value) => set((state) => ({
         matrix: state.matrix.map(topic => topic.id === id ? { ...topic, [type]: { ...(topic[type] || {}), [level]: Number(value) || 0 } } : topic)
       })),
@@ -1266,7 +1336,7 @@ export const useExamStore = create(
       name: 'exam-matrix-storage',
       version: 11,
       migrate: (persistedState, version) => {
-        // Migration v2 → v3: model API
+        // Migration v2 â†’ v3: model API
         if (version < 3) {
           const deprecatedModels = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
           if (!persistedState.selectedModel || deprecatedModels.includes(persistedState.selectedModel)) {
@@ -1274,7 +1344,7 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v3 → v4: noiDung + soTiet → donViKienThuc[]
+        // Migration v3 â†’ v4: noiDung + soTiet â†’ donViKienThuc[]
         if (version < 4) {
           if (persistedState.matrix && Array.isArray(persistedState.matrix)) {
             persistedState.matrix = persistedState.matrix.map(topic => {
@@ -1290,13 +1360,13 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v4 → v5: Chuyển question counts từ topic → ĐVKT[0]
+        // Migration v4 â†’ v5: Chuyá»ƒn question counts tá»« topic â†’ ÄVKT[0]
         if (version < 5) {
           if (persistedState.matrix && Array.isArray(persistedState.matrix)) {
             persistedState.matrix = persistedState.matrix.map(topic => {
               const dvList = topic.donViKienThuc || [];
               if (dvList.length > 0) {
-                // Copy topic-level counts vào ĐVKT đầu tiên (nếu ĐVKT chưa có)
+                // Copy topic-level counts vÃ o ÄVKT Ä‘áº§u tiÃªn (náº¿u ÄVKT chÆ°a cÃ³)
                 const firstDv = dvList[0];
                 if (!firstDv.nhieuLuaChon && topic.nhieuLuaChon) {
                   firstDv.nhieuLuaChon = { ...topic.nhieuLuaChon };
@@ -1310,7 +1380,7 @@ export const useExamStore = create(
                 if (!firstDv.tuLuan && topic.tuLuan) {
                   firstDv.tuLuan = { ...topic.tuLuan };
                 }
-                // Nếu ĐVKT có phanBo (từ autoFill cũ), chuyển phanBo → fields chính
+                // Náº¿u ÄVKT cÃ³ phanBo (tá»« autoFill cÅ©), chuyá»ƒn phanBo â†’ fields chÃ­nh
                 dvList.forEach(dv => {
                   if (dv.phanBo) {
                     if (!dv.nhieuLuaChon) dv.nhieuLuaChon = { ...(dv.phanBo.nhieuLuaChon || { biet: 0, hieu: 0, vanDung: 0 }) };
@@ -1319,7 +1389,7 @@ export const useExamStore = create(
                     if (!dv.tuLuan) dv.tuLuan = { ...(dv.phanBo.tuLuan || { biet: 0, hieu: 0, vanDung: 0 }), diemBiet: 0, diemHieu: 0, diemVanDung: 0 };
                     delete dv.phanBo;
                   }
-                  // Đảm bảo mọi ĐVKT đều có fields mặc định
+                  // Äáº£m báº£o má»i ÄVKT Ä‘á»u cÃ³ fields máº·c Ä‘á»‹nh
                   if (!dv.nhieuLuaChon) dv.nhieuLuaChon = { biet: 0, hieu: 0, vanDung: 0 };
                   if (!dv.dungSai) dv.dungSai = { biet: 0, hieu: 0, vanDung: 0 };
                   if (!dv.traLoiNgan) dv.traLoiNgan = { biet: 0, hieu: 0, vanDung: 0 };
@@ -1331,7 +1401,7 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v5 → v6: Thêm examConfig mặc định nếu chưa có
+        // Migration v5 â†’ v6: ThÃªm examConfig máº·c Ä‘á»‹nh náº¿u chÆ°a cÃ³
         if (version < 6) {
           if (!persistedState.examConfig) {
             persistedState.examConfig = {
@@ -1345,7 +1415,7 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v6 → v7: Bổ sung tongDiem, diemMoiYTuLuan nếu thiếu
+        // Migration v6 â†’ v7: Bá»• sung tongDiem, diemMoiYTuLuan náº¿u thiáº¿u
         if (version < 7) {
           if (persistedState.examConfig) {
             if (persistedState.examConfig.tongDiem === undefined) {
@@ -1357,24 +1427,24 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v8 → v9: Thêm tuLuanConfig cho cấu hình tự luận chi tiết
+        // Migration v8 â†’ v9: ThÃªm tuLuanConfig cho cáº¥u hÃ¬nh tá»± luáº­n chi tiáº¿t
         if (version < 9) {
           if (!persistedState.tuLuanConfig) {
             persistedState.tuLuanConfig = {
               enabled: false,
               questions: [
-                { id: 'tl_q1', label: 'Câu 1', subItems: [
+                { id: 'tl_q1', label: 'CÃ¢u 1', subItems: [
                   { diem: 0.5 },
                   { diem: 0.5 },
                 ]},
-                { id: 'tl_q2', label: 'Câu 2', subItems: [
+                { id: 'tl_q2', label: 'CÃ¢u 2', subItems: [
                   { diem: 0.5 },
                   { diem: 1.0 },
                 ]},
-                { id: 'tl_q3', label: 'Câu 3', subItems: [
+                { id: 'tl_q3', label: 'CÃ¢u 3', subItems: [
                   { diem: 1.0 },
                 ]},
-                { id: 'tl_q4', label: 'Câu 4', subItems: [
+                { id: 'tl_q4', label: 'CÃ¢u 4', subItems: [
                   { diem: 1.0 },
                 ]},
               ],
@@ -1382,14 +1452,14 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v9 → v10: Bỏ trường yccd khỏi tuLuanConfig subItems (YCCĐ chuyển sang đặc tả)
+        // Migration v9 â†’ v10: Bá» trÆ°á»ng yccd khá»i tuLuanConfig subItems (YCCÄ chuyá»ƒn sang Ä‘áº·c táº£)
         if (version < 10) {
           if (persistedState.tuLuanConfig && persistedState.tuLuanConfig.questions) {
             persistedState.tuLuanConfig.questions.forEach(q => {
               if (q.subItems) {
                 q.subItems = q.subItems.map(sub => {
                   const { yccd, ...rest } = sub;
-                  // Bỏ level nếu tồn tại (level sẽ được auto-gán khi auto-fill)
+                  // Bá» level náº¿u tá»“n táº¡i (level sáº½ Ä‘Æ°á»£c auto-gÃ¡n khi auto-fill)
                   const { level: _level, ...rest2 } = rest;
                   return rest2;
                 });
@@ -1398,14 +1468,14 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v7 → v8: Thêm subItems[] cho tự luận linh hoạt (giữ backward compat)
+        // Migration v7 â†’ v8: ThÃªm subItems[] cho tá»± luáº­n linh hoáº¡t (giá»¯ backward compat)
         if (version < 8) {
           if (persistedState.matrix && Array.isArray(persistedState.matrix)) {
             persistedState.matrix.forEach(topic => {
               (topic.donViKienThuc || []).forEach(dv => {
                 if (dv.tuLuan) {
                   if (!Array.isArray(dv.tuLuan.subItems)) {
-                    // Nếu có điểm cũ, chuyển thành subItems mặc định
+                    // Náº¿u cÃ³ Ä‘iá»ƒm cÅ©, chuyá»ƒn thÃ nh subItems máº·c Ä‘á»‹nh
                     const subs = [];
                     if (dv.tuLuan.biet > 0) {
                       for (let i = 0; i < dv.tuLuan.biet; i++) {
@@ -1431,7 +1501,7 @@ export const useExamStore = create(
             });
           }
           if (persistedState.examConfig) {
-            // Bổ sung cấu trúc Toán 4-2-4 nếu môn là Toán
+            // Bá»• sung cáº¥u trÃºc ToÃ¡n 4-2-4 náº¿u mÃ´n lÃ  ToÃ¡n
             if (isMathSubject(persistedState.examHeader?.monHoc)) {
               persistedState.examConfig.tongDiemP1 = 4.0;
               persistedState.examConfig.diemMoiCauP1 = 0.25;
@@ -1443,7 +1513,7 @@ export const useExamStore = create(
           }
         }
 
-        // Migration v10 → v11: Force-fix tiLeNhanThuc = 40-30-30 (fix bug migration v8 set sai cho Toán)
+        // Migration v10 â†’ v11: Force-fix tiLeNhanThuc = 40-30-30 (fix bug migration v8 set sai cho ToÃ¡n)
         if (version < 11) {
           if (persistedState.examConfig && persistedState.examConfig.tiLeNhanThuc) {
             persistedState.examConfig.tiLeNhanThuc = { biet: 40, hieu: 30, vanDung: 30 };
@@ -1456,5 +1526,5 @@ export const useExamStore = create(
   )
 );
 
-// Export helpers cho các component sử dụng
+// Export helpers cho cÃ¡c component sá»­ dá»¥ng
 export { getTopicSum, getTopicTuLuanDiem, getTotalSoTiet, isNewMathStructure };

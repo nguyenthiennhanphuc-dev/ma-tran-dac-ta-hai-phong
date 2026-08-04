@@ -80,7 +80,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
   const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
@@ -806,6 +806,19 @@ export default function Step2_MatrixBuilder() {
           <button onClick={autoFillMatrix} className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-violet-700 hover:to-indigo-700 transition-all font-bold">
             <Sparkles size={18} /> Auto-Fill
           </button>
+          {/* [MỚI - CT TOÁN 2018] Nút gợi ý YCCĐ, chỉ hiển thị với môn Toán */}
+          {isMath && (
+            <button
+              onClick={() => {
+                applyCtToan2018();
+                alert('✅ Đã gợi ý YCCĐ chuẩn CT Toán 2018 vào cột "Yêu cầu cần đạt" (Step 3). Những ô đã có nội dung sẽ không bị ghi đè.');
+              }}
+              title="Tự động điền Yêu cầu cần đạt chuẩn CT Toán 2018 vào bảng đặc tả (Step 3)"
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all font-bold text-sm"
+            >
+              📚 Gợi ý YCCĐ CT2018
+            </button>
+          )}
         </div>
       </div>
 
