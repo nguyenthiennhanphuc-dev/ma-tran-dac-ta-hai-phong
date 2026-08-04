@@ -93,6 +93,8 @@ export default function Step2_MatrixBuilder() {
   const [showTuLuanModal, setShowTuLuanModal] = useState(false);
   const [importTargetTopicId, setImportTargetTopicId] = useState(null);
   const [indicatorModal, setIndicatorModal] = useState({ show: false, topicId: null, dvId: null, selected: [] });
+  // [CT TOAN 2018] Dialog chon lop de go i y YCCD
+  const [ct2018Dialog, setCt2018Dialog] = useState({ show: false, lop: 8 });
 
   // Nguồn dữ liệu nhóm năng lực tùy theo môn
   const compGroups = isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : (isBiology ? biologyCompetencyGroups : (isPhysics ? physicsCompetencyGroups : (isGeography ? geographyCompetencyGroups : null))));
@@ -806,19 +808,17 @@ export default function Step2_MatrixBuilder() {
           <button onClick={autoFillMatrix} className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-violet-700 hover:to-indigo-700 transition-all font-bold">
             <Sparkles size={18} /> Auto-Fill
           </button>
-          {/* [MỚI - CT TOÁN 2018] Nút gợi ý YCCĐ, chỉ hiển thị với môn Toán */}
+          {/* [MOI - CT TOAN 2018] Nut goi y YCCD, chi hien thi voi mon Toan */}
           {isMath && (
             <button
-              onClick={() => {
-                applyCtToan2018();
-                alert('✅ Đã gợi ý YCCĐ chuẩn CT Toán 2018 vào cột "Yêu cầu cần đạt" (Step 3). Những ô đã có nội dung sẽ không bị ghi đè.');
-              }}
-              title="Tự động điền Yêu cầu cần đạt chuẩn CT Toán 2018 vào bảng đặc tả (Step 3)"
+              onClick={() => setCt2018Dialog({ show: true, lop: 8 })}
+              title="Tu dong dien Yeu cau can dat chuan CT Toan 2018 vao bang dac ta (Step 3)"
               className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all font-bold text-sm"
             >
               📚 Gợi ý YCCĐ CT2018
             </button>
           )}
+
         </div>
       </div>
 
@@ -1543,6 +1543,71 @@ export default function Step2_MatrixBuilder() {
                   Xác nhận & Lưu
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ [MOI] MODAL CHON LOP CT TOAN 2018 ============ */}
+      {ct2018Dialog.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-3xl">📚</span>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">Gợi ý YCCĐ chuẩn CT Toán 2018</h3>
+                <p className="text-sm text-slate-500">Chọn lớp để lấy đúng yêu cầu cần đạt</p>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Lớp <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-7 gap-2">
+                {[6, 7, 8, 9, 10, 11, 12].map(l => (
+                  <button
+                    key={l}
+                    onClick={() => setCt2018Dialog(prev => ({ ...prev, lop: l }))}
+                    className={`py-3 rounded-xl font-bold text-base transition-all border-2 ${
+                      ct2018Dialog.lop === l
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-lg scale-105'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300 hover:bg-amber-50'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-sm text-amber-800">
+              <strong>Lưu ý:</strong> Chỉ những ô YCCĐ còn trống mới được điền tự động.
+              Ô đã có nội dung sẽ không bị ghi đè.
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCt2018Dialog({ show: false, lop: 8 })}
+                className="flex-1 py-2.5 rounded-xl border-2 border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  const lopChon = ct2018Dialog.lop;
+                  applyCtToan2018(lopChon);
+                  setCt2018Dialog({ show: false, lop: lopChon });
+                  alert(
+                    `✅ Đã áp dụng YCCĐ chuẩn CT Toán 2018 cho Lớp ${lopChon}!\n\n` +
+                    `➡ Chuyển sang Tab "Bảng Đặc Tả" (Step 3) để xem kết quả.\n` +
+                    `📝 Mở Console trình duyệt (F12) để xem chi tiết ĐVKT đã khớp/không khớp.`
+                  );
+                }}
+                className="flex-2 flex-grow py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold hover:from-amber-600 hover:to-orange-600 shadow-lg transition-all"
+              >
+                📚 Áp dụng cho Lớp {ct2018Dialog.lop}
+              </button>
             </div>
           </div>
         </div>
