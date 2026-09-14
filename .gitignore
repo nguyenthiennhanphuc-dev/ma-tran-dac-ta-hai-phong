@@ -35,6 +35,7 @@ __pycache__/
 venv/
 .venv/
 env/
+requirements.txt
 
 # Temp graphs and export files
 temp_graphs/
