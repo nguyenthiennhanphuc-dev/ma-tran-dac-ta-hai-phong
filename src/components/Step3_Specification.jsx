@@ -1,13 +1,21 @@
 // Tên file: src/components/Step3_Specification.jsx
 import React, { useState } from 'react';
-import { useExamStore, getTopicSum, getTopicTuLuanDiem, isNewMathStructure } from '../store/useExamStore';
-import { Copy } from 'lucide-react';
+import { useExamStore, getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, isNewMathStructure } from '../store/useExamStore';
+import { Copy, Trash2 } from 'lucide-react';
 import { mathCompetencyGroups } from './data/mathIndicators';
+import { khtnCompetencyGroupsByLop, khtnCompetencyGroups } from './data/khtnIndicators';
 import { formatGroupedLabels } from '../utils/labelUtils';
+import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel, updateYccdForLevel } from '../utils/specTableHelper';
+import { suggestKhtnCode, formatYccdWithCode, KHTN_COMPETENCY_GROUPS, KHTN_CODE_MAP, getRowKhtnCode } from '../data/khtnCompetencyData';
 
 export default function Step3_Specification() {
-  const { matrix, config, examConfig, examHeader, updateTopicText, updateDvYccd, importYccdFromAIText } = useExamStore();
+  const {
+    matrix, config, examConfig, examHeader, khtnConfig, tuLuanConfig,
+    updateTopicText, updateDvYccd, clearDvYccd, clearTopicYccd, clearBatchYccd, clearAllYccd,
+    importYccdFromAIText, updateConfig, updateLevelIndicatorCode
+  } = useExamStore();
   const [yccdModal, setYccdModal] = useState({ show: false, topicId: null, text: '' });
+  const [clearModal, setClearModal] = useState({ show: false, selectedDvs: new Set() });
 
   // =======================================================================
   // NHIỆM VỤ 1: Hàm xử lý ẩn/hiện mã năng lực trong YCCĐ
@@ -29,6 +37,12 @@ export default function Step3_Specification() {
   const isHoaMon = /hóa|hoá/i.test(examHeader?.monHoc || '');
   const isToanMon = /toán|toan/i.test(examHeader?.monHoc || '');
   const isSinhMon = /sinh/i.test(examHeader?.monHoc || '');
+  const isKHTNMon = Boolean(
+    examConfig.subject === 'khtn' || 
+    examConfig.isCauTruc4213 || 
+    /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examHeader?.monHoc || '') ||
+    /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
+  );
 
   // =======================================================================
   // NHIỆM VỤ 1 (Hướng A): Tự động phát hiện mã năng lực Hóa từ nội dung YCCĐ
@@ -128,14 +142,63 @@ export default function Step3_Specification() {
     return null;
   };
 
+  // Ham lay ma nang luc KHTN chuẩn theo CTGDPT 2018 (NT1-NT7, TH1-TH6, VD1-VD2)
+  const getKhtnIndicatorForLevel = (text, level) => {
+    if (!text || !isKHTNMon || config.showCompetencyCode === false) return null;
+    if (level === 'biet') return 'NT1';
+    if (level === 'hieu') return 'NT3';
+    if (level === 'vanDung') return 'VD1';
+    if (level === 'vanDungCao') return 'VD2';
+    return null;
+  };
+
   // =======================================================================
-  // HELPERS: Tính tổng từ tất cả ĐVKT
+  // NHIỆM VỤ KHTN: Render badge mã năng lực KHTN (NT/TH/VD) với màu sắc
   // =======================================================================
+  const renderKhtnCodeBadge = (code) => {
+    if (!code) return null;
+    const entry = KHTN_CODE_MAP[code];
+    if (!entry) return <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">{code}</span>;
+    let bg = 'bg-blue-100 text-blue-800';
+    if (entry.groupKey === 'TH') bg = 'bg-green-100 text-green-800';
+    if (entry.groupKey === 'VD') bg = 'bg-orange-100 text-orange-800';
+    return (
+      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${bg}`} title={entry.fullText}>
+        {code}
+      </span>
+    );
+  };
+
+  // Parse và highlight mã năng lực KHTN trong chuỗi text
+  const renderYccdWithKhtnHighlight = (text) => {
+    if (!text || !isKHTNMon || config.showCompetencyCode === false) return text;
+    const CODE_REGEX = /(NT[1-7]|TH[1-6]|VD[12])/g;
+    if (!CODE_REGEX.test(text)) return text;
+    // Tách text thành các phần, highlight mã
+    const parts = text.split(/(NT[1-7]|TH[1-6]|VD[12])/g);
+    return parts.map((part, i) => {
+      if (/^(NT[1-7]|TH[1-6]|VD[12])$/.test(part)) {
+        let bg = 'bg-blue-100 text-blue-800';
+        if (part.startsWith('TH')) bg = 'bg-green-100 text-green-800';
+        if (part.startsWith('VD')) bg = 'bg-orange-100 text-orange-800';
+        return <span key={i} className={`inline-flex items-center px-1 rounded text-[10px] font-bold mx-0.5 ${bg}`}>{part}</span>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+
   const sumAll = (type, level) => matrix.reduce((sum, topic) => sum + getTopicSum(topic, type, level), 0);
+
+  const fmtTuLuanCau = (level) => {
+    const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    if (cau === 0) return '';
+    return cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+  };
 
   const getIndicatorsForCell = (dv, type, level) => {
     if (!dv || !dv.indicatorMap) return null;
-    const count = type === 'dungSai' && level === 'vanDung' 
+    let count = type === 'dungSai' && level === 'vanDung' 
         ? ((Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0))
         : (Number(dv[type]?.[level]) || 0);
     
@@ -156,10 +219,14 @@ export default function Step3_Specification() {
   // Helpers: Format giá trị kèm mã năng lực (NT, TH, VD) hoặc chỉ báo
   const getCellDetailsFor4213 = (dv, type, level) => {
     if (!dv || !dv.indicatorMap) return [];
-    const count = type === 'dungSai' && level === 'vanDung' 
+    let count = type === 'dungSai' && level === 'vanDung' 
         ? ((Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0))
         : (Number(dv[type]?.[level]) || 0);
     
+    if (type === 'tuLuan') {
+        const subs = (dv.tuLuan?.subItems || []).filter(s => s.level === level);
+        if (subs.length > 0) count = subs.length;
+    }
     if (count === 0) return [];
     const details = [];
     if (type === 'dungSai' && level === 'vanDung') {
@@ -182,35 +249,79 @@ export default function Step3_Specification() {
     return details;
   };
 
-  const fmt4213 = (val, level, dv, type) => {
+  const normalizeKhtnCode = (code) => {
+    if (!code) return '';
+    if (code === 'KHTN1.1') return 'NT1';
+    if (code === 'KHTN1.2') return 'NT2';
+    if (code === 'KHTN1.3') return 'NT3';
+    if (code === 'KHTN1.4') return 'NT6';
+    if (code === 'KHTN3.1') return 'VD1';
+    if (code === 'KHTN2.4' || code === 'KHTN2.2') return 'VD2';
+    return code;
+  };
+
+  const fmt4213 = (val, level, dv, type, rowActiveCode = null) => {
     if (!val) return '';
+    if (config.showCompetencySymbol === false) return <span className="font-bold text-xs">{val}</span>;
     const details = getCellDetailsFor4213(dv, type, level);
-    if (details.length === 0) return <span>{val} {type !== 'nhieuLuaChon' ? 'ý' : ''}</span>;
+
+    if (isKHTNMon) {
+      const code = rowActiveCode || getRowKhtnCode(dv, level);
+      const labels = [];
+      details.forEach(d => {
+        const m = typeof d === 'object' ? d : { code: d, label: '' };
+        if (m.label) labels.push(m.label);
+      });
+      return (
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="font-bold text-[11px]">{val}</span>
+          <span className="text-[10px] font-extrabold leading-[10px] text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+            {code ? String(code).replace(/[\[\]]/g, '') : ''}
+          </span>
+          {labels.length > 0 && (
+            <span className="text-[10px] text-blue-700 font-black leading-[10px]">
+              {formatGroupedLabels(labels)}
+            </span>
+          )}
+        </div>
+      );
+    }
+
     const grouped = {};
     details.forEach(d => {
-       const m = typeof d === 'object' ? d : { code: d, label: '' };
-       const code = m.code || (level === 'biet' ? 'NT' : level === 'hieu' ? 'TH' : 'VD');
-       if (!grouped[code]) grouped[code] = [];
-       if (m.label) grouped[code].push(m.label);
+      const m = typeof d === 'object' ? d : { code: d, label: '' };
+      const c = m.code || (level === 'biet' ? 'NT' : level === 'hieu' ? 'TH' : 'VD');
+      if (!grouped[c]) grouped[c] = [];
+      if (m.label) grouped[c].push(m.label);
     });
 
     return (
       <div className="flex flex-col items-center gap-0.5">
-         <span className="font-bold text-[11px]">{val}</span>
-         {Object.entries(grouped).map(([code, labels], idx) => (
-           <React.Fragment key={idx}>
-             <span className="text-[10px] text-slate-500 font-extrabold leading-[10px]">{code}</span>
-             {labels.length > 0 && <span className="text-[10px] text-blue-700 font-black leading-[10px]">{formatGroupedLabels(labels)}</span>}
-           </React.Fragment>
-         ))}
+        <span className="font-bold text-[11px]">{val}</span>
+        {Object.entries(grouped).map(([c, labs], i) => (
+          <div key={i} className="flex flex-col items-center">
+            <span className="text-[10px] font-extrabold leading-[10px] text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200">
+              {c ? String(c).replace(/[\[\]]/g, '') : ''}
+            </span>
+            {labs.length > 0 && (
+              <span className="text-[10px] text-blue-700 font-black leading-[10px]">
+                {formatGroupedLabels(labs)}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
     );
   };
 
-  const fmtNLC = (val, level, dv, type) => {
-    if (examConfig.isCauTruc4213) return fmt4213(val, level, dv, type);
+  const fmtNLC = (val, level, dv, type, rowActiveCode = null) => {
+    if (examConfig.isCauTruc4213) return fmt4213(val, level, dv, type, rowActiveCode);
     if (!val) return '';
     if (config.showCompetencySymbol === false) return <span>{val}</span>;
+    if (isKHTNMon) {
+      const tag = rowActiveCode || getRowKhtnCode(dv, level);
+      return <span>{val}<br/><span className="text-[10px] text-blue-700 font-bold">{tag ? String(tag).replace(/[\[\]]/g, '') : ''}</span></span>;
+    }
     let tag = level === 'biet' ? 'NT' : level === 'hieu' ? 'TH' : 'VD';
     let mappedInd = getIndicatorsForCell(dv, type, level);
     if (mappedInd) {
@@ -221,13 +332,17 @@ export default function Step3_Specification() {
       if (!indicator) indicator = getIndicatorForLevel(dv?.yeuCauCanDat, level);
       if (indicator) tag = indicator;
     }
-    return <span>{val}<br/><span className="text-[10px] text-slate-500">({tag})</span></span>;
+    return <span>{val}<br/><span className="text-[10px] text-slate-500">({tag ? String(tag).replace(/[\[\]]/g, '') : ''})</span></span>;
   };
   
-  const fmtY = (val, level, dv, type) => {
-    if (examConfig.isCauTruc4213) return fmt4213(val, level, dv, type);
+  const fmtY = (val, level, dv, type, rowActiveCode = null) => {
+    if (examConfig.isCauTruc4213) return fmt4213(val, level, dv, type, rowActiveCode);
     if (!val) return '';
     if (config.showCompetencySymbol === false) return <span>{val} ý</span>;
+    if (isKHTNMon) {
+      const tag = rowActiveCode || getRowKhtnCode(dv, level);
+      return <span>{val} ý<br/><span className="text-[10px] text-blue-700 font-bold">{tag ? String(tag).replace(/[\[\]]/g, '') : ''}</span></span>;
+    }
     let tag = level === 'biet' ? 'NT' : level === 'hieu' ? 'TH' : 'VD';
     let mappedInd = getIndicatorsForCell(dv, type, level);
     if (mappedInd) {
@@ -242,7 +357,7 @@ export default function Step3_Specification() {
   };
 
   const getTopicTuLuanPoints = (topic) =>
-    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung');
+    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung') + getTopicTuLuanDiem(topic, 'diemVanDungCao');
 
   const getColumnTotalPoints = (type) => {
     if (type === 'tuLuan') return Math.round(matrix.reduce((sum, t) => sum + getTopicTuLuanPoints(t), 0) * 100) / 100;
@@ -266,31 +381,79 @@ export default function Step3_Specification() {
       return;
     }
 
-    let prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi. Hãy viết "Yêu cầu cần đạt" cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+    const monHoc = examHeader?.monHoc || (isKHTNMon ? 'Khoa học tự nhiên' : 'Môn học');
+    // Ưu tiên: KHTN → lấy từ nút chọn lớp; môn khác → bóc số lớp từ tên môn (vd "Toán 6" → "6")
+    const lop = isKHTNMon
+      ? (khtnConfig?.lop || '8')
+      : (examHeader?.lop || examHeader?.monHoc?.match(/\b([6-9]|1[0-2])\b/)?.[0] || '');
+
+    let prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn ${monHoc}${lop ? ` lớp ${lop}` : ''} theo Chương trình GDPT 2018 (Công văn 4956/SGDĐT). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
     prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể. Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
 
     dvList.forEach((dv, index) => {
       // Tính tổng số lượng câu/ý của từng mức độ cho ĐVKT này
       const sumBiet = (dv.nhieuLuaChon?.biet || 0) + (dv.dungSai?.biet || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.biet || 0) : 0) + (typeof dv.tuLuan?.biet === 'object' ? dv.tuLuan.biet.y : (dv.tuLuan?.biet || 0));
       const sumHieu = (dv.nhieuLuaChon?.hieu || 0) + (dv.dungSai?.hieu || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.hieu || 0) : 0) + (typeof dv.tuLuan?.hieu === 'object' ? dv.tuLuan.hieu.y : (dv.tuLuan?.hieu || 0));
-      const sumVD = (dv.nhieuLuaChon?.vanDung || 0) + (dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.vanDung || 0) : 0) + (typeof dv.tuLuan?.vanDung === 'object' ? dv.tuLuan.vanDung.y : (dv.tuLuan?.vanDung || 0));
+      const sumVD = (dv.nhieuLuaChon?.vanDung || 0) + (dv.dungSai?.vanDung || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.vanDung || 0) : 0) + (typeof dv.tuLuan?.vanDung === 'object' ? dv.tuLuan.vanDung.y : (dv.tuLuan?.vanDung || 0));
+      const sumVDC = (Number(dv.dungSai?.vanDungCao) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0);
 
       let requiredLevels = [];
       if (sumBiet > 0) requiredLevels.push("Nhận biết");
       if (sumHieu > 0) requiredLevels.push("Thông hiểu");
       if (sumVD > 0) requiredLevels.push("Vận dụng");
+      if (sumVDC > 0) requiredLevels.push("Vận dụng cao");
 
       // Nếu bài học này có câu hỏi thì mới yêu cầu AI viết YCCĐ
       if (requiredLevels.length > 0) {
         prompt += `**${index + 1}. ${dv.noiDung || 'Chưa rõ'}**\n`;
-        prompt += `- Mức độ cần viết: [ ${requiredLevels.join(", ")} ]\n\n`;
+        if (isKHTNMon) {
+          const reqWithCodes = [];
+          if (sumBiet > 0) reqWithCodes.push(`  + Nhận biết [${getRowKhtnCode(dv, 'biet')}]`);
+          if (sumHieu > 0) reqWithCodes.push(`  + Thông hiểu [${getRowKhtnCode(dv, 'hieu')}]`);
+          if (sumVD > 0) reqWithCodes.push(`  + Vận dụng [${getRowKhtnCode(dv, 'vanDung')}]`);
+          if (sumVDC > 0) reqWithCodes.push(`  + Vận dụng cao [${getRowKhtnCode(dv, 'vanDungCao')}]`);
+          prompt += `- Mức độ và mã năng lực cần viết:\n${reqWithCodes.join('\n')}\n\n`;
+        } else {
+          prompt += `- Mức độ cần viết: [ ${requiredLevels.join(", ")} ]\n\n`;
+        }
       }
     });
 
-    prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
-    prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
-    prompt += `2. CỰC KỲ NGẮN GỌN: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG). Tuyệt đối không liệt kê dài dòng, không giải thích thêm.\n`;
-    prompt += `3. Định dạng đầu ra mong muốn:\n   - Nhận biết: [Ghi 1 câu ngắn gọn...]\n   - Thông hiểu: [Ghi 1 câu ngắn gọn...]`;
+    if (isKHTNMon) {
+      prompt += `📌 CHÚ THÍCH BỘ MÃ NĂNG LỰC KHTN (CĂN CỨ CTGDPT 2018):\n`;
+      prompt += `► Nhóm Nhận thức (NT):\n`;
+      prompt += `  [NT1] Nhận biết: Nhận biết, kể tên, phát biểu, nêu được đối tượng, khái niệm, quy luật, quá trình tự nhiên\n`;
+      prompt += `  [NT2] Thông hiểu: Trình bày, mô tả bằng ngôn ngữ nói, viết, công thức, sơ đồ, biểu đồ\n`;
+      prompt += `  [NT3] Thông hiểu: So sánh, phân loại, phân biệt theo các tiêu chí khác nhau\n`;
+      prompt += `  [NT4] Thông hiểu: Phân tích đặc điểm sự vật, hiện tượng theo logic nhất định\n`;
+      prompt += `  [NT5] Thông hiểu: Tìm từ khoá, kết nối thông tin, lập dàn ý văn bản khoa học\n`;
+      prompt += `  [NT6] Vận dụng: Giải thích quan hệ nhân quả, cấu tạo – chức năng\n`;
+      prompt += `  [NT7] Vận dụng: Nhận ra điểm sai, chỉnh sửa, đưa nhận định phê phán\n`;
+      prompt += `► Nhóm Tìm hiểu tự nhiên (TH):\n`;
+      prompt += `  [TH1] Thông hiểu: Đề xuất vấn đề, đặt câu hỏi khoa học\n`;
+      prompt += `  [TH2] Thông hiểu: Đưa phán đoán, xây dựng giả thuyết\n`;
+      prompt += `  [TH3] Thông hiểu: Lập kế hoạch, thiết kế phương án thí nghiệm\n`;
+      prompt += `  [TH4] Vận dụng: Thực hiện thí nghiệm, thu thập và xử lý dữ liệu, rút ra kết luận\n`;
+      prompt += `  [TH5] Vận dụng: Viết báo cáo, vẽ hình, thiết kế mô hình hoặc dụng cụ\n`;
+      prompt += `  [TH6] Vận dụng: Ra quyết định, đề xuất giải pháp xử lý vấn đề\n`;
+      prompt += `► Nhóm Vận dụng kiến thức (VD):\n`;
+      prompt += `  [VD1] Vận dụng: Vận dụng giải thích hiện tượng thực tế, giải bài tập định lượng\n`;
+      prompt += `  [VD2] Vận dụng cao: Đề xuất giải pháp bảo vệ môi trường, phát triển bền vững, ứng phó biến đổi khí hậu\n\n`;
+
+      prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
+      prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
+      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi theo CT GDPT 2018 tương ứng với mã năng lực được giao.\n`;
+      prompt += `3. Định dạng đầu ra BẮT BUỘC KÈM ĐÚNG MÃ CHỈ BÁO NĂNG LỰC KHTN:\n`;
+      prompt += `   - Nhận biết [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Nhận biết [NT1]: Nêu được...]\n`;
+      prompt += `   - Thông hiểu [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Thông hiểu [NT3]: Phân biệt được... (hoặc [NT2], [TH3] nếu là thí nghiệm)]\n`;
+      prompt += `   - Vận dụng [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [VD1]: Vận dụng kiến thức giải thích... (hoặc [TH4], [NT6])]\n`;
+      prompt += `   - Vận dụng cao [VD2]: [Ghi đúng 1 câu ngắn gọn... Đề xuất giải pháp/biện pháp thực tiễn, bảo vệ môi trường]`;
+    } else {
+      prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
+      prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
+      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi theo CT GDPT 2018 (Nêu được, Trình bày được, Phân loại/Giải thích được, Vận dụng được, Đề xuất giải pháp...).\n`;
+      prompt += `3. Định dạng đầu ra mong muốn:\n   - Nhận biết: [Ghi 1 câu ngắn gọn...]\n   - Thông hiểu: [Ghi 1 câu ngắn gọn...]\n   - Vận dụng: [Ghi 1 câu ngắn gọn...]\n   - Vận dụng cao: [Ghi 1 câu ngắn gọn...]`;
+    }
 
     try {
       await navigator.clipboard.writeText(prompt);
@@ -301,103 +464,291 @@ export default function Step3_Specification() {
   };
 
   // =======================================================================
-  // BUILD ROWS: Double-loop — topic → ĐVKT
+  // BUILD ROWS: Topic → ĐVKT → Mức độ nhận thức (chuẩn CV 4956 / 3280)
+  // Mỗi mức độ nhận thức của 1 ĐVKT được chia thành 1 dòng riêng biệt
   // =======================================================================
   const buildBodyRows = () => {
     const rows = [];
     matrix.forEach((topic, topicIdx) => {
       const dvList = topic.donViKienThuc || [];
-      const dvCount = dvList.length;
+      // Tổng số dòng của toàn bộ chủ đề
+      const topicTotalRows = dvList.reduce((sum, dv) => {
+        const active = getActiveLevelsForDv(dv, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+        return sum + active.length;
+      }, 0) || 1;
+
+      let isFirstTopicRow = true;
 
       dvList.forEach((dv, dvIdx) => {
-        const isFirst = dvIdx === 0;
+        const activeLevels = getActiveLevelsForDv(dv, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+        const dvTotalRows = activeLevels.length;
+        const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
 
-        rows.push(
-          <tr key={`${topic.id}_${dv.id}`} className="hover:bg-slate-50 transition-colors">
-            {/* CỘT TT — rowSpan */}
-            {isFirst && (
-              <td rowSpan={dvCount} className="border border-slate-300 p-2 text-center font-medium text-slate-600 align-top">{topicIdx + 1}</td>
-            )}
+        activeLevels.forEach((lvl, lvlIdx) => {
+          const isFirstDvRow = lvlIdx === 0;
+          const levelYccd = parsedYccd[lvl] || '';
+          const rowActiveCode = isKHTNMon ? getRowKhtnCode(dv, lvl, levelYccd) : null;
 
-            {/* CỘT CHỦ ĐỀ — rowSpan */}
-            {isFirst && (
-              <td rowSpan={dvCount} className="border border-slate-300 p-2 text-slate-700 font-medium align-top relative group">
-                <div className="flex flex-col gap-2">
-                  <span>{topic.tenChuDe || <span className="text-gray-400 italic">...</span>}</span>
-                  <div className="mt-2 text-center">
-                    <button
-                      onClick={() => handleCopyPrompt(topic)}
-                      className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow hover:shadow-md hover:scale-105 transition-all w-full"
-                      title="Tự động nặn câu lệnh để dán vào ChatGPT/Gemini"
-                    >
-                      <Copy size={13} /> Copy Lệnh AI
-                    </button>
-                    <button
-                      onClick={() => setYccdModal({ show: true, topicId: topic.id, text: '' })}
-                      className="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded font-bold shadow hover:shadow-md transition-all w-full flex items-center justify-center gap-1.5"
-                    >
-                      📥 Dán YCCĐ từ AI
-                    </button>
+          // Lọc chi tiết indicatorMap cho mức độ này
+          const levelDetails = [];
+          if (examConfig.isCauTruc4213 && dv.indicatorMap) {
+            Object.entries(dv.indicatorMap).forEach(([k, val]) => {
+              if (!val) return;
+              const parts = k.split('_');
+              const indLvl = parts[1];
+              if (indLvl === lvl || (!isKHTNMon && lvl === 'vanDung' && indLvl === 'vanDungCao')) {
+                levelDetails.push(val);
+              }
+            });
+          }
+
+          rows.push(
+            <tr key={`${topic.id}_${dv.id}_${lvl}`} className="hover:bg-slate-50 transition-colors">
+              {/* CỘT TT — rowSpan cho toàn bộ chủ đề */}
+              {isFirstTopicRow && (
+                <td rowSpan={topicTotalRows} className="border border-slate-300 p-2 text-center font-medium text-slate-600 align-top">
+                  {topicIdx + 1}
+                </td>
+              )}
+
+              {/* CỘT CHỦ ĐỀ — rowSpan cho toàn bộ chủ đề */}
+              {isFirstTopicRow && (
+                <td rowSpan={topicTotalRows} className="border border-slate-300 p-2 text-slate-700 font-medium align-top relative group">
+                  <div className="flex flex-col gap-2">
+                    <span>{topic.tenChuDe || <span className="text-gray-400 italic">...</span>}</span>
+                    <div className="mt-2 text-center">
+                      <button
+                        onClick={() => handleCopyPrompt(topic)}
+                        className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow hover:shadow-md hover:scale-105 transition-all w-full"
+                        title="Tự động nặn câu lệnh để dán vào ChatGPT/Gemini"
+                      >
+                        <Copy size={13} /> Copy Lệnh AI
+                      </button>
+                      <button
+                        onClick={() => setYccdModal({ show: true, topicId: topic.id, text: '' })}
+                        className="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded font-bold shadow hover:shadow-md transition-all w-full flex items-center justify-center gap-1.5"
+                      >
+                        📥 Dán YCCĐ từ AI
+                      </button>
+                      {isKHTNMon && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            (topic.donViKienThuc || []).forEach(d => {
+                              if (!d.yeuCauCanDat || !d.yeuCauCanDat.trim()) return;
+                              const activeLevels = getActiveLevelsForDv(d, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+                              let updated = d.yeuCauCanDat;
+                              activeLevels.forEach(l => {
+                                const parsed = parseYccdByLevel(updated);
+                                const lvlText = parsed[l] || '';
+                                if (lvlText && !(/\[(NT[1-7]|TH[1-6]|VD[12])\]/i.test(lvlText))) {
+                                  const code = getRowKhtnCode(d, l, lvlText);
+                                  const formatted = formatYccdWithCode(lvlText, code, formatLevelDisplayName(l));
+                                  updated = updateYccdForLevel(updated, l, formatted, activeLevels);
+                                }
+                              });
+                              updateDvYccd(topic.id, d.id, updated);
+                            });
+                          }}
+                          className="mt-1.5 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-1 rounded font-bold shadow-sm hover:shadow transition-all w-full flex items-center justify-center gap-1.5"
+                          title="Tự động thêm [NT1], [NT3], [VD1], [VD2] vào văn bản YCCĐ của tất cả các bài trong chủ đề này khớp với ô câu hỏi"
+                        >
+                          ⚡ Gán mã [NL] vào YCCĐ
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const hasYccd = (topic.donViKienThuc || []).some(d => d.yeuCauCanDat && d.yeuCauCanDat.trim());
+                          if (!hasYccd) {
+                            alert("Chủ đề này chưa có YCCĐ nào để xóa!");
+                            return;
+                          }
+                          if (window.confirm(`Xóa toàn bộ YCCĐ của Chủ đề "${topic.tenChuDe || 'này'}"?`)) {
+                            clearTopicYccd(topic.id);
+                          }
+                        }}
+                        className="mt-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 px-2 py-1 rounded font-bold shadow-sm hover:shadow transition-all w-full flex items-center justify-center gap-1.5"
+                        title="Xóa YCCĐ của tất cả các bài trong chủ đề này"
+                      >
+                        <Trash2 size={12} /> Xóa YCCĐ chủ đề
+                      </button>
+                    </div>
                   </div>
+                </td>
+              )}
+
+              {/* CỘT ĐVKT — rowSpan cho số mức độ của bài này */}
+              {isFirstDvRow && (
+                <td rowSpan={dvTotalRows} className="border border-slate-300 p-2 text-slate-700 align-top text-sm font-semibold group">
+                  <div className="flex flex-col justify-between h-full min-h-[60px] gap-1">
+                    <span>{dv.noiDung ? `- ${dv.noiDung}` : <span className="text-gray-400 italic">...</span>}</span>
+                    {dv.yeuCauCanDat && dv.yeuCauCanDat.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Xóa toàn bộ YCCĐ của bài "${dv.noiDung || 'này'}"?`)) {
+                            clearDvYccd(topic.id, dv.id);
+                          }
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-red-600 hover:bg-red-50 px-1 py-0.5 rounded transition-colors self-start flex items-center gap-1 border border-transparent hover:border-red-200"
+                        title="Xóa toàn bộ YCCĐ của bài này"
+                      >
+                        <Trash2 size={10} /> Xóa YCCĐ bài
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
+
+              {/* CỘT YCCĐ — Mỗi dòng mức độ 1 ô riêng */}
+              <td className="border border-slate-300 p-2 align-top bg-yellow-50/20 relative group/yccd">
+                <div className="flex flex-col h-full gap-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">
+                        * {formatLevelDisplayName(lvl)}
+                      </span>
+                      {isKHTNMon && rowActiveCode && (
+                        <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 border border-blue-300 shadow-sm leading-none">
+                          [{rowActiveCode}]
+                        </span>
+                      )}
+                      <span className="text-xs font-bold text-teal-800">:</span>
+                    </div>
+                    {levelYccd && levelYccd.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedText = updateYccdForLevel(dv.yeuCauCanDat || '', lvl, '', activeLevels);
+                          updateDvYccd(topic.id, dv.id, updatedText);
+                        }}
+                        title={`Xóa YCCĐ mức ${formatLevelDisplayName(lvl)}`}
+                        className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-0.5 rounded transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    className="w-full flex-1 min-h-[60px] bg-transparent outline-none resize-y p-1 border border-transparent focus:border-yellow-300 rounded focus:bg-white transition-colors text-sm leading-relaxed text-slate-700"
+                    style={{ fontFamily: "'Times New Roman', serif" }}
+                    placeholder={`- YCCĐ mức ${formatLevelDisplayName(lvl)}...`}
+                    value={formatYccdText(levelYccd)}
+                    onChange={(e) => {
+                      const updatedText = updateYccdForLevel(dv.yeuCauCanDat || '', lvl, e.target.value, activeLevels);
+                      updateDvYccd(topic.id, dv.id, updatedText);
+                    }}
+                  />
+                  {/* KHTN: Dropdown chọn mã năng lực + nút Format YCCĐ */}
+                  {isKHTNMon && config.showCompetencyCode !== false && (
+                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <select
+                        className="text-[10px] border border-blue-200 rounded px-1 py-0.5 bg-blue-50 text-blue-800 font-bold cursor-pointer focus:outline-none focus:border-blue-400"
+                        defaultValue=""
+                        title="Chọn mã chỉ báo năng lực KHTN để format YCCĐ"
+                        onChange={(e) => {
+                          const selectedCode = e.target.value;
+                          if (!selectedCode) return;
+                          const currentText = levelYccd || '';
+                          const formatted = formatYccdWithCode(currentText, selectedCode, formatLevelDisplayName(lvl));
+                          const updatedText = updateYccdForLevel(dv.yeuCauCanDat || '', lvl, formatted, activeLevels);
+                          updateDvYccd(topic.id, dv.id, updatedText);
+                          updateLevelIndicatorCode(topic.id, dv.id, lvl, selectedCode);
+                          e.target.value = '';
+                        }}
+                      >
+                        <option value="">+ Đổi mã [{rowActiveCode || '...'}]</option>
+                        {KHTN_COMPETENCY_GROUPS.map(group => (
+                          <optgroup key={group.groupKey} label={group.groupShort}>
+                            {group.codes.map(c => (
+                              <option key={c.code} value={c.code}>{c.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {/* Hiển thị badge mã hiện tại */}
+                      {rowActiveCode && (
+                        <span className="flex items-center gap-0.5">
+                          {renderKhtnCodeBadge(rowActiveCode)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {examConfig.isCauTruc4213 && levelDetails.length > 0 && config.showCompetencySymbol !== false && config.showCompetencyCode !== false && (
+                    <div className="text-[11px] font-bold text-slate-600 border-t border-yellow-200 pt-1 mt-auto">
+                      {(() => {
+                        const grouped = {};
+                        levelDetails.forEach(d => {
+                          const m = typeof d === 'object' ? d : { code: d, label: '' };
+                          const code = isKHTNMon ? (rowActiveCode || normalizeKhtnCode(m.code)) : (m.code || (lvl === 'biet' ? 'NT' : lvl === 'hieu' ? 'TH' : 'VD'));
+                          if (!grouped[code]) grouped[code] = [];
+                          if (m.label) grouped[code].push(m.label);
+                        });
+                        return Object.entries(grouped).map(([code, labels], i) => (
+                          <div key={i}>{labels.length} - {isKHTNMon ? `[${code}]` : code} - {formatGroupedLabels(labels)}</div>
+                        ));
+                      })()}
+                    </div>
+                  )}
                 </div>
               </td>
-            )}
 
-            {/* CỘT ĐVKT — Mỗi ĐVKT 1 ô */}
-            <td className="border border-slate-300 p-2 text-slate-700 align-top text-sm">
-              {dv.noiDung ? `- ${dv.noiDung}` : <span className="text-gray-400 italic">...</span>}
-            </td>
 
-            {/* CỘT YCCĐ — Mỗi ĐVKT 1 ô, không gộp rowSpan nữa */}
-            <td className="border border-slate-300 p-2 align-top bg-yellow-50/20 relative">
-              <div className="flex flex-col h-full gap-2">
-                <textarea
-                  className="w-full flex-1 min-h-[80px] bg-transparent outline-none resize-y p-1 border border-transparent focus:border-yellow-300 rounded focus:bg-white transition-colors text-sm leading-relaxed text-slate-700"
-                  style={{ fontFamily: "'Times New Roman', serif" }}
-                  placeholder="- YCCĐ của ĐVKT này..."
-                  value={formatYccdText(dv.yeuCauCanDat || '')}
-                  onChange={(e) => updateDvYccd(topic.id, dv.id, e.target.value)}
-                />
-                {examConfig.isCauTruc4213 && dv.indicatorMap && (
-                   <div className="text-[11px] font-bold text-slate-600 border-t border-yellow-200 pt-2 mt-auto">
-                      {(() => {
-                         const allDetails = Object.values(dv.indicatorMap);
-                         const grouped = {};
-                         allDetails.forEach(d => {
-                            if (!d) return;
-                            const m = typeof d === 'object' ? d : { code: d, label: '' };
-                            const code = m.code || 'NT';
-                            if (!grouped[code]) grouped[code] = [];
-                            if (m.label) grouped[code].push(m.label);
-                         });
-                         return Object.entries(grouped).map(([code, labels], i) => (
-                            <div key={i}>{labels.length} - {code} - {formatGroupedLabels(labels)}</div>
-                         ));
-                      })()}
-                   </div>
-                )}
-              </div>
-            </td>
+              {/* CÁC CỘT SỐ CÂU — CHỈ HIỂN THỊ Ở CỘT CỦA LEVEL ĐANG XÉT */}
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'biet' ? fmtNLC(dv.nhieuLuaChon?.biet, 'biet', dv, 'nhieuLuaChon', rowActiveCode) : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'hieu' ? fmtNLC(dv.nhieuLuaChon?.hieu, 'hieu', dv, 'nhieuLuaChon', rowActiveCode) : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'vanDung' ? fmtNLC(dv.nhieuLuaChon?.vanDung, 'vanDung', dv, 'nhieuLuaChon', rowActiveCode) : ''}
+              </td>
 
-            {/* CÁC CỘT SỐ CÂU — ĐỌC TỪ ĐVKT + MÃ NĂNG LỰC */}
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtNLC(dv.nhieuLuaChon?.biet, 'biet', dv, 'nhieuLuaChon')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtNLC(dv.nhieuLuaChon?.hieu, 'hieu', dv, 'nhieuLuaChon')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtNLC(dv.nhieuLuaChon?.vanDung, 'vanDung', dv, 'nhieuLuaChon')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtY(dv.dungSai?.biet, 'biet', dv, 'dungSai')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtY(dv.dungSai?.hieu, 'hieu', dv, 'dungSai')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtY((dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0), 'vanDung', dv, 'dungSai')}</td>
-            <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>{config.hasTraLoiNgan ? fmtY(dv.traLoiNgan?.biet, 'biet', dv, 'traLoiNgan') : ''}</td>
-            <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>{config.hasTraLoiNgan ? fmtY(dv.traLoiNgan?.hieu, 'hieu', dv, 'traLoiNgan') : ''}</td>
-            <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>{config.hasTraLoiNgan ? fmtY(dv.traLoiNgan?.vanDung, 'vanDung', dv, 'traLoiNgan') : ''}</td>
-            {config.hasTuLuan && (
-              <>
-                <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">{fmtY(dv.tuLuan?.biet, 'biet', dv, 'tuLuan')}</td>
-                <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">{fmtY(dv.tuLuan?.hieu, 'hieu', dv, 'tuLuan')}</td>
-                <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">{fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan')}</td>
-              </>
-            )}
-          </tr>
-        );
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'biet' ? fmtY(dv.dungSai?.biet, 'biet', dv, 'dungSai', rowActiveCode) : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'hieu' ? fmtY(dv.dungSai?.hieu, 'hieu', dv, 'dungSai', rowActiveCode) : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'vanDung' ? fmtY((dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0), 'vanDung', dv, 'dungSai', rowActiveCode) : ''}
+              </td>
+
+              <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>
+                {config.hasTraLoiNgan && lvl === 'biet' ? fmtY(dv.traLoiNgan?.biet, 'biet', dv, 'traLoiNgan', rowActiveCode) : ''}
+              </td>
+              <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>
+                {config.hasTraLoiNgan && lvl === 'hieu' ? fmtY(dv.traLoiNgan?.hieu, 'hieu', dv, 'traLoiNgan', rowActiveCode) : ''}
+              </td>
+              <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>
+                {config.hasTraLoiNgan && lvl === 'vanDung' ? fmtY(dv.traLoiNgan?.vanDung, 'vanDung', dv, 'traLoiNgan', rowActiveCode) : ''}
+              </td>
+
+              {config.hasTuLuan && (
+                <>
+                  <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
+                    {lvl === 'biet' ? fmtY(dv.tuLuan?.biet, 'biet', dv, 'tuLuan', rowActiveCode) : ''}
+                  </td>
+                  <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
+                    {lvl === 'hieu' ? fmtY(dv.tuLuan?.hieu, 'hieu', dv, 'tuLuan', rowActiveCode) : ''}
+                  </td>
+                  <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
+                    {lvl === 'vanDung' ? fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan', rowActiveCode) : ''}
+                  </td>
+                  {isKHTNMon && (
+                    <td className="border border-slate-300 p-1 text-center font-medium text-red-700 text-[11px] leading-tight">
+                      {lvl === 'vanDungCao' ? fmtY(dv.tuLuan?.vanDungCao, 'vanDungCao', dv, 'tuLuan', rowActiveCode) : ''}
+                    </td>
+                  )}
+                </>
+              )}
+            </tr>
+          );
+
+          isFirstTopicRow = false;
+        });
       });
     });
     return rows;
@@ -548,17 +899,141 @@ export default function Step3_Specification() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-emerald-100 p-2 rounded-lg">
-          <Copy className="text-emerald-600" size={24} />
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-100 p-2 rounded-lg">
+            <Copy className="text-emerald-600" size={24} />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
+              Bản đặc tả đề kiểm tra
+            </h2>
+            <p className="text-sm text-slate-500">Yêu cầu cần đạt và phân bổ câu hỏi</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
-            Bản đặc tả đề kiểm tra
-          </h2>
-          <p className="text-sm text-slate-500">Yêu cầu cần đạt và phân bổ câu hỏi</p>
+
+        {/* Toolbar các thao tác trên Bảng Đặc Tả */}
+        <div className="flex items-center gap-2">
+          {/* Nút Xóa 1 hoặc nhiều YCCĐ */}
+          <button
+            type="button"
+            onClick={() => {
+              const allIds = new Set();
+              matrix.forEach(t => {
+                (t.donViKienThuc || []).forEach(d => {
+                  if (d.yeuCauCanDat && d.yeuCauCanDat.trim()) allIds.add(d.id);
+                });
+              });
+              setClearModal({ show: true, selectedDvs: allIds });
+            }}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 shadow-sm"
+            title="Chọn 1 hoặc nhiều bài để xóa Yêu cầu cần đạt"
+          >
+            <Trash2 size={13} />
+            <span>Xóa YCCĐ...</span>
+          </button>
+
+          {/* Nút bật/tắt: Đầy đủ mã & kí hiệu vs Rút gọn chỉ hiện số câu */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 shadow-sm">
+            <button
+              type="button"
+              onClick={() => updateConfig('showCompetencySymbol', true)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                config.showCompetencySymbol !== false
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+              title="Hiển thị đầy đủ mã năng lực (KHTN1.1...) và số thứ tự câu hỏi (I.1, II.1a...)"
+            >
+              <span>🏷️</span> Đầy đủ mã & ký hiệu
+            </button>
+            <button
+              type="button"
+              onClick={() => updateConfig('showCompetencySymbol', false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                config.showCompetencySymbol === false
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+              title="Chỉ hiển thị số lượng câu thuần túy (1, 2, 4...) gọn gàng"
+            >
+              <span>🔢</span> Rút gọn (chỉ hiện số câu)
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY CHUAN CV 4956/SGDDT */}
+      {isKHTNMon && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-extrabold text-teal-900 text-sm flex items-center gap-2">
+              <span className="text-base">📋</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN CÔNG VĂN 4956/SGDĐT
+            </h3>
+            <span className="text-xs bg-teal-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+              Cấu trúc KHTN: 4 - 2 - 1 - 3
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border border-teal-200 bg-white rounded-lg shadow-sm text-center">
+              <thead className="bg-teal-700 text-white font-bold">
+                <tr>
+                  <th className="p-2 border border-teal-600 text-left">Phần bài thi</th>
+                  <th className="p-2 border border-teal-600">Nhận biết (40%)</th>
+                  <th className="p-2 border border-teal-600">Thông hiểu (30%)</th>
+                  <th className="p-2 border border-teal-600">Vận dụng (20%)</th>
+                  <th className="p-2 border border-teal-600">VD Cao (10%)</th>
+                  <th className="p-2 border border-teal-600">Tổng điểm</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-teal-100 text-slate-700 font-medium">
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần I: Trắc nghiệm 4 lựa chọn (16 câu)</td>
+                  <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">12 câu (3.0đ)</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">4 câu (1.0đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">16 câu (4.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần II: Đúng/Sai (2 câu × 4 lệnh)</td>
+                  <td className="p-1.5 bg-blue-50/40 font-bold text-blue-800" colSpan="3">
+                    2 câu (mỗi câu: 02 Biết; 01 Hiểu; 01 Vận dụng) → Tổng: 4 Biết (1.0đ) + 2 Hiểu (0.5đ) + 2 VD (0.5đ)
+                  </td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">2 câu (2.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần III: Trả lời ngắn (4 câu)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">2 câu (0.5đ)</td>
+                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">2 câu (0.5đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">4 câu (1.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần IV: Tự luận (3 câu)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">1 câu (1.0đ)</td>
+                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">1 câu (1.0đ)</td>
+                  <td className="p-1.5 bg-red-50/70 font-bold text-red-700">1 câu (1.0đ)</td>
+                  <td className="p-1.5 font-bold">3 câu (3.0đ)</td>
+                </tr>
+              </tbody>
+              <tfoot className="bg-teal-100 font-black text-teal-950">
+                <tr>
+                  <td className="p-2 text-left uppercase">TỔNG CỘNG</td>
+                  <td className="p-2 text-blue-800">4.0 điểm (40%)</td>
+                  <td className="p-2 text-emerald-800">3.0 điểm (30%)</td>
+                  <td className="p-2 text-orange-800">2.0 điểm (20%)</td>
+                  <td className="p-2 text-red-800">1.0 điểm (10%)</td>
+                  <td className="p-2 text-teal-900 text-sm">10.0 điểm (100%)</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse border border-slate-400 text-sm" style={{ fontFamily: "'Times New Roman', serif" }}>
@@ -601,11 +1076,11 @@ export default function Step3_Specification() {
                 <th rowSpan="4" className="border border-slate-400 p-2 w-32">Chủ đề/Chương</th>
                 <th rowSpan="4" className="border border-slate-400 p-2 w-40">Nội dung/Đơn vị KT</th>
                 <th rowSpan="4" className="border border-slate-400 p-2 w-64 bg-yellow-50">Yêu cầu cần đạt</th>
-                <th colSpan={config.hasTuLuan ? "12" : "9"} className="border border-slate-400 p-2">Số câu hỏi ở các mức độ đánh giá</th>
+                <th colSpan={config.hasTuLuan ? (isKHTNMon ? "13" : "12") : "9"} className="border border-slate-400 p-2">Số câu hỏi ở các mức độ đánh giá</th>
               </tr>
               <tr>
                 <th colSpan="9" className="border border-slate-400 p-1 bg-blue-50">TNKQ</th>
-                {config.hasTuLuan && <th colSpan="3" rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
+                {config.hasTuLuan && <th colSpan={isKHTNMon ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
               </tr>
               <tr>
                 <th colSpan="3" className="border border-slate-400 p-1 bg-blue-50/80">Nhiều lựa chọn</th>
@@ -615,10 +1090,13 @@ export default function Step3_Specification() {
               <tr>
                 <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
                 <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
-                <th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>H</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th>
+                <th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>H</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
                 {config.hasTuLuan && (
                   <>
-                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-green-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
+                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th>
+                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">H</th>
+                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
+                    {isKHTNMon && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700">VDC</th>}
                   </>
                 )}
               </tr>
@@ -646,6 +1124,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
+                  {isKHTNMon && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
                 </>
               )}
             </tr>
@@ -663,9 +1142,10 @@ export default function Step3_Specification() {
               <td className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? sumAll('traLoiNgan', 'vanDung') : 0}</td>
               {config.hasTuLuan && (
                 <>
-                  <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
-                  <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
-                  <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
+                  <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('biet')}</td>
+                  <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('hieu')}</td>
+                  <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('vanDung')}</td>
+                  {isKHTNMon && <td className="border border-slate-400 p-2 text-red-800 font-bold text-center">{fmtTuLuanCau('vanDungCao')}</td>}
                 </>
               )}
             </tr>
@@ -675,7 +1155,7 @@ export default function Step3_Specification() {
               <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('nhieuLuaChon')}</td>
               <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('dungSai')}</td>
               <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-200' : ''}`}>{getColumnTotalPoints('traLoiNgan')}</td>
-              {config.hasTuLuan && <td colSpan="3" className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
+              {config.hasTuLuan && <td colSpan={isKHTNMon ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
             </tr>
 
             <tr className="bg-slate-200">
@@ -683,7 +1163,7 @@ export default function Step3_Specification() {
               <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('nhieuLuaChon') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
               <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('dungSai') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
               <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-100' : ''}`}>{config.hasTraLoiNgan ? ((getColumnTotalPoints('traLoiNgan') / 10) * 100).toFixed(1).replace('.0', '') + '%' : '0%'}</td>
-              {config.hasTuLuan && <td colSpan="3" className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
+              {config.hasTuLuan && <td colSpan={isKHTNMon ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             </tr>
           </tfoot>
         </table>
@@ -811,6 +1291,70 @@ export default function Step3_Specification() {
               ))}
             </tbody>
           </table>
+        ) : isKHTNMon ? (
+          <div className="flex flex-col gap-4">
+            {/* Hướng dẫn kí hiệu câu hỏi */}
+            <div className="bg-white rounded-xl border border-teal-200 p-4 shadow-sm">
+              <h4 className="font-bold text-teal-900 text-sm mb-2 flex items-center gap-2">
+                🏷️ Quy ước kí hiệu trong bảng đặc tả (Công văn 4956):
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                <div className="p-2 rounded-lg bg-teal-50 border border-teal-100">
+                  <span className="font-bold text-teal-800">I.1, I.2, ...:</span>
+                  <span className="text-slate-600 ml-1">Câu trắc nghiệm nhiều lựa chọn (Phần A - I)</span>
+                </div>
+                <div className="p-2 rounded-lg bg-teal-50 border border-teal-100">
+                  <span className="font-bold text-teal-800">II.1a, II.1b, ...:</span>
+                  <span className="text-slate-600 ml-1">Ý a, b, c, d câu Đúng/Sai (Phần A - II)</span>
+                </div>
+                <div className="p-2 rounded-lg bg-teal-50 border border-teal-100">
+                  <span className="font-bold text-teal-800">III.1, III.2, ...:</span>
+                  <span className="text-slate-600 ml-1">Câu trả lời ngắn (Phần A - III)</span>
+                </div>
+                <div className="p-2 rounded-lg bg-green-50 border border-green-100">
+                  <span className="font-bold text-green-800">TL.1, TL.2, TL.3:</span>
+                  <span className="text-slate-600 ml-1">Câu hỏi tự luận (Phần B - Tự luận)</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-teal-700 mt-2 italic">
+                * Trong cột YCCĐ: <strong>5 - KHTN1.1 - I.1, 2, 3, 4, II.1a</strong> biểu thị: có <strong>5</strong> câu/ý kiểm tra chỉ số năng lực <strong>KHTN1.1</strong> gồm các câu <strong>I.1, I.2, I.3, I.4</strong> và ý <strong>II.1a</strong>.
+              </p>
+            </div>
+
+            {/* Bảng mã năng lực KHTN */}
+            {(() => {
+              const lopKhtn = Number(khtnConfig?.lop || examHeader?.lop || 6);
+              const khtnGroups = khtnCompetencyGroupsByLop[lopKhtn] || khtnCompetencyGroups;
+              if (!khtnGroups) return null;
+              return (
+                <table className="w-full border-collapse border border-slate-300 text-sm">
+                  <thead>
+                    <tr className="bg-teal-100/70">
+                      <th className="border border-slate-300 px-3 py-2 text-left w-28 text-teal-900">Mã chỉ số</th>
+                      <th className="border border-slate-300 px-3 py-2 text-left text-teal-900">Nội dung chỉ số năng lực KHTN (Lớp {lopKhtn})</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(khtnGroups).map(([groupKey, group]) => (
+                      <React.Fragment key={groupKey}>
+                        <tr className={`${groupKey === 'KHTN1' ? 'bg-blue-50/80' : groupKey === 'KHTN2' ? 'bg-emerald-50/80' : 'bg-amber-50/80'}`}>
+                          <td colSpan="2" className={`border border-slate-300 px-3 py-2 font-bold ${groupKey === 'KHTN1' ? 'text-blue-800' : groupKey === 'KHTN2' ? 'text-emerald-800' : 'text-amber-800'}`}>
+                            {groupKey === 'KHTN1' ? 'I.' : groupKey === 'KHTN2' ? 'II.' : 'III.'} {group.name} (Mã {groupKey})
+                          </td>
+                        </tr>
+                        {(group.indicators || []).map((ind, idx) => (
+                          <tr key={ind.code} className={`${idx % 2 === 0 ? 'bg-slate-50/50' : ''} hover:bg-white/60 transition-colors`}>
+                            <td className="border border-slate-300 px-3 py-2 font-bold text-center" style={{ color: groupKey === 'KHTN1' ? '#1d4ed8' : groupKey === 'KHTN2' ? '#047857' : '#b45309' }}>{ind.code}</td>
+                            <td className="border border-slate-300 px-3 py-2 text-slate-700">{ind.content}</td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
+          </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-slate-200 shadow-sm">
@@ -889,6 +1433,203 @@ export default function Step3_Specification() {
                   className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:shadow-lg hover:bg-blue-700 transition-all"
                 >
                   Xác nhận Dán
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Quản lý & Xóa YCCĐ (1 hoặc nhiều bài) */}
+      {clearModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden max-h-[85vh] border border-slate-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-rose-700 p-4 flex items-center justify-between text-white shadow-md">
+              <div className="flex items-center gap-2">
+                <Trash2 size={20} />
+                <h2 className="text-lg font-extrabold tracking-tight">
+                  Xóa Yêu cầu cần đạt (1 hoặc nhiều bài)
+                </h2>
+              </div>
+              <button
+                onClick={() => setClearModal({ show: false, selectedDvs: new Set() })}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors text-white font-bold"
+                title="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Thanh thao tác chọn nhanh */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="text-slate-600 font-medium">
+                💡 Chọn các bài cần xóa YCCĐ (Ma trận câu hỏi và điểm số vẫn được giữ nguyên).
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds = new Set();
+                    matrix.forEach(t => {
+                      (t.donViKienThuc || []).forEach(d => {
+                        if (d.yeuCauCanDat && d.yeuCauCanDat.trim()) allIds.add(d.id);
+                      });
+                    });
+                    setClearModal(prev => ({ ...prev, selectedDvs: allIds }));
+                  }}
+                  className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
+                >
+                  Chọn tất cả ({(() => {
+                    let count = 0;
+                    matrix.forEach(t => (t.donViKienThuc || []).forEach(d => { if (d.yeuCauCanDat && d.yeuCauCanDat.trim()) count++; }));
+                    return count;
+                  })()} bài có YCCĐ)
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setClearModal(prev => ({ ...prev, selectedDvs: new Set() }))}
+                  className="text-slate-500 hover:text-slate-700 font-bold hover:underline"
+                >
+                  Bỏ chọn tất cả
+                </button>
+              </div>
+            </div>
+
+            {/* Danh sách chủ đề và bài học */}
+            <div className="p-6 flex flex-col gap-4 flex-1 overflow-y-auto">
+              {matrix.map((topic, tIdx) => {
+                const dvs = topic.donViKienThuc || [];
+                const topicDvIds = dvs.map(d => d.id);
+                const allTopicSelected = dvs.length > 0 && topicDvIds.every(id => clearModal.selectedDvs.has(id));
+                const someTopicSelected = topicDvIds.some(id => clearModal.selectedDvs.has(id));
+
+                return (
+                  <div key={topic.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    {/* Header chủ đề kèm checkbox chọn cả chủ đề */}
+                    <div className="bg-slate-100 px-4 py-2.5 flex items-center justify-between border-b border-slate-200">
+                      <label className="flex items-center gap-2.5 font-bold text-slate-800 text-xs cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={allTopicSelected}
+                          ref={el => { if (el) el.indeterminate = someTopicSelected && !allTopicSelected; }}
+                          onChange={(e) => {
+                            const next = new Set(clearModal.selectedDvs);
+                            if (e.target.checked) {
+                              topicDvIds.forEach(id => next.add(id));
+                            } else {
+                              topicDvIds.forEach(id => next.delete(id));
+                            }
+                            setClearModal(prev => ({ ...prev, selectedDvs: next }));
+                          }}
+                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                        />
+                        <span>Chủ đề {tIdx + 1}: {topic.tenChuDe || 'Chưa đặt tên'}</span>
+                      </label>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {dvs.filter(d => d.yeuCauCanDat && d.yeuCauCanDat.trim()).length}/{dvs.length} bài có YCCĐ
+                      </span>
+                    </div>
+
+                    {/* Danh sách bài trong chủ đề */}
+                    <div className="divide-y divide-slate-100">
+                      {dvs.map((dv, dIdx) => {
+                        const hasYccd = Boolean(dv.yeuCauCanDat && dv.yeuCauCanDat.trim());
+                        const isChecked = clearModal.selectedDvs.has(dv.id);
+
+                        return (
+                          <label
+                            key={dv.id}
+                            className={`px-4 py-2.5 flex items-start gap-3 text-xs transition-colors cursor-pointer select-none ${
+                              isChecked ? 'bg-red-50/60' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const next = new Set(clearModal.selectedDvs);
+                                if (e.target.checked) {
+                                  next.add(dv.id);
+                                } else {
+                                  next.delete(dv.id);
+                                }
+                                setClearModal(prev => ({ ...prev, selectedDvs: next }));
+                              }}
+                              className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-800">
+                                  {dv.noiDung ? `- ${dv.noiDung}` : `Bài ${dIdx + 1}`}
+                                </span>
+                                {hasYccd ? (
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
+                                    Có YCCĐ
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded italic">
+                                    Trống
+                                  </span>
+                                )}
+                              </div>
+                              {hasYccd && (
+                                <p className="text-[11px] text-slate-500 truncate mt-0.5 font-mono">
+                                  {dv.yeuCauCanDat.replace(/\n+/g, ' • ')}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ Yêu cầu cần đạt của tất cả các bài trong toàn đề thi không?")) {
+                    clearAllYccd();
+                    setClearModal({ show: false, selectedDvs: new Set() });
+                  }
+                }}
+                className="text-xs text-red-600 hover:text-red-800 hover:underline font-bold flex items-center gap-1"
+              >
+                <Trash2 size={13} /> Xóa sạch toàn bộ YCCĐ trong đề
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setClearModal({ show: false, selectedDvs: new Set() })}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={clearModal.selectedDvs.size === 0}
+                  onClick={() => {
+                    const count = clearModal.selectedDvs.size;
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa YCCĐ của ${count} bài học đã chọn?`)) {
+                      clearBatchYccd(Array.from(clearModal.selectedDvs));
+                      setClearModal({ show: false, selectedDvs: new Set() });
+                    }
+                  }}
+                  className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+                    clearModal.selectedDvs.size > 0
+                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 hover:shadow-md'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Trash2 size={13} />
+                  Xóa YCCĐ ({clearModal.selectedDvs.size} bài đã chọn)
                 </button>
               </div>
             </div>

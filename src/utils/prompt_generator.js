@@ -193,17 +193,27 @@ export function generateSimilarQuestionPrompt(slotData, metaInfo, options = {}) 
     prompt += `Đáp án đúng: [Chỉ ghi chữ cái A, B, C hoặc D]\n`;
     prompt += `Giải thích: [Giải thích từng phương án — nêu rõ tại sao đáp án đúng và tại sao từng phương án sai]\n`;
   } else if (loai === 2) {
+    const isKHTN = (monHoc || '').toLowerCase().includes('khoa học tự nhiên') || (monHoc || '').toLowerCase().includes('khtn');
     prompt += templatePrefix;
     prompt += `[LOẠI 2: TRẮC NGHIỆM ĐÚNG/SAI — CHÙM CÂU HỎI]\n`;
     if (slotData.dapAnDung) {
       prompt += `⚠️ BẮT BUỘC: Chuỗi đúng/sai VẪN LÀ [${slotData.dapAnDung}] giống câu gốc.\n`;
     }
-    prompt += `⚠️ QUY TẮC CẤU TRÚC 4 MỆNH ĐỀ: Ý a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao. Hãy tuân thủ đúng trật tự này.\n`;
-    prompt += `Câu 1 (Chủ đề: ${topic}): [Nội dung đề bài chung mới]\n`;
-    prompt += `a) (Mức độ: Nhận biết) [Mệnh đề a mới]\n`;
-    prompt += `b) (Mức độ: Thông hiểu) [Mệnh đề b mới]\n`;
-    prompt += `c) (Mức độ: Vận dụng) [Mệnh đề c mới]\n`;
-    prompt += `d) (Mức độ: Vận dụng cao) [Mệnh đề d mới]\n`;
+    if (isKHTN) {
+      prompt += `⚠️ QUY TẮC CẤU TRÚC 4 MỆNH ĐỀ (CV 4956): Ý a) mức Nhận biết, ý b) mức Nhận biết, ý c) mức Thông hiểu, ý d) mức Vận dụng. Tuyệt đối không ra Vận dụng cao ở câu Đúng/Sai. Hãy tuân thủ đúng trật tự này.\n`;
+      prompt += `Câu 1 (Chủ đề: ${topic}): [Nội dung đề bài chung mới]\n`;
+      prompt += `a) (Mức độ: Nhận biết) [Mệnh đề a mới]\n`;
+      prompt += `b) (Mức độ: Nhận biết) [Mệnh đề b mới]\n`;
+      prompt += `c) (Mức độ: Thông hiểu) [Mệnh đề c mới]\n`;
+      prompt += `d) (Mức độ: Vận dụng) [Mệnh đề d mới]\n`;
+    } else {
+      prompt += `⚠️ QUY TẮC CẤU TRÚC 4 MỆNH ĐỀ: Ý a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao. Hãy tuân thủ đúng trật tự này.\n`;
+      prompt += `Câu 1 (Chủ đề: ${topic}): [Nội dung đề bài chung mới]\n`;
+      prompt += `a) (Mức độ: Nhận biết) [Mệnh đề a mới]\n`;
+      prompt += `b) (Mức độ: Thông hiểu) [Mệnh đề b mới]\n`;
+      prompt += `c) (Mức độ: Vận dụng) [Mệnh đề c mới]\n`;
+      prompt += `d) (Mức độ: Vận dụng cao) [Mệnh đề d mới]\n`;
+    }
     prompt += `Đáp án đúng: a-[Đ hoặc S], b-[Đ hoặc S], c-[Đ hoặc S], d-[Đ hoặc S]\n`;
     prompt += `Giải thích: [Giải thích ngắn gọn]\n`;
   } else if (loai === 3) {
@@ -260,7 +270,9 @@ export function generateSimilarQuestionPrompt(slotData, metaInfo, options = {}) 
  * @param {Array} lockedSlots - Danh sách các slotKey bị khóa (muốn giữ nguyên)
  * @returns {string} Prompt text để dán vào Gemini
  */
-export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots) {
+export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, examConfig = {}, examHeader = {}) {
+  const isKHTN = (examHeader?.monHoc || '').toLowerCase().includes('khoa học tự nhiên') || (examHeader?.monHoc || '').toLowerCase().includes('khtn') || examConfig?.isCauTruc4213;
+
   let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dưới đây là nội dung của một ĐỀ THI MẪU (Đề số 1).\n`;
   prompt += `Nhiệm vụ của bạn là dựa vào cấu trúc và mức độ khó của đề mẫu này, tạo ra một ĐỀ THI MỚI (Đề số 2) tương đương 100% về cấu trúc, độ phân hóa và định dạng.\n\n`;
 
@@ -275,7 +287,11 @@ export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots) {
   prompt += `3. NẾU CÂU GỐC CÓ CHỨA "Hình ảnh: {"loai":...}": Bắt buộc câu mới cũng phải có thẻ Hình ảnh JSON tương ứng, chỉ thay đổi các hệ số bên trong JSON cho khớp với bài toán mới.\n`;
   prompt += `4. BẢO TOÀN LOẠI CÂU HỎI: Câu nào là Trắc nghiệm nhiều lựa chọn thì sinh mới Trắc nghiệm nhiều lựa chọn. Câu nào là Đúng/Sai thì sinh mới Đúng/Sai (gồm 4 ý a,b,c,d). Câu tự luận có bao nhiêu ý thì sinh ra bấy nhiêu ý.\n`;
   prompt += `5. BẮT BUỘC VẼ HÌNH: NẾU lời giải của bất kỳ bài toán nào có chứa hàm số, đồ thị, hình học hoặc biểu đồ: BẮT BUỘC phải sinh ra một thẻ "Hình ảnh:" chứa JSON minh họa ở cuối phần giải thích.\n`;
-  prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ: Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao.\n`;
+  if (isKHTN) {
+    prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ (CV 4956): Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Nhận biết, ý c) mức Thông hiểu, ý d) mức Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
+  } else {
+    prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ: Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao.\n`;
+  }
   prompt += `7. BẢO TOÀN BIỂU ĐIỂM TỰ LUẬN: Đối với các ý của câu tự luận, các bước giải chi tiết và điểm số tương ứng (ví dụ: || 0.25) phải được bảo toàn khớp với tổng điểm của câu đó.\n`;
   prompt += `8. BẢO TOÀN LĨNH VỰC HỌC TẬP (Hình học / Đại số): Ở phần tự luận, nếu câu hỏi ghi rõ [Lĩnh vực: Hình học] hoặc [Lĩnh vực: Đại số/Giải tích], đề thi tương đương mới BẮT BUỘC phải ra câu hỏi thuộc đúng lĩnh vực đó, không được đổi ngược hoặc bỏ qua.\n\n`;
 
@@ -322,10 +338,17 @@ export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots) {
         prompt += `[⚠️ LƯU Ý: Chuỗi đúng/sai VẪN LÀ ${q.dapAnDung}]\n`;
       }
       prompt += `Câu ${cauIndex}: ${q.noiDung || ''}\n`;
-      prompt += `a) (Mức độ: Nhận biết) ${q.yA || ''}\n`;
-      prompt += `b) (Mức độ: Thông hiểu) ${q.yB || ''}\n`;
-      prompt += `c) (Mức độ: Vận dụng) ${q.yC || ''}\n`;
-      prompt += `d) (Mức độ: Vận dụng cao) ${q.yD || ''}\n`;
+      if (isKHTN) {
+        prompt += `a) (Mức độ: Nhận biết) ${q.yA || ''}\n`;
+        prompt += `b) (Mức độ: Nhận biết) ${q.yB || ''}\n`;
+        prompt += `c) (Mức độ: Thông hiểu) ${q.yC || ''}\n`;
+        prompt += `d) (Mức độ: Vận dụng) ${q.yD || ''}\n`;
+      } else {
+        prompt += `a) (Mức độ: Nhận biết) ${q.yA || ''}\n`;
+        prompt += `b) (Mức độ: Thông hiểu) ${q.yB || ''}\n`;
+        prompt += `c) (Mức độ: Vận dụng) ${q.yC || ''}\n`;
+        prompt += `d) (Mức độ: Vận dụng cao) ${q.yD || ''}\n`;
+      }
       prompt += `Đáp án đúng: ${q.dapAnDung || ''}\n`;
       if (q.giaiThich) prompt += `Giải thích: ${q.giaiThich}\n`;
     } else if (q.loaiCauHoi === 3) {

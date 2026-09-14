@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useQuickStore as useExamStore, getTopicSum, getTopicTuLuanDiem, getTotalSoTiet } from '../../store/useQuickStore';
+import { useQuickStore as useExamStore, getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet } from '../../store/useQuickStore';
 import { Plus, Trash2, Settings2, Sparkles, PlusCircle, X, Bot, FileSpreadsheet, ClipboardList } from 'lucide-react';
 import { searchIndicators, chemistryCompetencyGroups } from '../data/chemistryIndicators';
 import { searchMathIndicators, mathCompetencyGroups } from '../data/mathIndicators';
@@ -121,11 +121,11 @@ export default function Step2_MatrixBuilder() {
     return sumAll('nhieuLuaChon', level) +
       (dsCount * 0.25) +
       (config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0) +
-      sumAll('tuLuan', level);
+      getTuLuanCauCount(matrix, level, tuLuanConfig);
   };
 
   const getTopicTuLuanPoints = (topic) =>
-    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung');
+    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung') + getTopicTuLuanDiem(topic, 'diemVanDungCao');
 
   const getColumnTotalPoints = (type) => {
     if (type === 'tuLuan') return Math.round(matrix.reduce((sum, t) => sum + getTopicTuLuanPoints(t), 0) * 100) / 100;
@@ -162,8 +162,9 @@ export default function Step2_MatrixBuilder() {
     const nlc = Number(dv.nhieuLuaChon?.[level]) || 0;
     const ds = Number(dv.dungSai?.[level]) || 0;
     const tln = config.hasTraLoiNgan ? (Number(dv.traLoiNgan?.[level]) || 0) : 0;
+    const tl = config.hasTuLuan ? (dv.tuLuan?.subItems || []).filter(s => s.level === level).length : 0;
     const totalCau = nlc;
-    const totalY = ds + tln;
+    const totalY = ds + tln + tl;
     if (totalCau === 0 && totalY === 0) return '';
     if (totalCau > 0 && totalY === 0) return `${totalCau}`;
     if (totalCau === 0 && totalY > 0) return `${totalY} ý`;
@@ -231,7 +232,8 @@ export default function Step2_MatrixBuilder() {
     const nlc = ((Number(dv.nhieuLuaChon?.biet) || 0) + (Number(dv.nhieuLuaChon?.hieu) || 0) + (Number(dv.nhieuLuaChon?.vanDung) || 0)) * examConfig.diemMoiCauP1;
     const ds = ((Number(dv.dungSai?.biet) || 0) + (Number(dv.dungSai?.hieu) || 0) + (Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0)) * examConfig.diemMoiYP2;
     const tln = config.hasTraLoiNgan ? ((Number(dv.traLoiNgan?.biet) || 0) + (Number(dv.traLoiNgan?.hieu) || 0) + (Number(dv.traLoiNgan?.vanDung) || 0)) * examConfig.diemMoiYP3 : 0;
-    const tl = (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0);
+    const tl = (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0)
+             + (Number(dv.tuLuan?.diemVanDung) || 0) + (Number(dv.tuLuan?.diemVanDungCao) || 0);
     return Math.round((nlc + ds + tln + tl) * 100) / 100;
   };
 
@@ -245,12 +247,40 @@ export default function Step2_MatrixBuilder() {
     return `${cauStr} (${y} ý)`;
   };
 
-  // Format tổng câu cho dòng "Tổng số câu": "6c+ 6 ý"
+  // Format Tự luận cho dòng "Tổng số câu": hiển thị số câu (ví dụ 1 câu thay vì 2 ý)
+  const fmtTuLuanCau = (level) => {
+    const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    if (cau === 0) return '';
+    return cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+  };
+
+  const fmtTuLuanTooltip = (level) => {
+    const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    const y = sumAll('tuLuan', level);
+    if (cau === 0) return '';
+    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    return y > cau ? `${cauStr} câu (${y} ý)` : `${cauStr} câu`;
+  };
+
+  // Format tổng câu cho dòng "Tổng số câu": "7c+ 2 ý"
   const fmtTongCau = (level) => {
-    const c = sumAll('nhieuLuaChon', level);
-    const y = sumAll('dungSai', level) +
-      (config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0) +
-      (config.hasTuLuan ? sumAll('tuLuan', level) : 0);
+    const tlCau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    const nlc = sumAll('nhieuLuaChon', level);
+    const tln = config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0;
+    const tlInt = Math.floor(tlCau);
+    const c = nlc + tln + tlInt;
+
+    let dsCount = sumAll('dungSai', level);
+    if (level === 'vanDung') dsCount += sumAll('dungSai', 'vanDungCao');
+    const y = dsCount;
+
+    const tlRem = tlCau - tlInt;
+    if (tlRem > 0) {
+      const cauVal = Math.round((c + tlRem) * 10) / 10;
+      const cauStr = cauVal % 1 === 0 ? String(cauVal) : cauVal.toFixed(1).replace('.', ',');
+      return y > 0 ? `${cauStr}c+ ${y} ý` : `${cauStr}c`;
+    }
+
     if (c === 0 && y === 0) return '';
     if (c > 0 && y === 0) return `${c}`;
     if (c === 0 && y > 0) return `${y} ý`;
@@ -258,7 +288,11 @@ export default function Step2_MatrixBuilder() {
   };
 
   // Grand total câu quy đổi
-  const grandTotalCau = getLevelTotalQuestions('biet') + getLevelTotalQuestions('hieu') + getLevelTotalQuestions('vanDung');
+  const grandTotalCau = Math.round((
+    getLevelTotalQuestions('biet') +
+    getLevelTotalQuestions('hieu') +
+    getLevelTotalQuestions('vanDung')
+  ) * 100) / 100;
 
   // Helper: Render cell input kèm mã năng lực chỉ báo (nếu có)
   const renderCellInput = (topicId, dv, type, level) => {
@@ -975,9 +1009,9 @@ export default function Step2_MatrixBuilder() {
             <td className={`border border-slate-300 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? (sumAll('traLoiNgan', 'vanDung') || '') : ''}</td>
             {config.hasTuLuan && (
               <>
-                <td className="border border-slate-300 p-2 text-green-800">{sumAll('tuLuan', 'biet') || ''}</td>
-                <td className="border border-slate-300 p-2 text-green-800">{sumAll('tuLuan', 'hieu') || ''}</td>
-                <td className="border border-slate-300 p-2 text-green-800">{sumAll('tuLuan', 'vanDung') || ''}</td>
+                <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('biet')}>{fmtTuLuanCau('biet')}</td>
+                <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('hieu')}>{fmtTuLuanCau('hieu')}</td>
+                <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('vanDung')}>{fmtTuLuanCau('vanDung')}</td>
               </>
             )}
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('biet')}</td>
@@ -1297,6 +1331,39 @@ export default function Step2_MatrixBuilder() {
                           </div>
                         </div>
 
+                        {/* Phạm vi phân bổ ý */}
+                        {(q.subItems?.length > 1) && (
+                          <div className="flex flex-col gap-1 mt-1 mb-1">
+                            <span className="text-[10px] text-slate-500 font-semibold">📦 Phạm vi ý:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {(q.kieuY === 'doc_lap' ? [
+                                { value: 'cung_bai',             label: 'Cùng 1 bài' },
+                                { value: 'cac_bai_cung_chu_de',  label: 'Các bài cùng CĐ' },
+                                { value: 'cac_chu_de_khac_nhau', label: 'Các chủ đề khác' },
+                              ] : [
+                                { value: 'cung_dvkt',            label: 'Cùng 1 ĐVKT' },
+                                { value: 'cac_dvkt_cung_chu_de', label: 'Các ĐVKT cùng CĐ' },
+                              ]).map(opt => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => {
+                                    const updated = [...tuLuanConfig.questions];
+                                    updated[qIdx] = { ...updated[qIdx], phamVi: opt.value };
+                                    setTuLuanConfig({ questions: updated });
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                                    (q.phamVi || (q.kieuY === 'doc_lap' ? 'cung_bai' : 'cung_dvkt')) === opt.value
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Chọn kiến thức Toán — chỉ hiện khi môn Toán */}
                         {isMath && (
                           <div className="flex items-center gap-1.5 mb-2">
@@ -1394,7 +1461,7 @@ export default function Step2_MatrixBuilder() {
                       Tổng cộng: {tuLuanConfig.questions.length} câu · {totalAllY} ý · {totalAllDiem.toFixed(2).replace('.00', '')}đ
                     </p>
                     <p className="text-[10px] text-amber-600 mt-0.5">
-                      {Math.abs(totalAllDiem - 4.0) < 0.01 ? '✅ Khớp với cấu trúc Toán 4đ Tự luận' : `⚠️ Lệch so với 4đ Tự luận (chênh ${Math.abs(totalAllDiem - 4.0).toFixed(2)}đ)`}
+                      {Math.abs(totalAllDiem - 3.0) < 0.01 ? '✅ Khớp với cấu trúc 3 câu - 3.0đ Tự luận' : `⚠️ Lệch so với 3.0đ Tự luận (chênh ${Math.abs(totalAllDiem - 3.0).toFixed(2)}đ)`}
                     </p>
                   </div>
                 );
@@ -1408,10 +1475,9 @@ export default function Step2_MatrixBuilder() {
                   setTuLuanConfig({
                     enabled: false,
                     questions: [
-                      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
-                      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 1.0 }] },
-                      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', subItems: [{ diem: 1.0 }] },
-                      { id: 'tl_q4', label: 'Câu 4', kienThuc: '', subItems: [{ diem: 1.0 }] },
+                      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+                      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
+                      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
                     ],
                   });
                 }}

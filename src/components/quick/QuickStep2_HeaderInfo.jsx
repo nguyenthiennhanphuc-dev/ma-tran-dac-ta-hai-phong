@@ -1,22 +1,63 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuickStore as useExamStore } from '../../store/useQuickStore';
-import { FileBadge } from 'lucide-react';
+import { FileBadge, RotateCcw } from 'lucide-react';
+
+const DEFAULT_HEADER = {
+  soGD: 'SỞ GIÁO DỤC VÀ ĐÀO TẠO...',
+  truong: 'TRƯỜNG:.............................',
+  kyThi: 'ĐỀ KIỂM TRA ĐỊNH KÌ',
+  monHoc: '........................',
+  thoiGian: 'làm bài: 45 phút',
+  namHoc: '202... - 202...'
+};
+
+const isMojibake = (str) => typeof str === 'string' && (/[├┤╖ñ£—ÉÇÈÍ¿»]/.test(str) || /SB╖|TR\s*├|l\s*├ím/i.test(str));
 
 export default function Step1_HeaderInfo() {
   const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan } = useExamStore();
 
+  // Tự động kiểm tra và dọn dẹp ký tự lỗi font (mojibake) từ localStorage cũ
+  useEffect(() => {
+    ['soGD', 'truong', 'kyThi', 'thoiGian', 'namHoc'].forEach(field => {
+      if (isMojibake(examHeader?.[field])) {
+        updateExamHeader(field, DEFAULT_HEADER[field]);
+      }
+    });
+    if (isMojibake(examHeader?.monHoc)) {
+      updateExamHeader('monHoc', DEFAULT_HEADER.monHoc);
+    }
+  }, []);
+
+  const handleResetHeader = () => {
+    Object.entries(DEFAULT_HEADER).forEach(([k, v]) => {
+      if (k !== 'monHoc' || isMojibake(examHeader?.monHoc)) {
+        updateExamHeader(k, v);
+      }
+    });
+  };
+
   return (
     <div className="w-full">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-indigo-100 p-2 rounded-lg">
-          <FileBadge className="text-indigo-600" size={24} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-100 p-2 rounded-lg">
+            <FileBadge className="text-indigo-600" size={24} />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
+              Thông tin chung
+            </h2>
+            <p className="text-sm text-slate-500">Điền thông tin bìa đề thi</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
-            Thông tin chung
-          </h2>
-          <p className="text-sm text-slate-500">Điền thông tin bìa đề thi</p>
-        </div>
+
+        <button
+          onClick={handleResetHeader}
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+          title="Khôi phục tiêu đề mặc định và làm sạch font chữ"
+        >
+          <RotateCcw size={14} /> Khôi phục mặc định
+        </button>
       </div>
 
       <div className="bg-slate-50/50 p-6 border border-slate-200 rounded-xl flex flex-col md:flex-row gap-8 justify-between">

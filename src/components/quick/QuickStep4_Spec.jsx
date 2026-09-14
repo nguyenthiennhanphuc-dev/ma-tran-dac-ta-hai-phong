@@ -1,13 +1,20 @@
 // Tên file: src/components/Step3_Specification.jsx
 import React, { useState } from 'react';
-import { useQuickStore as useExamStore, getTopicSum, getTopicTuLuanDiem, isNewMathStructure } from '../../store/useQuickStore';
-import { Copy } from 'lucide-react';
+import { useQuickStore as useExamStore, getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, isNewMathStructure } from '../../store/useQuickStore';
+import { Copy, Trash2 } from 'lucide-react';
 import { mathCompetencyGroups } from '../data/mathIndicators';
 import { formatGroupedLabels } from '../../utils/labelUtils';
+import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel, updateYccdForLevel } from '../../utils/specTableHelper';
+import { getRowKhtnCode } from '../../data/khtnCompetencyData';
 
 export default function Step3_Specification() {
-  const { matrix, config, examConfig, examHeader, updateTopicText, updateDvYccd, importYccdFromAIText } = useExamStore();
+  const {
+    matrix, config, examConfig, examHeader, tuLuanConfig,
+    updateTopicText, updateDvYccd, clearDvYccd, clearTopicYccd, clearBatchYccd, clearAllYccd,
+    importYccdFromAIText
+  } = useExamStore();
   const [yccdModal, setYccdModal] = useState({ show: false, topicId: null, text: '' });
+  const [clearModal, setClearModal] = useState({ show: false, selectedDvs: new Set() });
 
   // =======================================================================
   // NHIỆM VỤ 1: Hàm xử lý ẩn/hiện mã năng lực trong YCCĐ
@@ -29,6 +36,7 @@ export default function Step3_Specification() {
   const isHoaMon = /hóa|hoá/i.test(examHeader?.monHoc || '');
   const isToanMon = /toán|toan/i.test(examHeader?.monHoc || '');
   const isSinhMon = /sinh/i.test(examHeader?.monHoc || '');
+  const isKHTNMon = /khoa học tự nhiên|khtn/i.test(examHeader?.monHoc || '');
 
   // =======================================================================
   // NHIỆM VỤ 1 (Hướng A): Tự động phát hiện mã năng lực Hóa từ nội dung YCCĐ
@@ -132,6 +140,12 @@ export default function Step3_Specification() {
   // HELPERS: Tính tổng từ tất cả ĐVKT
   // =======================================================================
   const sumAll = (type, level) => matrix.reduce((sum, topic) => sum + getTopicSum(topic, type, level), 0);
+
+  const fmtTuLuanCau = (level) => {
+    const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    if (cau === 0) return '';
+    return cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+  };
 
   const getIndicatorsForCell = (dv, type, level) => {
     if (!dv || !dv.indicatorMap) return null;
@@ -242,7 +256,7 @@ export default function Step3_Specification() {
   };
 
   const getTopicTuLuanPoints = (topic) =>
-    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung');
+    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung') + getTopicTuLuanDiem(topic, 'diemVanDungCao');
 
   const getColumnTotalPoints = (type) => {
     if (type === 'tuLuan') return Math.round(matrix.reduce((sum, t) => sum + getTopicTuLuanPoints(t), 0) * 100) / 100;
@@ -266,31 +280,76 @@ export default function Step3_Specification() {
       return;
     }
 
-    let prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi. Hãy viết "Yêu cầu cần đạt" cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+    const monHoc = examHeader?.monHoc || (isKHTNMon ? 'Khoa học tự nhiên' : 'Môn học');
+    const lop = examHeader?.grade || examHeader?.lop || '';
+
+    let prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn ${monHoc}${lop ? ` lớp ${lop}` : ''} theo Chương trình GDPT 2018 (Công văn 4956/SGDĐT). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
     prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể. Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
 
     dvList.forEach((dv, index) => {
       // Tính tổng số lượng câu/ý của từng mức độ cho ĐVKT này
       const sumBiet = (dv.nhieuLuaChon?.biet || 0) + (dv.dungSai?.biet || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.biet || 0) : 0) + (typeof dv.tuLuan?.biet === 'object' ? dv.tuLuan.biet.y : (dv.tuLuan?.biet || 0));
       const sumHieu = (dv.nhieuLuaChon?.hieu || 0) + (dv.dungSai?.hieu || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.hieu || 0) : 0) + (typeof dv.tuLuan?.hieu === 'object' ? dv.tuLuan.hieu.y : (dv.tuLuan?.hieu || 0));
-      const sumVD = (dv.nhieuLuaChon?.vanDung || 0) + (dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.vanDung || 0) : 0) + (typeof dv.tuLuan?.vanDung === 'object' ? dv.tuLuan.vanDung.y : (dv.tuLuan?.vanDung || 0));
+      const sumVD = (dv.nhieuLuaChon?.vanDung || 0) + (dv.dungSai?.vanDung || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.vanDung || 0) : 0) + (typeof dv.tuLuan?.vanDung === 'object' ? dv.tuLuan.vanDung.y : (dv.tuLuan?.vanDung || 0));
+      const sumVDC = (Number(dv.dungSai?.vanDungCao) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0);
 
       let requiredLevels = [];
       if (sumBiet > 0) requiredLevels.push("Nhận biết");
       if (sumHieu > 0) requiredLevels.push("Thông hiểu");
       if (sumVD > 0) requiredLevels.push("Vận dụng");
+      if (sumVDC > 0) requiredLevels.push("Vận dụng cao");
 
       // Nếu bài học này có câu hỏi thì mới yêu cầu AI viết YCCĐ
       if (requiredLevels.length > 0) {
         prompt += `**${index + 1}. ${dv.noiDung || 'Chưa rõ'}**\n`;
-        prompt += `- Mức độ cần viết: [ ${requiredLevels.join(", ")} ]\n\n`;
+        if (isKHTNMon) {
+          const reqWithCodes = [];
+          if (sumBiet > 0) reqWithCodes.push(`  + Nhận biết [${getRowKhtnCode(dv, 'biet')}]`);
+          if (sumHieu > 0) reqWithCodes.push(`  + Thông hiểu [${getRowKhtnCode(dv, 'hieu')}]`);
+          if (sumVD > 0) reqWithCodes.push(`  + Vận dụng [${getRowKhtnCode(dv, 'vanDung')}]`);
+          if (sumVDC > 0) reqWithCodes.push(`  + Vận dụng cao [${getRowKhtnCode(dv, 'vanDungCao')}]`);
+          prompt += `- Mức độ và mã năng lực cần viết:\n${reqWithCodes.join('\n')}\n\n`;
+        } else {
+          prompt += `- Mức độ cần viết: [ ${requiredLevels.join(", ")} ]\n\n`;
+        }
       }
     });
 
-    prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
-    prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
-    prompt += `2. CỰC KỲ NGẮN GỌN: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG). Tuyệt đối không liệt kê dài dòng, không giải thích thêm.\n`;
-    prompt += `3. Định dạng đầu ra mong muốn:\n   - Nhận biết: [Ghi 1 câu ngắn gọn...]\n   - Thông hiểu: [Ghi 1 câu ngắn gọn...]`;
+    if (isKHTNMon) {
+      prompt += `📌 CHÚ THÍCH BỘ MÃ NĂNG LỰC KHTN (CĂN CỨ CTGDPT 2018):\n`;
+      prompt += `► Nhóm Nhận thức (NT):\n`;
+      prompt += `  [NT1] Nhận biết: Nhận biết, kể tên, phát biểu, nêu được đối tượng, khái niệm, quy luật, quá trình tự nhiên\n`;
+      prompt += `  [NT2] Thông hiểu: Trình bày, mô tả bằng ngôn ngữ nói, viết, công thức, sơ đồ, biểu đồ\n`;
+      prompt += `  [NT3] Thông hiểu: So sánh, phân loại, phân biệt theo các tiêu chí khác nhau\n`;
+      prompt += `  [NT4] Thông hiểu: Phân tích đặc điểm sự vật, hiện tượng theo logic nhất định\n`;
+      prompt += `  [NT5] Thông hiểu: Tìm từ khoá, kết nối thông tin, lập dàn ý văn bản khoa học\n`;
+      prompt += `  [NT6] Vận dụng: Giải thích quan hệ nhân quả, cấu tạo – chức năng\n`;
+      prompt += `  [NT7] Vận dụng: Nhận ra điểm sai, chỉnh sửa, đưa nhận định phê phán\n`;
+      prompt += `► Nhóm Tìm hiểu tự nhiên (TH):\n`;
+      prompt += `  [TH1] Thông hiểu: Đề xuất vấn đề, đặt câu hỏi khoa học\n`;
+      prompt += `  [TH2] Thông hiểu: Đưa phán đoán, xây dựng giả thuyết\n`;
+      prompt += `  [TH3] Thông hiểu: Lập kế hoạch, thiết kế phương án thí nghiệm\n`;
+      prompt += `  [TH4] Vận dụng: Thực hiện thí nghiệm, thu thập và xử lý dữ liệu, rút ra kết luận\n`;
+      prompt += `  [TH5] Vận dụng: Viết báo cáo, vẽ hình, thiết kế mô hình hoặc dụng cụ\n`;
+      prompt += `  [TH6] Vận dụng: Ra quyết định, đề xuất giải pháp xử lý vấn đề\n`;
+      prompt += `► Nhóm Vận dụng kiến thức (VD):\n`;
+      prompt += `  [VD1] Vận dụng: Vận dụng giải thích hiện tượng thực tế, giải bài tập định lượng\n`;
+      prompt += `  [VD2] Vận dụng cao: Đề xuất giải pháp bảo vệ môi trường, phát triển bền vững, ứng phó biến đổi khí hậu\n\n`;
+
+      prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
+      prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
+      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi theo CT GDPT 2018 tương ứng với mã năng lực được giao.\n`;
+      prompt += `3. Định dạng đầu ra BẮT BUỘC KÈM ĐÚNG MÃ CHỈ BÁO NĂNG LỰC KHTN:\n`;
+      prompt += `   - Nhận biết [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Nhận biết [NT1]: Nêu được...]\n`;
+      prompt += `   - Thông hiểu [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Thông hiểu [NT3]: Phân biệt được... (hoặc [NT2], [TH3] nếu là thí nghiệm)]\n`;
+      prompt += `   - Vận dụng [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [VD1]: Vận dụng kiến thức giải thích... (hoặc [TH4], [NT6])]\n`;
+      prompt += `   - Vận dụng cao [VD2]: [Ghi đúng 1 câu ngắn gọn... Đề xuất giải pháp/biện pháp thực tiễn, bảo vệ môi trường]`;
+    } else {
+      prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
+      prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
+      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi theo CT GDPT 2018 (Nêu được, Trình bày được, Phân loại/Giải thích được, Vận dụng được, Đề xuất giải pháp...).\n`;
+      prompt += `3. Định dạng đầu ra mong muốn:\n   - Nhận biết: [Ghi 1 câu ngắn gọn...]\n   - Thông hiểu: [Ghi 1 câu ngắn gọn...]\n   - Vận dụng: [Ghi 1 câu ngắn gọn...]\n   - Vận dụng cao: [Ghi 1 câu ngắn gọn...]`;
+    }
 
     try {
       await navigator.clipboard.writeText(prompt);
@@ -301,103 +360,220 @@ export default function Step3_Specification() {
   };
 
   // =======================================================================
-  // BUILD ROWS: Double-loop — topic → ĐVKT
+  // BUILD ROWS: Topic → ĐVKT → Mức độ nhận thức (chuẩn CV 4956 / 3280)
+  // Mỗi mức độ nhận thức của 1 ĐVKT được chia thành 1 dòng riêng biệt
   // =======================================================================
   const buildBodyRows = () => {
     const rows = [];
     matrix.forEach((topic, topicIdx) => {
       const dvList = topic.donViKienThuc || [];
-      const dvCount = dvList.length;
+      // Tổng số dòng của toàn bộ chủ đề
+      const topicTotalRows = dvList.reduce((sum, dv) => {
+        const active = getActiveLevelsForDv(dv, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+        return sum + active.length;
+      }, 0) || 1;
+
+      let isFirstTopicRow = true;
 
       dvList.forEach((dv, dvIdx) => {
-        const isFirst = dvIdx === 0;
+        const activeLevels = getActiveLevelsForDv(dv, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+        const dvTotalRows = activeLevels.length;
+        const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
 
-        rows.push(
-          <tr key={`${topic.id}_${dv.id}`} className="hover:bg-slate-50 transition-colors">
-            {/* CỘT TT — rowSpan */}
-            {isFirst && (
-              <td rowSpan={dvCount} className="border border-slate-300 p-2 text-center font-medium text-slate-600 align-top">{topicIdx + 1}</td>
-            )}
+        activeLevels.forEach((lvl, lvlIdx) => {
+          const isFirstDvRow = lvlIdx === 0;
+          const levelYccd = parsedYccd[lvl] || '';
 
-            {/* CỘT CHỦ ĐỀ — rowSpan */}
-            {isFirst && (
-              <td rowSpan={dvCount} className="border border-slate-300 p-2 text-slate-700 font-medium align-top relative group">
-                <div className="flex flex-col gap-2">
-                  <span>{topic.tenChuDe || <span className="text-gray-400 italic">...</span>}</span>
-                  <div className="mt-2 text-center">
-                    <button
-                      onClick={() => handleCopyPrompt(topic)}
-                      className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow hover:shadow-md hover:scale-105 transition-all w-full"
-                      title="Tự động nặn câu lệnh để dán vào ChatGPT/Gemini"
-                    >
-                      <Copy size={13} /> Copy Lệnh AI
-                    </button>
-                    <button
-                      onClick={() => setYccdModal({ show: true, topicId: topic.id, text: '' })}
-                      className="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded font-bold shadow hover:shadow-md transition-all w-full flex items-center justify-center gap-1.5"
-                    >
-                      📥 Dán YCCĐ từ AI
-                    </button>
+          // Lọc chi tiết indicatorMap cho mức độ này
+          const levelDetails = [];
+          if (examConfig.isCauTruc4213 && dv.indicatorMap) {
+            Object.entries(dv.indicatorMap).forEach(([k, val]) => {
+              if (!val) return;
+              const parts = k.split('_');
+              const indLvl = parts[1];
+              if (indLvl === lvl || (!isKHTNMon && lvl === 'vanDung' && indLvl === 'vanDungCao')) {
+                levelDetails.push(val);
+              }
+            });
+          }
+
+          rows.push(
+            <tr key={`${topic.id}_${dv.id}_${lvl}`} className="hover:bg-slate-50 transition-colors">
+              {/* CỘT TT — rowSpan cho toàn bộ chủ đề */}
+              {isFirstTopicRow && (
+                <td rowSpan={topicTotalRows} className="border border-slate-300 p-2 text-center font-medium text-slate-600 align-top">
+                  {topicIdx + 1}
+                </td>
+              )}
+
+              {/* CỘT CHỦ ĐỀ — rowSpan cho toàn bộ chủ đề */}
+              {isFirstTopicRow && (
+                <td rowSpan={topicTotalRows} className="border border-slate-300 p-2 text-slate-700 font-medium align-top relative group">
+                  <div className="flex flex-col gap-2">
+                    <span>{topic.tenChuDe || <span className="text-gray-400 italic">...</span>}</span>
+                    <div className="mt-2 text-center">
+                      <button
+                        onClick={() => handleCopyPrompt(topic)}
+                        className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow hover:shadow-md hover:scale-105 transition-all w-full"
+                        title="Tự động nặn câu lệnh để dán vào ChatGPT/Gemini"
+                      >
+                        <Copy size={13} /> Copy Lệnh AI
+                      </button>
+                      <button
+                        onClick={() => setYccdModal({ show: true, topicId: topic.id, text: '' })}
+                        className="mt-2 text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1.5 rounded font-bold shadow hover:shadow-md transition-all w-full flex items-center justify-center gap-1.5"
+                      >
+                        📥 Dán YCCĐ từ AI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const hasAny = (topic.donViKienThuc || []).some(dv => dv.yeuCauCanDat && dv.yeuCauCanDat.trim());
+                          if (!hasAny) {
+                            alert("Chủ đề này chưa có YCCĐ nào để xóa!");
+                            return;
+                          }
+                          if (window.confirm(`Xóa toàn bộ YCCĐ của Chủ đề "${topic.tenChuDe || 'này'}"?`)) {
+                            clearTopicYccd(topic.id);
+                          }
+                        }}
+                        className="mt-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 px-2 py-1 rounded font-bold shadow-sm hover:shadow transition-all w-full flex items-center justify-center gap-1.5"
+                        title="Xóa YCCĐ của tất cả các bài trong chủ đề này"
+                      >
+                        <Trash2 size={12} /> Xóa YCCĐ chủ đề
+                      </button>
+                    </div>
                   </div>
+                </td>
+              )}
+
+              {/* CỘT ĐVKT — rowSpan cho số mức độ của bài này */}
+              {isFirstDvRow && (
+                <td rowSpan={dvTotalRows} className="border border-slate-300 p-2 text-slate-700 align-top text-sm font-semibold group">
+                  <div className="flex flex-col justify-between h-full min-h-[60px] gap-1">
+                    <span>{dv.noiDung ? `- ${dv.noiDung}` : <span className="text-gray-400 italic">...</span>}</span>
+                    {dv.yeuCauCanDat && dv.yeuCauCanDat.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Xóa toàn bộ YCCĐ của bài "${dv.noiDung || 'này'}"?`)) {
+                            clearDvYccd(topic.id, dv.id);
+                          }
+                        }}
+                        className="text-[10px] text-slate-400 hover:text-red-600 hover:bg-red-50 px-1 py-0.5 rounded transition-colors self-start flex items-center gap-1 border border-transparent hover:border-red-200"
+                        title="Xóa toàn bộ YCCĐ của bài này"
+                      >
+                        <Trash2 size={10} /> Xóa YCCĐ bài
+                      </button>
+                    )}
+                  </div>
+                </td>
+              )}
+
+              {/* CỘT YCCĐ — Mỗi dòng mức độ 1 ô riêng */}
+              <td className="border border-slate-300 p-2 align-top bg-yellow-50/20 relative group/yccd">
+                <div className="flex flex-col h-full gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">
+                      * {formatLevelDisplayName(lvl)}:
+                    </span>
+                    {levelYccd && levelYccd.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedText = updateYccdForLevel(dv.yeuCauCanDat || '', lvl, '', activeLevels);
+                          updateDvYccd(topic.id, dv.id, updatedText);
+                        }}
+                        title={`Xóa YCCĐ mức ${formatLevelDisplayName(lvl)}`}
+                        className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-0.5 rounded transition-all"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    className="w-full flex-1 min-h-[60px] bg-transparent outline-none resize-y p-1 border border-transparent focus:border-yellow-300 rounded focus:bg-white transition-colors text-sm leading-relaxed text-slate-700"
+                    style={{ fontFamily: "'Times New Roman', serif" }}
+                    placeholder={`- YCCĐ mức ${formatLevelDisplayName(lvl)}...`}
+                    value={formatYccdText(levelYccd)}
+                    onChange={(e) => {
+                      const updatedText = updateYccdForLevel(dv.yeuCauCanDat || '', lvl, e.target.value, activeLevels);
+                      updateDvYccd(topic.id, dv.id, updatedText);
+                    }}
+                  />
+                  {examConfig.isCauTruc4213 && levelDetails.length > 0 && config.showCompetencySymbol !== false && config.showCompetencyCode !== false && (
+                    <div className="text-[11px] font-bold text-slate-600 border-t border-yellow-200 pt-1 mt-auto">
+                      {(() => {
+                        const grouped = {};
+                        levelDetails.forEach(d => {
+                          const m = typeof d === 'object' ? d : { code: d, label: '' };
+                          const code = m.code || (lvl === 'biet' ? 'NT' : lvl === 'hieu' ? 'TH' : 'VD');
+                          if (!grouped[code]) grouped[code] = [];
+                          if (m.label) grouped[code].push(m.label);
+                        });
+                        return Object.entries(grouped).map(([code, labels], i) => (
+                          <div key={i}>{labels.length} - {code} - {formatGroupedLabels(labels)}</div>
+                        ));
+                      })()}
+                    </div>
+                  )}
                 </div>
               </td>
-            )}
 
-            {/* CỘT ĐVKT — Mỗi ĐVKT 1 ô */}
-            <td className="border border-slate-300 p-2 text-slate-700 align-top text-sm">
-              {dv.noiDung ? `- ${dv.noiDung}` : <span className="text-gray-400 italic">...</span>}
-            </td>
+              {/* CÁC CỘT SỐ CÂU — CHỈ HIỂN THỊ Ở CỘT CỦA LEVEL ĐANG XÉT */}
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'biet' ? fmtNLC(dv.nhieuLuaChon?.biet, 'biet', dv, 'nhieuLuaChon') : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'hieu' ? fmtNLC(dv.nhieuLuaChon?.hieu, 'hieu', dv, 'nhieuLuaChon') : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'vanDung' ? fmtNLC(dv.nhieuLuaChon?.vanDung, 'vanDung', dv, 'nhieuLuaChon') : ''}
+              </td>
 
-            {/* CỘT YCCĐ — Mỗi ĐVKT 1 ô, không gộp rowSpan nữa */}
-            <td className="border border-slate-300 p-2 align-top bg-yellow-50/20 relative">
-              <div className="flex flex-col h-full gap-2">
-                <textarea
-                  className="w-full flex-1 min-h-[80px] bg-transparent outline-none resize-y p-1 border border-transparent focus:border-yellow-300 rounded focus:bg-white transition-colors text-sm leading-relaxed text-slate-700"
-                  style={{ fontFamily: "'Times New Roman', serif" }}
-                  placeholder="- YCCĐ của ĐVKT này..."
-                  value={formatYccdText(dv.yeuCauCanDat || '')}
-                  onChange={(e) => updateDvYccd(topic.id, dv.id, e.target.value)}
-                />
-                {examConfig.isCauTruc4213 && dv.indicatorMap && (
-                   <div className="text-[11px] font-bold text-slate-600 border-t border-yellow-200 pt-2 mt-auto">
-                      {(() => {
-                         const allDetails = Object.values(dv.indicatorMap);
-                         const grouped = {};
-                         allDetails.forEach(d => {
-                            if (!d) return;
-                            const m = typeof d === 'object' ? d : { code: d, label: '' };
-                            const code = m.code || 'NT';
-                            if (!grouped[code]) grouped[code] = [];
-                            if (m.label) grouped[code].push(m.label);
-                         });
-                         return Object.entries(grouped).map(([code, labels], i) => (
-                            <div key={i}>{labels.length} - {code} - {formatGroupedLabels(labels)}</div>
-                         ));
-                      })()}
-                   </div>
-                )}
-              </div>
-            </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'biet' ? fmtY(dv.dungSai?.biet, 'biet', dv, 'dungSai') : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'hieu' ? fmtY(dv.dungSai?.hieu, 'hieu', dv, 'dungSai') : ''}
+              </td>
+              <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">
+                {lvl === 'vanDung' ? fmtY((dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0), 'vanDung', dv, 'dungSai') : ''}
+              </td>
 
-            {/* CÁC CỘT SỐ CÂU — ĐỌC TỪ ĐVKT + MÃ NĂNG LỰC */}
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtNLC(dv.nhieuLuaChon?.biet, 'biet', dv, 'nhieuLuaChon')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtNLC(dv.nhieuLuaChon?.hieu, 'hieu', dv, 'nhieuLuaChon')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtNLC(dv.nhieuLuaChon?.vanDung, 'vanDung', dv, 'nhieuLuaChon')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtY(dv.dungSai?.biet, 'biet', dv, 'dungSai')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtY(dv.dungSai?.hieu, 'hieu', dv, 'dungSai')}</td>
-            <td className="border border-slate-300 p-1 text-center font-medium text-blue-700 text-[11px] leading-tight">{fmtY((dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0), 'vanDung', dv, 'dungSai')}</td>
-            <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>{config.hasTraLoiNgan ? fmtY(dv.traLoiNgan?.biet, 'biet', dv, 'traLoiNgan') : ''}</td>
-            <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>{config.hasTraLoiNgan ? fmtY(dv.traLoiNgan?.hieu, 'hieu', dv, 'traLoiNgan') : ''}</td>
-            <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>{config.hasTraLoiNgan ? fmtY(dv.traLoiNgan?.vanDung, 'vanDung', dv, 'traLoiNgan') : ''}</td>
-            {config.hasTuLuan && (
-              <>
-                <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">{fmtY(dv.tuLuan?.biet, 'biet', dv, 'tuLuan')}</td>
-                <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">{fmtY(dv.tuLuan?.hieu, 'hieu', dv, 'tuLuan')}</td>
-                <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">{fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan')}</td>
-              </>
-            )}
-          </tr>
-        );
+              <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>
+                {config.hasTraLoiNgan && lvl === 'biet' ? fmtY(dv.traLoiNgan?.biet, 'biet', dv, 'traLoiNgan') : ''}
+              </td>
+              <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>
+                {config.hasTraLoiNgan && lvl === 'hieu' ? fmtY(dv.traLoiNgan?.hieu, 'hieu', dv, 'traLoiNgan') : ''}
+              </td>
+              <td className={`border border-slate-300 p-1 text-center font-medium text-[11px] leading-tight ${config.hasTraLoiNgan ? 'text-blue-700' : 'bg-slate-100 text-transparent'}`}>
+                {config.hasTraLoiNgan && lvl === 'vanDung' ? fmtY(dv.traLoiNgan?.vanDung, 'vanDung', dv, 'traLoiNgan') : ''}
+              </td>
+
+              {config.hasTuLuan && (
+                <>
+                  <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
+                    {lvl === 'biet' ? fmtY(dv.tuLuan?.biet, 'biet', dv, 'tuLuan') : ''}
+                  </td>
+                  <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
+                    {lvl === 'hieu' ? fmtY(dv.tuLuan?.hieu, 'hieu', dv, 'tuLuan') : ''}
+                  </td>
+                  <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
+                    {lvl === 'vanDung' ? fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan') : ''}
+                  </td>
+                  {isKHTNMon && (
+                    <td className="border border-slate-300 p-1 text-center font-medium text-red-700 text-[11px] leading-tight">
+                      {lvl === 'vanDungCao' ? fmtY(dv.tuLuan?.vanDungCao, 'vanDungCao', dv, 'tuLuan') : ''}
+                    </td>
+                  )}
+                </>
+              )}
+            </tr>
+          );
+
+          isFirstTopicRow = false;
+        });
       });
     });
     return rows;
@@ -495,21 +671,68 @@ export default function Step3_Specification() {
                     >
                       📥 Dán YCCĐ
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const hasAny = (topic.donViKienThuc || []).some(dv => dv.yeuCauCanDat && dv.yeuCauCanDat.trim());
+                        if (!hasAny) {
+                          alert("Chủ đề này chưa có YCCĐ nào để xóa!");
+                          return;
+                        }
+                        if (window.confirm(`Xóa toàn bộ YCCĐ của Chủ đề "${topic.tenChuDe || 'này'}"?`)) {
+                          clearTopicYccd(topic.id);
+                        }
+                      }}
+                      className="mt-1 text-[10px] text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 px-2 py-0.5 rounded font-bold shadow-sm transition-all w-full flex items-center justify-center gap-1"
+                      title="Xóa YCCĐ của tất cả các bài trong chủ đề này"
+                    >
+                      <Trash2 size={10} /> Xóa YCCĐ chủ đề
+                    </button>
                   </div>
                 </div>
               </td>
             )}
-            <td className="border border-slate-300 p-2 text-slate-800 font-medium align-top text-xs">
-              {dv.noiDung ? (dv.noiDung.includes('Bài') ? dv.noiDung : `Bài. ${dv.noiDung}`) : "..."}
+            <td className="border border-slate-300 p-2 text-slate-700 align-top text-xs font-semibold group">
+              <div className="flex flex-col justify-between h-full min-h-[60px] gap-1">
+                <span>{dv.noiDung ? (dv.noiDung.includes('Bài') ? dv.noiDung : `Bài. ${dv.noiDung}`) : "..."}</span>
+                {dv.yeuCauCanDat && dv.yeuCauCanDat.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Xóa toàn bộ YCCĐ của bài "${dv.noiDung || 'này'}"?`)) {
+                        clearDvYccd(topic.id, dv.id);
+                      }
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-red-600 hover:bg-red-50 px-1 py-0.5 rounded transition-colors self-start flex items-center gap-1 border border-transparent hover:border-red-200"
+                    title="Xóa toàn bộ YCCĐ của bài này"
+                  >
+                    <Trash2 size={10} /> Xóa YCCĐ bài
+                  </button>
+                )}
+              </div>
             </td>
-            <td className="border border-slate-300 p-2 text-xs align-top bg-yellow-50/20">
-              <textarea
-                className="w-full h-full min-h-[80px] bg-transparent outline-none resize-y p-1 border border-transparent focus:border-yellow-300 rounded focus:bg-white transition-colors text-xs leading-relaxed text-slate-700"
-                style={{ fontFamily: "'Times New Roman', serif" }}
-                placeholder="- YCCĐ của ĐVKT này..."
-                value={formatYccdText(dv.yeuCauCanDat || '')}
-                onChange={(e) => updateDvYccd(topic.id, dv.id, e.target.value)}
-              />
+            <td className="border border-slate-300 p-2 text-xs align-top bg-yellow-50/20 relative group/yccd">
+              <div className="flex flex-col h-full gap-1">
+                <div className="flex items-center justify-end">
+                  {dv.yeuCauCanDat && dv.yeuCauCanDat.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => clearDvYccd(topic.id, dv.id)}
+                      title="Xóa YCCĐ này"
+                      className="text-slate-300 hover:text-red-600 hover:bg-red-50 p-0.5 rounded transition-all"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  className="w-full flex-1 min-h-[70px] bg-transparent outline-none resize-y p-1 border border-transparent focus:border-yellow-300 rounded focus:bg-white transition-colors text-xs leading-relaxed text-slate-700"
+                  style={{ fontFamily: "'Times New Roman', serif" }}
+                  placeholder="- YCCĐ của ĐVKT này..."
+                  value={formatYccdText(dv.yeuCauCanDat || '')}
+                  onChange={(e) => updateDvYccd(topic.id, dv.id, e.target.value)}
+                />
+              </div>
             </td>
             {/* CỘT SỐ CÂU (TỔNG) */}
             <td className="border border-slate-300 p-1 text-center font-bold text-slate-800 text-xs">
@@ -542,15 +765,39 @@ export default function Step3_Specification() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-emerald-100 p-2 rounded-lg">
-          <Copy className="text-emerald-600" size={24} />
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-100 p-2 rounded-lg">
+            <Copy className="text-emerald-600" size={24} />
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
+              Bản đặc tả đề kiểm tra
+            </h2>
+            <p className="text-sm text-slate-500">Yêu cầu cần đạt và phân bổ câu hỏi</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">
-            Bản đặc tả đề kiểm tra
-          </h2>
-          <p className="text-sm text-slate-500">Yêu cầu cần đạt và phân bổ câu hỏi</p>
+
+        {/* Toolbar các thao tác trên Bảng Đặc Tả */}
+        <div className="flex items-center gap-2">
+          {/* Nút Xóa 1 hoặc nhiều YCCĐ */}
+          <button
+            type="button"
+            onClick={() => {
+              const allIds = new Set();
+              matrix.forEach(t => {
+                (t.donViKienThuc || []).forEach(d => {
+                  if (d.yeuCauCanDat && d.yeuCauCanDat.trim()) allIds.add(d.id);
+                });
+              });
+              setClearModal({ show: true, selectedDvs: allIds });
+            }}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300 shadow-sm"
+            title="Chọn 1 hoặc nhiều bài để xóa Yêu cầu cần đạt"
+          >
+            <Trash2 size={13} />
+            <span>Xóa YCCĐ...</span>
+          </button>
         </div>
       </div>
 
@@ -657,9 +904,9 @@ export default function Step3_Specification() {
               <td className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? sumAll('traLoiNgan', 'vanDung') : 0}</td>
               {config.hasTuLuan && (
                 <>
-                  <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
-                  <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
-                  <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
+                  <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('biet')}</td>
+                  <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('hieu')}</td>
+                  <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('vanDung')}</td>
                 </>
               )}
             </tr>
@@ -883,6 +1130,203 @@ export default function Step3_Specification() {
                   className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:shadow-lg hover:bg-blue-700 transition-all"
                 >
                   Xác nhận Dán
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL XÓA 1 HOẶC NHIỀU YCCĐ (BATCH SELECTION) */}
+      {/* ===================================================================== */}
+      {clearModal.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-w-2xl flex flex-col overflow-hidden max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-rose-700 p-4 flex items-center justify-between text-white shadow">
+              <h2 className="text-base font-bold flex items-center gap-2">
+                <Trash2 size={20} />
+                <span>Chọn bài học để xóa Yêu cầu cần đạt</span>
+              </h2>
+              <button
+                onClick={() => setClearModal({ show: false, selectedDvs: new Set() })}
+                className="p-1 hover:bg-white/20 rounded-full transition-colors text-white text-lg font-bold w-7 h-7 flex items-center justify-center"
+                title="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sub-bar điều khiển chọn nhanh */}
+            <div className="bg-slate-50 px-6 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="text-slate-600">
+                Đã chọn: <strong className="text-red-600">{clearModal.selectedDvs.size}</strong> bài
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds = new Set();
+                    matrix.forEach(t => {
+                      (t.donViKienThuc || []).forEach(d => {
+                        if (d.yeuCauCanDat && d.yeuCauCanDat.trim()) allIds.add(d.id);
+                      });
+                    });
+                    setClearModal(prev => ({ ...prev, selectedDvs: allIds }));
+                  }}
+                  className="text-blue-600 hover:text-blue-800 font-bold hover:underline"
+                >
+                  Chọn tất cả ({(() => {
+                    let count = 0;
+                    matrix.forEach(t => (t.donViKienThuc || []).forEach(d => { if (d.yeuCauCanDat && d.yeuCauCanDat.trim()) count++; }));
+                    return count;
+                  })()} bài có YCCĐ)
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setClearModal(prev => ({ ...prev, selectedDvs: new Set() }))}
+                  className="text-slate-500 hover:text-slate-700 font-bold hover:underline"
+                >
+                  Bỏ chọn tất cả
+                </button>
+              </div>
+            </div>
+
+            {/* Danh sách chủ đề và bài học */}
+            <div className="p-6 flex flex-col gap-4 flex-1 overflow-y-auto">
+              {matrix.map((topic, tIdx) => {
+                const dvs = topic.donViKienThuc || [];
+                const topicDvIds = dvs.map(d => d.id);
+                const allTopicSelected = dvs.length > 0 && topicDvIds.every(id => clearModal.selectedDvs.has(id));
+                const someTopicSelected = topicDvIds.some(id => clearModal.selectedDvs.has(id));
+
+                return (
+                  <div key={topic.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                    {/* Header chủ đề kèm checkbox chọn cả chủ đề */}
+                    <div className="bg-slate-100 px-4 py-2.5 flex items-center justify-between border-b border-slate-200">
+                      <label className="flex items-center gap-2.5 font-bold text-slate-800 text-xs cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={allTopicSelected}
+                          ref={el => { if (el) el.indeterminate = someTopicSelected && !allTopicSelected; }}
+                          onChange={(e) => {
+                            const next = new Set(clearModal.selectedDvs);
+                            if (e.target.checked) {
+                              topicDvIds.forEach(id => next.add(id));
+                            } else {
+                              topicDvIds.forEach(id => next.delete(id));
+                            }
+                            setClearModal(prev => ({ ...prev, selectedDvs: next }));
+                          }}
+                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                        />
+                        <span>Chủ đề {tIdx + 1}: {topic.tenChuDe || 'Chưa đặt tên'}</span>
+                      </label>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {dvs.filter(d => d.yeuCauCanDat && d.yeuCauCanDat.trim()).length}/{dvs.length} bài có YCCĐ
+                      </span>
+                    </div>
+
+                    {/* Danh sách bài trong chủ đề */}
+                    <div className="divide-y divide-slate-100">
+                      {dvs.map((dv, dIdx) => {
+                        const hasYccd = Boolean(dv.yeuCauCanDat && dv.yeuCauCanDat.trim());
+                        const isChecked = clearModal.selectedDvs.has(dv.id);
+
+                        return (
+                          <label
+                            key={dv.id}
+                            className={`px-4 py-2.5 flex items-start gap-3 text-xs transition-colors cursor-pointer select-none ${
+                              isChecked ? 'bg-red-50/60' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const next = new Set(clearModal.selectedDvs);
+                                if (e.target.checked) {
+                                  next.add(dv.id);
+                                } else {
+                                  next.delete(dv.id);
+                                }
+                                setClearModal(prev => ({ ...prev, selectedDvs: next }));
+                              }}
+                              className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-800">
+                                  {dv.noiDung ? `- ${dv.noiDung}` : `Bài ${dIdx + 1}`}
+                                </span>
+                                {hasYccd ? (
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">
+                                    Có YCCĐ
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded italic">
+                                    Trống
+                                  </span>
+                                )}
+                              </div>
+                              {hasYccd && (
+                                <p className="text-[11px] text-slate-500 truncate mt-0.5 font-mono">
+                                  {dv.yeuCauCanDat.replace(/\n+/g, ' • ')}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ Yêu cầu cần đạt của tất cả các bài trong toàn đề thi không?")) {
+                    clearAllYccd();
+                    setClearModal({ show: false, selectedDvs: new Set() });
+                  }
+                }}
+                className="text-xs text-red-600 hover:text-red-800 hover:underline font-bold flex items-center gap-1"
+              >
+                <Trash2 size={13} /> Xóa sạch toàn bộ YCCĐ trong đề
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setClearModal({ show: false, selectedDvs: new Set() })}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  disabled={clearModal.selectedDvs.size === 0}
+                  onClick={() => {
+                    const count = clearModal.selectedDvs.size;
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa YCCĐ của ${count} bài học đã chọn?`)) {
+                      clearBatchYccd(Array.from(clearModal.selectedDvs));
+                      setClearModal({ show: false, selectedDvs: new Set() });
+                    }
+                  }}
+                  className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+                    clearModal.selectedDvs.size > 0
+                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 hover:shadow-md'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Trash2 size={13} />
+                  Xóa YCCĐ ({clearModal.selectedDvs.size} bài đã chọn)
                 </button>
               </div>
             </div>

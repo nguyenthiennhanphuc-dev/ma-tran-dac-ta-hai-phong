@@ -5,6 +5,7 @@ import { Copy, FileText, CheckCircle2, Wand2, AlertTriangle, ArrowUpCircle, Tras
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 import ClientGraph from './ClientGraph';
+import { getRowKhtnCode } from '../data/khtnCompetencyData';
 
 // =============================================================================
 // [BƯỚC 1] TỪ ĐIỂN PHONG CÁCH RA ĐỀ
@@ -855,34 +856,46 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
 // COMPONENT CHÍNH: Step5_AIGenerator
 // =============================================================================
 export default function Step5_AIGenerator() {
-  const { matrix, config, examConfig, tuLuanConfig, examHeader, draftQuestions, setDraftQuestions, examSlots, pushToExamSlot, updateExamSlot } = useExamStore();
+  const { matrix, config, examConfig, tuLuanConfig, examHeader, khtnConfig, draftQuestions, setDraftQuestions, examSlots, pushToExamSlot, updateExamSlot } = useExamStore();
   const [examContent, setExamContent] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [parseError, setParseError] = useState('');
   const [selectedDrafts, setSelectedDrafts] = useState([]);
 
-  const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
+  const hasManualTLConfig = tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
 
   const handleCopyExamPrompt = async () => {
-    let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+    const monHoc = examHeader?.monHoc || '';
+    const monHocName = monHoc || '........................';
+    const isHoaMon = /hóa|hoá/i.test(monHoc);
+    const isToanMon = /toán|toan/i.test(monHoc);
+    const isSinhMon = /sinh/i.test(monHoc);
+    const isKHTNMon = /khoa\s*học\s*tự\s*nhiên|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHoc);
+    // Tính lớp: KHTN → lấy từ nút chọn lớp; môn khác → bóc từ tên môn (vd "Toán 6" → "6")
+    const _isKHTNForGrade = isKHTNMon;
+    const gradeName = _isKHTNForGrade
+      ? (khtnConfig?.lop || '8')
+      : (examHeader?.grade || examHeader?.lop || examHeader?.monHoc?.match(/\b([6-9]|1[0-2])\b/)?.[0] || '........................');
+    let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC môn ${monHocName} lớp ${gradeName} BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+
 
     prompt += `\n⚠️ QUY TẮC TRÌNH BÀY CÔNG THỨC TOÁN/LÝ/HÓA (BẮT BUỘC):\n`;
     prompt += `- CÔNG THỨC TOÁN/HÓA: TUYỆT ĐỐI KHÔNG dùng định dạng LaTeX ($...$) cho các mũi tên phản ứng hóa học (->, =>, <=>) và kí hiệu nhiệt độ (độ C, ^oC). Bắt buộc viết chúng dưới dạng text thường.\n`;
     prompt += `- Với công thức Hóa học, Vật lý đơn giản: SỬ DỤNG ký tự UNICODE (Ví dụ: H₂SO₄, Fe²⁺, α, Δt). Không dùng mã code cho loại này.\n`;
     prompt += `- CHỈ KHI có công thức Toán học phức tạp (phân số, căn thức, hệ phương trình, tích phân...): Mới sử dụng mã LaTeX và BẮT BUỘC bọc trong cặp dấu $...$ (ví dụ: $\\frac{1}{2}$) hoặc $$...$$ cho công thức đứng 1 dòng.\n\n`;
 
-    prompt += `🖼️🖼️🖼️ YÊU CẦU HÌNH ẢNH — BẮT BUỘC (ĐỌC KỸ TRƯỚC KHI LÀM):\\n`;
-    prompt += `Trong đề thi này, BẠN PHẢI tạo TỐI THIỂU 1-2 câu hỏi có dòng "Hình ảnh:" kèm JSON metadata.\\n`;
-    prompt += `Hệ thống sẽ TỰ ĐỘNG vẽ hình bằng Python Matplotlib từ JSON bạn cung cấp.\\n`;
-    prompt += `📍 Cách ghi: Ngay SAU dòng "Giải thích:" của câu hỏi đó, thêm 1 dòng mới bắt đầu bằng "Hình ảnh:" rồi ghi JSON.\\n`;
-    prompt += `📍 Ví dụ biểu đồ cột: Hình ảnh: {"loai":"bieu_do_cot","tieuDe":"Dân số ĐNÁ","nhanX":"Quốc gia","nhanY":"Triệu người","nhan":["VN","Thái Lan","Indonesia"],"giaTri":[100,72,275]}\\n`;
-    prompt += `📍 Ví dụ đồ thị hàm số: Hình ảnh: {"loai":"do_thi_ham_so","hamSo":"x**2 - 4*x + 3","xRange":[-2,6],"tieuDe":"y = x² - 4x + 3"}\\n`;
-    prompt += `📍 Ví dụ biểu đồ tròn: Hình ảnh: {"loai":"bieu_do_tron","tieuDe":"Cơ cấu kinh tế","nhan":["Nông nghiệp","Công nghiệp","Dịch vụ"],"giaTri":[12,38,50]}\\n`;
-    prompt += `⚠️ NẾU BẠN KHÔNG THÊM ÍT NHẤT 1 CÂU CÓ "Hình ảnh:", ĐỀ THI SẼ BỊ TRẢ LẠI.\\n\\n`;
+    prompt += `🖼️🖼️🖼️ YÊU CẦU HÌNH ẢNH — BẮT BUỘC (ĐỌC KỸ TRƯỚC KHI LÀM):\n`;
+    prompt += `Trong đề thi này, BẠN PHẢI tạo TỐI THIỂU 1-2 câu hỏi có dòng "Hình ảnh:" kèm JSON metadata.\n`;
+    prompt += `Hệ thống sẽ TỰ ĐỘNG vẽ hình bằng Python Matplotlib từ JSON bạn cung cấp.\n`;
+    prompt += `📍 Cách ghi: Ngay SAU dòng "Giải thích:" của câu hỏi đó, thêm 1 dòng mới bắt đầu bằng "Hình ảnh:" rồi ghi JSON.\n`;
+    prompt += `📍 Ví dụ biểu đồ cột: Hình ảnh: {"loai":"bieu_do_cot","tieuDe":"Dân số ĐNÁ","nhanX":"Quốc gia","nhanY":"Triệu người","nhan":["VN","Thái Lan","Indonesia"],"giaTri":[100,72,275]}\n`;
+    prompt += `📍 Ví dụ đồ thị hàm số: Hình ảnh: {"loai":"do_thi_ham_so","hamSo":"x**2 - 4*x + 3","xRange":[-2,6],"tieuDe":"y = x² - 4x + 3"}\n`;
+    prompt += `📍 Ví dụ biểu đồ tròn: Hình ảnh: {"loai":"bieu_do_tron","tieuDe":"Cơ cấu kinh tế","nhan":["Nông nghiệp","Công nghiệp","Dịch vụ"],"giaTri":[12,38,50]}\n`;
+    prompt += `⚠️ NẾU BẠN KHÔNG THÊM ÍT NHẤT 1 CÂU CÓ "Hình ảnh:", ĐỀ THI SẼ BỊ TRẢ LẠI.\n\n`;
 
     prompt += `⚠️ YÊU CẦU TỐI QUAN TRỌNG VỀ ĐỊNH DẠNG (FORMAT):
 Bạn BẮT BUỘC phải trình bày từng câu hỏi theo đúng KHUÔN MẪU dưới đây để hệ thống phần mềm của tôi đọc được. 
-Đặc biệt lưu ý: Phải ghi rõ (Mức độ: ..., Chủ đề: ..., Mã năng lực: ...) ở trong mỗi ý nhỏ. Trong đó "Mã năng lực" là mã cụ thể tôi sẽ cung cấp cho từng câu ở phần Ma trận bên dưới (ví dụ: HH1.1, TD1.2, ...).
+Đặc biệt lưu ý: Phải ghi rõ (Mức độ: ..., Chủ đề: ..., Mã năng lực: ...) ở trong mỗi ý nhỏ. Trong đó "Mã năng lực" là mã cụ thể tôi sẽ cung cấp cho từng câu ở phần Ma trận bên dưới (ví dụ đối với KHTN: NT1, NT2, NT3, TH3, VD1, VD2; đối với Hóa: HH1.1; Toán: TD1.1...).
 
 === KHUÔN MẪU TỪNG LOẠI CÂU HỎI ===
 
@@ -894,18 +907,40 @@ C. [Lựa chọn C]
 D. [Lựa chọn D]
 Đáp án đúng: [Chỉ ghi chữ cái A, B, C hoặc D]
 Giải thích: [Giải thích ngắn gọn]
-
-[LOẠI 2: TRẮC NGHIỆM ĐÚNG/SAI — CHÙM CÂU HỎI] (Mỗi ý đúng được ${examConfig.diemMoiYP2} điểm)
-⚠️ QUAN TRỌNG: Mỗi câu Đúng/Sai BẮT BUỘC có 1 ĐỀ BÀI CHUNG ở đầu. Sau đó phát triển 4 ý a,b,c,d.
-⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý: Ý a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao.
-${config.groupTfByTopic ? '⚠️ ĐẶC BIỆT: Chế độ "Gom nhóm theo Chủ đề" đang bật. 4 mệnh đề a, b, c, d của mỗi câu Đúng/Sai nên lấy kiến thức từ CÁC BÀI HỌC KHÁC NHAU trong cùng chủ đề, tạo thành câu hỏi kiểm tra kiến thức tổng hợp của cả chủ đề.\\n' : ''}Câu [Số] (Chủ đề: ...): [Nội dung đề bài chung / Tình huống]
-a) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề a]
-b) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề b]
-c) (Mức độ: Vận dụng, Mã năng lực: ...) [Mệnh đề c]
-d) (Mức độ: Vận dụng cao, Mã năng lực: ...) [Mệnh đề d]
-Đáp án đúng: a-Đ, b-S, c-Đ, d-S
-Giải thích: [Giải thích ngắn gọn vì sao đúng/sai]
 `;
+
+    const isKHTN = examHeader?.monHoc?.toLowerCase().includes('khoa học tự nhiên') || examHeader?.monHoc?.toLowerCase().includes('khtn');
+    const isCauTruc4213 = examConfig?.isCauTruc4213 || isKHTN;
+
+    prompt += `\n[LOẠI 2: TRẮC NGHIỆM ĐÚNG/SAI — CHÙM CÂU HỎI] (Mỗi ý đúng được ${examConfig.diemMoiYP2} điểm)\n`;
+    prompt += `⚠️ QUAN TRỌNG: Mỗi câu Đúng/Sai BẮT BUỘC có 1 ĐỀ BÀI CHUNG ở đầu. Sau đó phát triển 4 ý a,b,c,d.\n`;
+    if (isCauTruc4213) {
+      prompt += `⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý (BẮT BUỘC THEO CÔNG VĂN 4956/SGDĐT):
+- Ý a) mức Nhận biết
+- Ý b) mức Nhận biết
+- Ý c) mức Thông hiểu
+- Ý d) mức Vận dụng
+(TUYỆT ĐỐI KHÔNG CÓ VẬN DỤNG CAO Ở CÂU ĐÚNG/SAI).\n`;
+    } else {
+      prompt += `⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý: Ý a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao.\n`;
+    }
+    if (config.groupTfByTopic) {
+      prompt += `⚠️ ĐẶC BIỆT: Chế độ "Gom nhóm theo Chủ đề" đang bật. 4 mệnh đề a, b, c, d của mỗi câu Đúng/Sai nên lấy kiến thức từ CÁC BÀI HỌC KHÁC NHAU trong cùng chủ đề, tạo thành câu hỏi kiểm tra kiến thức tổng hợp của cả chủ đề.\n`;
+    }
+    prompt += `Câu [Số] (Chủ đề: ...): [Nội dung đề bài chung / Tình huống]\n`;
+    if (isCauTruc4213) {
+      prompt += `a) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề a]\n`;
+      prompt += `b) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề b]\n`;
+      prompt += `c) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề c]\n`;
+      prompt += `d) (Mức độ: Vận dụng, Mã năng lực: ...) [Mệnh đề d]\n`;
+    } else {
+      prompt += `a) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề a]\n`;
+      prompt += `b) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề b]\n`;
+      prompt += `c) (Mức độ: Vận dụng, Mã năng lực: ...) [Mệnh đề c]\n`;
+      prompt += `d) (Mức độ: Vận dụng cao, Mã năng lực: ...) [Mệnh đề d]\n`;
+    }
+    prompt += `Đáp án đúng: a-Đ, b-S, c-Đ, d-S\n`;
+    prompt += `Giải thích: [Giải thích ngắn gọn vì sao đúng/sai]\n`;
     if (config.hasTraLoiNgan) {
       prompt += `[LOẠI 3: TRẢ LỜI NGẮN] (Mỗi câu đúng được ${examConfig.diemMoiYP3} điểm)
 ⚠️ QUY TẮC THÉP: BẮT BUỘC phải đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG CHỈ LÀ MỘT CON SỐ CỤ THỂ (ví dụ: 15, 0.5, 100...). Tuyệt đối không hỏi lý thuyết yêu cầu trả lời bằng chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
@@ -923,6 +958,7 @@ Giải thích: [Cách giải/Lý do ngắn gọn]\n\n`;
           total += Number(dv.tuLuan?.diemBiet) || 0;
           total += Number(dv.tuLuan?.diemHieu) || 0;
           total += Number(dv.tuLuan?.diemVanDung) || 0;
+          total += Number(dv.tuLuan?.diemVanDungCao) || 0;
         });
       });
       return Math.round(total * 100) / 100;
@@ -982,7 +1018,29 @@ Giải thích: [Ngắn gọn]
 
     prompt += `\n🎓 ĐẶC THÙ TỪNG BỘ MÔN:\n`;
     prompt += `- MÔN TOÁN: 100% câu hỏi trắc nghiệm phải là bài tập TÍNH TOÁN, tìm x, tính diện tích, giải quyết vấn đề. KHÔNG hỏi lý thuyết suông (kiểu "Phân số là gì?"). Các đáp án nhiễu là kết quả của việc tính nhầm dấu, sai công thức.\n`;
-    prompt += `- MÔN KHOA HỌC TỰ NHIÊN (Lý, Hóa, Sinh): Câu hỏi đi thẳng vào bản chất hiện tượng, sơ đồ thí nghiệm, phản ứng hóa học, hoặc bài tập thực tiễn đời sống.\n`;
+    prompt += `- MÔN KHOA HỌC TỰ NHIÊN (KHTN): Câu hỏi đi thẳng vào bản chất hiện tượng, sơ đồ thí nghiệm, phản ứng hóa học, hoặc bài tập thực tiễn đời sống.\n`;
+    if (isKHTNMon) {
+      prompt += `\n📌 CHÚ THÍCH MÃ NĂNG LỰC KHTN (BẮT BUỘC đọc khi ra đề — Căn cứ CTGDPT 2018):\n`;
+      prompt += `► Nhóm Nhận thức (NT):\n`;
+      prompt += `  [NT1] Nhận biết: Nhận biết, kể tên, phát biểu, nêu được đối tượng/khái niệm/quy luật\n`;
+      prompt += `  [NT2] Thông hiểu: Trình bày, mô tả bằng ngôn ngữ/viết/sơ đồ/công thức\n`;
+      prompt += `  [NT3] Thông hiểu: So sánh, phân loại, phân biệt theo tiêu chí\n`;
+      prompt += `  [NT4] Thông hiểu: Phân tích đặc điểm sự vật/hiện tượng theo logic nhất định\n`;
+      prompt += `  [NT5] Thông hiểu: Tìm từ khoá, kết nối thông tin, lập dàn ý văn bản khoa học\n`;
+      prompt += `  [NT6] Vận dụng: Giải thích quan hệ nhân quả, cấu tạo–chức năng\n`;
+      prompt += `  [NT7] Vận dụng: Nhận ra điểm sai, chỉnh sửa, đưa nhận định phê phán\n`;
+      prompt += `► Nhóm Tìm hiểu tự nhiên (TH):\n`;
+      prompt += `  [TH1] Thông hiểu: Đề xuất vấn đề, đặt câu hỏi khoa học\n`;
+      prompt += `  [TH2] Thông hiểu: Đưa phán đoán, xây dựng giả thuyết\n`;
+      prompt += `  [TH3] Thông hiểu: Lập kế hoạch, thiết kế phương án thí nghiệm\n`;
+      prompt += `  [TH4] Vận dụng: Thực hiện thí nghiệm, thu thập/xử lý dữ liệu, rút ra kết luận\n`;
+      prompt += `  [TH5] Vận dụng: Viết báo cáo, vẽ hình, thiết kế mô hình/dụng cụ\n`;
+      prompt += `  [TH6] Vận dụng: Ra quyết định, đề xuất giải pháp xử lý vấn đề\n`;
+      prompt += `► Nhóm Vận dụng kiến thức (VD):\n`;
+      prompt += `  [VD1] Vận dụng: Vận dụng giải thích hiện tượng thực tế, giải bài tập định lượng\n`;
+      prompt += `  [VD2] Vận dụng cao: Đề xuất giải pháp bảo vệ môi trường, phát triển bền vững\n`;
+      prompt += `⚠️ Câu Đúng/Sai: ý a=NT1 (Nhận biết), ý b=NT1 (Nhận biết), ý c=NT3 (Thông hiểu), ý d=VD1 (Vận dụng) — TUYỆT ĐỐI không có Vận dụng cao ở câu Đúng/Sai (Vận dụng cao chỉ có ở phần Tự luận)\n`;
+    }
     prompt += `- MÔN KHOA HỌC XÃ HỘI (Sử, Địa, GDCD): Sử/Địa ưu tiên nguyên nhân, hệ quả, phân tích số liệu/biểu đồ. Riêng GDCD/KTPL: 100% câu hỏi Vận dụng phải là TÌNH HUỐNG THỰC TẾ (ví dụ: nhân vật A, B vi phạm gì) để học sinh xử lý.\n`;
     prompt += `- MÔN NGỮ VĂN: Tập trung ĐỌC HIỂU (nhận diện tu từ, tác dụng nghệ thuật, phương thức biểu đạt). Tự luận hướng đến cảm thụ và nghị luận.\n`;
     prompt += `- MÔN TIẾNG ANH: Kiểm tra từ vựng trong ngữ cảnh (Context), chức năng giao tiếp. Đáp án nhiễu phải có cấu trúc tương đồng để phân loại học sinh.\n`;
@@ -1044,7 +1102,7 @@ Giải thích: [Ngắn gọn]
       matrix.forEach(topic => {
         (topic.donViKienThuc || []).forEach(dv => {
           const obj = dv[typeKey] || {};
-          ['biet', 'hieu', 'vanDung'].forEach(level => { total += Number(obj[level]) || 0; });
+          ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => { total += Number(obj[level]) || 0; });
         });
       });
       return total;
@@ -1067,10 +1125,11 @@ Giải thích: [Ngắn gọn]
     const soCauTraLoiNgan = totalTraLoiNgan; // NÂNG CẤP: KHÔNG CHIA 4 NỮA
     const soCauTuLuan = (() => {
       if (hasManualTLConfig) return tuLuanConfig.questions.length;
+      if (isCauTruc4213 || isKHTN) return totalTuLuan;
       const grps = {};
       matrix.forEach(topic => {
         (topic.donViKienThuc || []).forEach(dv => {
-          ['biet', 'hieu', 'vanDung'].forEach(level => {
+          ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => {
             const cnt = Number(dv.tuLuan?.[level]) || 0;
             for (let i = 0; i < cnt; i++) {
               const k = dv.noiDung || '';
@@ -1090,12 +1149,15 @@ Giải thích: [Ngắn gọn]
       if (!map) return [];
       return Array.from({length: count}, (_, i) => toCode(map[`${type}_${level}_${i}`])).filter(Boolean);
     };
-    // Helper: auto-suy mã HH/TD/NT từ YCCĐ khi indicatorMap rỗng
-    const monHoc = examHeader?.monHoc || '';
-    const isHoaMon = /hóa|hoá/i.test(monHoc);
-    const isToanMon = /toán|toan/i.test(monHoc);
-    const isSinhMon = /sinh/i.test(monHoc);
+    // Helper: auto-suy mã HH/TD/NT/KHTN từ YCCĐ khi indicatorMap rỗng
     const getAutoCode = (level) => {
+      if (isKHTNMon) {
+        // Mã chuẩn theo CTGDPT 2018 (NT1-NT7, TH1-TH6, VD1-VD2)
+        if (level === 'biet') return 'NT1';
+        if (level === 'hieu') return 'NT3';
+        if (level === 'vanDung') return 'VD1';
+        if (level === 'vanDungCao') return 'VD2';
+      }
       if (isHoaMon) {
         if (level === 'biet') return 'HH1.1';
         if (level === 'hieu') return 'HH1.2';
@@ -1113,7 +1175,13 @@ Giải thích: [Ngắn gọn]
       }
       return null;
     };
-    const resolveInds = (map, type, level, count) => {
+    const resolveInds = (dvOrMap, type, level, count) => {
+      const dv = (dvOrMap && dvOrMap.noiDung !== undefined) ? dvOrMap : null;
+      if (isKHTNMon && dv) {
+        const code = getRowKhtnCode(dv, level);
+        if (code) return [code];
+      }
+      const map = dv ? dv.indicatorMap : dvOrMap;
       const codes = readInds(map, type, level, count);
       if (codes.length > 0) return [...new Set(codes)];
       const auto = getAutoCode(level);
@@ -1128,13 +1196,13 @@ Giải thích: [Ngắn gọn]
         const mcq = dv.nhieuLuaChon || { biet: 0, hieu: 0, vanDung: 0 };
         const ds = dv.dungSai || { biet: 0, hieu: 0, vanDung: 0 };
         const tln = dv.traLoiNgan || { biet: 0, hieu: 0, vanDung: 0 };
-        const tl = dv.tuLuan || { biet: 0, hieu: 0, vanDung: 0 };
+        const tl = dv.tuLuan || { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
 
         const dvTotalQs =
           (Number(mcq.biet) || 0) + (Number(mcq.hieu) || 0) + (Number(mcq.vanDung) || 0) +
           (Number(ds.biet) || 0) + (Number(ds.hieu) || 0) + (Number(ds.vanDung) || 0) + (Number(ds.vanDungCao) || 0) +
           (Number(tln.biet) || 0) + (Number(tln.hieu) || 0) + (Number(tln.vanDung) || 0) +
-          (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0);
+          (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0) + (Number(tl.vanDungCao) || 0);
 
         if (dvTotalQs > 0) {
           hasContent = true;
@@ -1160,15 +1228,15 @@ Giải thích: [Ngắn gọn]
 
           const mcqParts = [];
           if (Number(mcq.biet) > 0) {
-            const inds = resolveInds(dv.indicatorMap, 'nhieuLuaChon', 'biet', Number(mcq.biet));
+            const inds = resolveInds(dv, 'nhieuLuaChon', 'biet', Number(mcq.biet));
             mcqParts.push(`${mcq.biet} câu Nhận biết${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
           }
           if (Number(mcq.hieu) > 0) {
-            const inds = resolveInds(dv.indicatorMap, 'nhieuLuaChon', 'hieu', Number(mcq.hieu));
+            const inds = resolveInds(dv, 'nhieuLuaChon', 'hieu', Number(mcq.hieu));
             mcqParts.push(`${mcq.hieu} câu Thông hiểu${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
           }
           if (Number(mcq.vanDung) > 0) {
-            const inds = resolveInds(dv.indicatorMap, 'nhieuLuaChon', 'vanDung', Number(mcq.vanDung));
+            const inds = resolveInds(dv, 'nhieuLuaChon', 'vanDung', Number(mcq.vanDung));
             mcqParts.push(`${mcq.vanDung} câu Vận dụng${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
           }
           if (mcqParts.length > 0) {
@@ -1183,31 +1251,43 @@ Giải thích: [Ngắn gọn]
               const allInds = [];
               ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(lvl => {
                 const cnt = Number(ds[lvl]) || 0;
-                if (cnt > 0) resolveInds(dv.indicatorMap, 'dungSai', lvl, cnt).forEach(c => allInds.push(c));
+                if (cnt > 0) resolveInds(dv, 'dungSai', lvl, cnt).forEach(c => allInds.push(c));
               });
               const uniqueInds = [...new Set(allInds)];
               const lvlParts = [];
-              if (Number(ds.biet) > 0) lvlParts.push(`${ds.biet} ý Nhận biết`);
-              if (Number(ds.hieu) > 0) lvlParts.push(`${ds.hieu} ý Thông hiểu`);
-              if (Number(ds.vanDung) > 0) lvlParts.push(`${ds.vanDung} ý Vận dụng`);
-              if (Number(ds.vanDungCao) > 0) lvlParts.push(`${ds.vanDungCao} ý Vận dụng cao`);
+              if (Number(ds.biet) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'biet') : '';
+                lvlParts.push(`${ds.biet} ý Nhận biết${c ? ` [${c}]` : ''}`);
+              }
+              if (Number(ds.hieu) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'hieu') : '';
+                lvlParts.push(`${ds.hieu} ý Thông hiểu${c ? ` [${c}]` : ''}`);
+              }
+              if (Number(ds.vanDung) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'vanDung') : '';
+                lvlParts.push(`${ds.vanDung} ý Vận dụng${c ? ` [${c}]` : ''}`);
+              }
+              if (Number(ds.vanDungCao) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'vanDungCao') : '';
+                lvlParts.push(`${ds.vanDungCao} ý Vận dụng cao${c ? ` [${c}]` : ''}`);
+              }
               const lvlStr = lvlParts.length > 0 ? ` [${lvlParts.join(', ')}]` : '';
               dsParts.push(`${numCau} câu${lvlStr}${uniqueInds.length > 0 ? ` (Mã năng lực: ${uniqueInds.join(', ')})` : ''}`);
             } else {
               if (Number(ds.biet) > 0) {
-                const inds = resolveInds(dv.indicatorMap, 'dungSai', 'biet', Number(ds.biet));
+                const inds = resolveInds(dv, 'dungSai', 'biet', Number(ds.biet));
                 dsParts.push(`${ds.biet} ý Nhận biết${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
               }
               if (Number(ds.hieu) > 0) {
-                const inds = resolveInds(dv.indicatorMap, 'dungSai', 'hieu', Number(ds.hieu));
+                const inds = resolveInds(dv, 'dungSai', 'hieu', Number(ds.hieu));
                 dsParts.push(`${ds.hieu} ý Thông hiểu${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
               }
               if (Number(ds.vanDung) > 0) {
-                const inds = resolveInds(dv.indicatorMap, 'dungSai', 'vanDung', Number(ds.vanDung));
+                const inds = resolveInds(dv, 'dungSai', 'vanDung', Number(ds.vanDung));
                 dsParts.push(`${ds.vanDung} ý Vận dụng${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
               }
               if (Number(ds.vanDungCao) > 0) {
-                const inds = resolveInds(dv.indicatorMap, 'dungSai', 'vanDungCao', Number(ds.vanDungCao));
+                const inds = resolveInds(dv, 'dungSai', 'vanDungCao', Number(ds.vanDungCao));
                 dsParts.push(`${ds.vanDungCao} ý Vận dụng cao${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
               }
             }
@@ -1223,15 +1303,15 @@ Giải thích: [Ngắn gọn]
           if (config.hasTraLoiNgan) {
             const tlnParts = [];
             if (Number(tln.biet) > 0) {
-              const inds = resolveInds(dv.indicatorMap, 'traLoiNgan', 'biet', Number(tln.biet));
+              const inds = resolveInds(dv, 'traLoiNgan', 'biet', Number(tln.biet));
               tlnParts.push(`${tln.biet} câu Nhận biết${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
             }
             if (Number(tln.hieu) > 0) {
-              const inds = resolveInds(dv.indicatorMap, 'traLoiNgan', 'hieu', Number(tln.hieu));
+              const inds = resolveInds(dv, 'traLoiNgan', 'hieu', Number(tln.hieu));
               tlnParts.push(`${tln.hieu} câu Thông hiểu${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
             }
             if (Number(tln.vanDung) > 0) {
-              const inds = resolveInds(dv.indicatorMap, 'traLoiNgan', 'vanDung', Number(tln.vanDung));
+              const inds = resolveInds(dv, 'traLoiNgan', 'vanDung', Number(tln.vanDung));
               tlnParts.push(`${tln.vanDung} câu Vận dụng${inds.length > 0 ? ` (Mã năng lực: ${inds.join(', ')})` : ''}`);
             }
             if (tlnParts.length > 0) {
@@ -1243,23 +1323,39 @@ Giải thích: [Ngắn gọn]
             const diemBiet = Number(dv.tuLuan?.diemBiet) || 0;
             const diemHieu = Number(dv.tuLuan?.diemHieu) || 0;
             const diemVanDung = Number(dv.tuLuan?.diemVanDung) || 0;
-            const totalYTL = (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0);
+            const diemVanDungCao = Number(dv.tuLuan?.diemVanDungCao) || 0;
+            const totalYTL = (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0) + (Number(tl.vanDungCao) || 0);
             if (totalYTL > 0) {
-              const tongDiem = Math.round((diemBiet + diemHieu + diemVanDung) * 100) / 100;
+              const tongDiem = Math.round((diemBiet + diemHieu + diemVanDung + diemVanDungCao) * 100) / 100;
               const allInds = [];
-              ['biet', 'hieu', 'vanDung'].forEach(level => {
+              ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => {
                 const cnt = Number(tl[level]) || 0;
-                if (cnt > 0) resolveInds(dv.indicatorMap, 'tuLuan', level, cnt).forEach(c => allInds.push(c));
+                if (cnt > 0) resolveInds(dv, 'tuLuan', level, cnt).forEach(c => allInds.push(c));
               });
               const uniqueInds = [...new Set(allInds)];
               const indStr = uniqueInds.length > 0 ? ` (Mã năng lực: ${uniqueInds.join(', ')})` : '';
               const tlLevelParts = [];
-              if (Number(tl.biet) > 0) tlLevelParts.push(`${tl.biet} ý Nhận biết`);
-              if (Number(tl.hieu) > 0) tlLevelParts.push(`${tl.hieu} ý Thông hiểu`);
-              if (Number(tl.vanDung) > 0) tlLevelParts.push(`${tl.vanDung} ý Vận dụng`);
+              if (Number(tl.biet) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'biet') : '';
+                tlLevelParts.push(`${tl.biet} ý Nhận biết${c ? ` [${c}]` : ''}`);
+              }
+              if (Number(tl.hieu) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'hieu') : '';
+                tlLevelParts.push(`${tl.hieu} ý Thông hiểu${c ? ` [${c}]` : ''}`);
+              }
+              if (Number(tl.vanDung) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'vanDung') : '';
+                tlLevelParts.push(`${tl.vanDung} ý Vận dụng${c ? ` [${c}]` : ''}`);
+              }
+              if (Number(tl.vanDungCao) > 0) {
+                const c = isKHTNMon ? getRowKhtnCode(dv, 'vanDungCao') : '';
+                tlLevelParts.push(`${tl.vanDungCao} ý Vận dụng cao${c ? ` [${c}]` : ''}`);
+              }
               const tlLevelStr = tlLevelParts.length > 0 ? ` [${tlLevelParts.join(', ')}]` : '';
               if (hasManualTLConfig) {
                 prompt += ` - Tự luận [LOẠI 4]: ${totalYTL} ý${tlLevelStr} — tổng ${tongDiem}đ${indStr}\n`;
+              } else if (isCauTruc4213 || isKHTN) {
+                prompt += ` - Tự luận [LOẠI 4]: ${totalYTL} câu đơn ý${tlLevelStr} — tổng ${tongDiem}đ${indStr}\n`;
               } else {
                 const cauHaiY = Math.floor(totalYTL / 2);
                 const cauMotY = totalYTL % 2;
@@ -1288,7 +1384,11 @@ Giải thích: [Ngắn gọn]
       prompt += `📊 TỔNG HỢP GOM CÂU BẮT BUỘC:\n`;
       if (soCauDungSai > 0) {
         prompt += `  → LOẠI 2: Gom thành ${soCauDungSai} Câu (mỗi Câu gồm 1 ĐỀ BÀI CHUNG + 4 ý a, b, c, d xoay quanh đề bài đó).\n`;
-        prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt thứ tự mức độ nhận thức: ý a) Nhận biết, ý b) Thông hiểu, ý c) Vận dụng, ý d) Vận dụng.\n`;
+        if (isCauTruc4213) {
+          prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt cấu trúc CV 4956: ý a) Nhận biết, ý b) Nhận biết, ý c) Thông hiểu, ý d) Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
+        } else {
+          prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt thứ tự mức độ nhận thức: ý a) Nhận biết, ý b) Thông hiểu, ý c) Vận dụng, ý d) Vận dụng cao.\n`;
+        }
         if (config.groupTfByTopic) {
           prompt += `     ⚠️ LƯU Ý: 4 mệnh đề trong mỗi câu Đúng/Sai này được lấy rải rác từ các bài học khác nhau trong cùng chủ đề để đảm bảo tính bao quát.\n`;
         }
@@ -1335,12 +1435,37 @@ Giải thích: [Ngắn gọn]
     prompt += `\n[THẦY/CÔ XÓA DÒNG CHỮ NÀY, BẤM NÚT ĐÍNH KÈM FILE TÀI LIỆU/SGK VÀ GỬI CHO AI ĐỂ NÓ SOẠN ĐỀ]`;
 
     try {
-      await navigator.clipboard.writeText(prompt);
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(prompt);
+      } else {
+        throw new Error('Clipboard API not available');
+      }
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 3000);
       alert("✅ ĐÃ COPY SIÊU LỆNH SINH ĐỀ THI!\n\n1. Hãy dán lệnh này vào ChatGPT hoặc Gemini.\n2. Bấm nút ghim kẹp giấy để đính kèm file Sách giáo khoa.\n3. Xóa dòng ngoặc vuông cuối cùng rồi bấm GỬI.\n4. Đợi AI nhả đề thi rồi copy dán vào ô bên dưới nhé!");
     } catch (err) {
-      alert("Lỗi khi copy. Trình duyệt của bạn có thể không hỗ trợ tính năng này.");
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = prompt;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        textarea.setAttribute('readonly', '');
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        const success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (success) {
+          setIsCopied(true);
+          setTimeout(() => setIsCopied(false), 3000);
+          alert("✅ ĐÃ COPY SIÊU LỆNH SINH ĐỀ THI!\n\n1. Hãy dán lệnh này vào ChatGPT hoặc Gemini.\n2. Bấm nút ghim kẹp giấy để đính kèm file Sách giáo khoa.\n3. Xóa dòng ngoặc vuông cuối cùng rồi bấm GỬI.\n4. Đợi AI nhả đề thi rồi copy dán vào ô bên dưới nhé!");
+          return;
+        }
+      } catch (e2) {
+        console.error('Fallback copy failed', e2);
+      }
+      alert("Lỗi khi copy. Trình duyệt của bạn có thể đang chặn quyền Clipboard. Vui lòng cấp quyền hoặc sao chép thủ công.");
     }
   };
 
@@ -1355,7 +1480,7 @@ Giải thích: [Ngắn gọn]
       matrix.forEach(topic => {
         (topic.donViKienThuc || []).forEach(dv => {
           const obj = dv[typeKey] || {};
-          ['biet', 'hieu', 'vanDung'].forEach(level => { total += Number(obj[level]) || 0; });
+          ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => { total += Number(obj[level]) || 0; });
         });
       });
       return total;
@@ -1374,7 +1499,7 @@ Giải thích: [Ngắn gọn]
       matrix.forEach(topic => {
         (topic.donViKienThuc || []).forEach(dv => {
           const obj = dv[typeKey] || {};
-          let count = (Number(obj.biet) || 0) + (Number(obj.hieu) || 0) + (Number(obj.vanDung) || 0);
+          let count = (Number(obj.biet) || 0) + (Number(obj.hieu) || 0) + (Number(obj.vanDung) || 0) + (Number(obj.vanDungCao) || 0);
           if (count > 0) {
             for (let c = 0; c < count; c++) labels.push(dv.noiDung || '');
           }
@@ -1418,35 +1543,128 @@ Giải thích: [Ngắn gọn]
       }
     }
 
-    // --- PHẦN IV --- (Gom theo ĐVKT, tối đa 2 ý/câu — đồng bộ Step4)
-    const totalTL = getTotalY('tuLuan');
-    const soCauTL = (() => {
-      if (hasManualTLConfig) return tuLuanConfig.questions.length;
-      // Nhóm ý TL theo ĐVKT
-      const items = [];
-      matrix.forEach(topic => {
-        (topic.donViKienThuc || []).forEach(dv => {
-          ['biet', 'hieu', 'vanDung'].forEach(level => {
-            const count = Number(dv.tuLuan?.[level]) || 0;
-            for (let i = 0; i < count; i++) items.push(dv.noiDung || '');
-          });
+    // --- PHẦN IV --- (Đồng bộ cấu trúc và thứ tự câu hỏi với Step4)
+    const tlItems = [];
+    matrix.forEach(topic => {
+      (topic.donViKienThuc || []).forEach(dv => {
+        ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(level => {
+          const numQ = dv.tuLuan ? (Number(dv.tuLuan[level]) || 0) : 0;
+          if (numQ <= 0) return;
+          if (Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+            const matchingSubs = dv.tuLuan.subItems.filter(s => s.level === level);
+            matchingSubs.forEach((sub, sIdx) => {
+              const mapObj = dv.indicatorMap?.[`tuLuan_${level}_${sIdx}`];
+              const resolvedLabel = sub.label || (typeof mapObj === 'object' ? mapObj.label : '') || sub.qLabel || '';
+              tlItems.push({
+                topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
+                dvkt: dv.noiDung || '',
+                label: resolvedLabel,
+                qId: sub.qId || '',
+                qLabel: sub.qLabel || ''
+              });
+            });
+            return;
+          }
+          for (let i = 0; i < numQ; i++) {
+            const mapObj = dv.indicatorMap?.[`tuLuan_${level}_${i}`];
+            const resolvedLabel = (typeof mapObj === 'object' ? mapObj.label : '') || '';
+            tlItems.push({
+              topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
+              dvkt: dv.noiDung || '',
+              label: resolvedLabel
+            });
+          }
         });
       });
-      const groups = {};
-      items.forEach(dvkt => {
-        if (!groups[dvkt]) groups[dvkt] = 0;
-        groups[dvkt]++;
+    });
+
+    const extractQNum = (it) => {
+      if (!it) return null;
+      const candidates = [it.qLabel, it.label, it.qId];
+      for (const str of candidates) {
+        if (!str) continue;
+        const m = String(str).match(/(?:câu|tl_q|tl\.?)\s*(\d+)/i) || String(str).match(/\d+/);
+        if (m) return parseInt(m[1] || m[0], 10);
+      }
+      return null;
+    };
+
+    const tlGrouped = {};
+    const tlUnnumbered = [];
+    const tlUsedIndices = new Set();
+    const questionsConfig = tuLuanConfig?.questions || [];
+
+    if (questionsConfig.length > 0) {
+      questionsConfig.forEach((q, qIdx) => {
+        const qNum = extractQNum(q) || (qIdx + 1);
+        const expectedPrefix = (q.label || `Câu ${qNum}`).toLowerCase().trim();
+        const chunk = [];
+        tlItems.forEach((item, idx) => {
+          if (tlUsedIndices.has(idx)) return;
+          const itemNum = extractQNum(item);
+          const itemLabel = (item.label || item.qLabel || '').toLowerCase().trim();
+          const isMatch = (item.qId && q.id && item.qId === q.id) ||
+                          (itemNum !== null && itemNum === qNum) ||
+                          (itemLabel && itemLabel.startsWith(expectedPrefix));
+          if (isMatch) {
+            chunk.push(item);
+            tlUsedIndices.add(idx);
+          }
+        });
+        if (chunk.length > 0) tlGrouped[qNum] = chunk;
       });
-      let total = 0;
-      Object.values(groups).forEach(cnt => { total += Math.ceil(cnt / 2); });
-      return total;
-    })();
+    }
+
+    tlItems.forEach((item, idx) => {
+      if (tlUsedIndices.has(idx)) return;
+      const num = extractQNum(item);
+      if (num !== null) {
+        if (!tlGrouped[num]) tlGrouped[num] = [];
+        tlGrouped[num].push(item);
+        tlUsedIndices.add(idx);
+      } else {
+        tlUnnumbered.push(item);
+      }
+    });
+
+    const step5TLQuestions = [];
+    const sortedNums = Object.keys(tlGrouped).map(Number).sort((a, b) => a - b);
+    sortedNums.forEach(num => {
+      step5TLQuestions.push(tlGrouped[num]);
+    });
+
+    if (tlUnnumbered.length > 0) {
+      const dvktGroups = {};
+      tlUnnumbered.forEach(item => {
+        const key = item.dvkt || '_unknown';
+        if (!dvktGroups[key]) dvktGroups[key] = [];
+        dvktGroups[key].push(item);
+      });
+      Object.values(dvktGroups).forEach(grp => {
+        for (let i = 0; i < grp.length; i += 2) {
+          step5TLQuestions.push(grp.slice(i, i + 2));
+        }
+      });
+    }
+
     const phanTL = config.hasTraLoiNgan ? 4 : 3;
-    const tlDvktLabels = buildDvktLabels('tuLuan');
+    const soCauTL = step5TLQuestions.length;
     for (let i = 0; i < soCauTL; i++) {
       const key = `phan${phanTL}_cau${i + 1}`;
       const daDien = isSlotFilled(key);
-      const dvktName = tlDvktLabels[i] || '';
+      const qChunk = step5TLQuestions[i] || [];
+      let dvktName = '';
+      if (qChunk.length > 0) {
+        const firstDv = qChunk[0].dvkt;
+        const allSameDv = qChunk.every(it => it.dvkt === firstDv);
+        if (allSameDv && firstDv) {
+          dvktName = firstDv;
+        } else {
+          const firstTopic = qChunk[0].topic;
+          const allSameTopic = qChunk.every(it => it.topic === firstTopic);
+          dvktName = allSameTopic ? firstTopic : 'Đa chủ đề';
+        }
+      }
       const dvktSuffix = dvktName ? ` - ${dvktName}` : '';
       slots.push({ key, label: `Phần ${phanTL === 4 ? 'IV' : 'III'} - Câu ${i + 1} (Tự luận)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 4, daDien });
     }

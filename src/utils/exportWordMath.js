@@ -1,6 +1,13 @@
 import { saveAs } from 'file-saver';
 import katex from 'katex';
-import { useExamStore } from '../store/useExamStore';
+import { useExamStore, getTuLuanCauCount } from '../store/useExamStore';
+import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel } from './specTableHelper';
+
+const getFormatTLCau = (matrix, lvl) => {
+    const storeState = useExamStore.getState();
+    const c = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
+    return c === 0 ? "" : (c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ','));
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPER: Vẽ đồ thị trên Canvas → base64 (CLIENT-SIDE, không cần backend)
@@ -120,9 +127,9 @@ const plainTextLen = (s) => {
 };
 
 // Helper: Render 4 phương án A/B/C/D với layout tự động (4PA/2PA/1PA mỗi dòng)
-const renderOptionsHtml = (optA, optB, optC, optD, rawA, rawB, rawC, rawD, isCauTruc4213 = false, dapAnDung = '') => {
+const renderOptionsHtml = (optA, optB, optC, optD, rawA, rawB, rawC, rawD, isCauTruc4213 = false, dapAnDung = '', showAnswerUnderline = true) => {
     const formatOpt = (label, text) => {
-        if (isCauTruc4213 && dapAnDung && dapAnDung.toUpperCase().trim() === label) {
+        if (isCauTruc4213 && showAnswerUnderline && dapAnDung && dapAnDung.toUpperCase().trim() === label) {
             return `<span style="color:red; text-decoration:underline;"><b>${label}.</b></span> ${text}`;
         }
         return `<b>${label}.</b> ${text}`;
@@ -328,7 +335,7 @@ const buildNewMathSpecTable = (matrix, config, examConfig, examHeader) => {
         ${cell(sumCount('nhieuLuaChon', 'biet'))}${cell(sumCount('nhieuLuaChon', 'hieu'))}${cell(sumCount('nhieuLuaChon', 'vanDung'))}
         ${cell(sumCount('dungSai', 'biet') * 0.25)}${cell(sumCount('dungSai', 'hieu') * 0.25)}${cell((sumCount('dungSai', 'vanDung') + sumCount('dungSai', 'vanDungCao')) * 0.25)}
         ${config.hasTraLoiNgan ? cell(sumCount('traLoiNgan', 'biet')) + cell(sumCount('traLoiNgan', 'hieu')) + cell(sumCount('traLoiNgan', 'vanDung')) : ''}
-        ${config.hasTuLuan ? cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung')) : ''}
+        ${config.hasTuLuan ? cell(getFormatTLCau(matrix, 'biet')) + cell(getFormatTLCau(matrix, 'hieu')) + cell(getFormatTLCau(matrix, 'vanDung')) : ''}
     </tr>`;
     rows += `<tr>
         ${cell('Tổng điểm', { bold: true, align: 'center', colspan: 6, bg: 'E2E8F0' })}
@@ -487,7 +494,7 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
         sumCount('nhieuLuaChon', level) +
         ((sumCount('dungSai', level) + (level === 'vanDung' ? sumCount('dungSai', 'vanDungCao') : 0)) * 0.25) +
         (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) +
-        sumCount('tuLuan', level);
+        getTuLuanCauCount(matrix, level, useExamStore.getState()?.tuLuanConfig);
 
     const getTopicTuLuanPoints = (topic) =>
         (topic.donViKienThuc || []).reduce((s, dv) =>
@@ -652,7 +659,7 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
         if (!indicator) indicator = isSinhMon ? getBiologyIndicatorForLevel(dv?.yeuCauCanDat, level) : null;
         if (!indicator) indicator = getIndicatorForLevel(dv?.yeuCauCanDat, level);
       }
-      if (indicator) return `${v} (${indicator})`;
+      if (indicator) return `${v} (${String(indicator).replace(/[\[\]]/g, '')})`;
 
       const code = level === 'biet' ? 'NT' : level === 'hieu' ? 'TH' : 'VD';
       return `${v} (${code})`;
@@ -668,7 +675,7 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
         if (!indicator) indicator = isSinhMon ? getBiologyIndicatorForLevel(dv?.yeuCauCanDat, level) : null;
         if (!indicator) indicator = getIndicatorForLevel(dv?.yeuCauCanDat, level);
       }
-      if (indicator) return `${v} ý (${indicator})`;
+      if (indicator) return `${v} ý (${String(indicator).replace(/[\[\]]/g, '')})`;
 
       const code = level === 'biet' ? 'NT' : level === 'hieu' ? 'TH' : 'VD';
       return `${v} ý (${code})`;
@@ -924,8 +931,19 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
       ${cell(sumCount('nhieuLuaChon', 'biet'), { align: 'center' })}${cell(sumCount('nhieuLuaChon', 'hieu'), { align: 'center' })}${cell(sumCount('nhieuLuaChon', 'vanDung'), { align: 'center' })}
       ${cell((() => { const y = sumCount('dungSai', 'biet'); if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(), { align: 'center' })}${cell((() => { const y = sumCount('dungSai', 'hieu'); if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(), { align: 'center' })}${cell((() => { const y = sumCount('dungSai', 'vanDung') + sumCount('dungSai', 'vanDungCao'); if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(), { align: 'center' })}
       ${config.hasTraLoiNgan ? cell(sumCount('traLoiNgan', 'biet'), { align: 'center' }) + cell(sumCount('traLoiNgan', 'hieu'), { align: 'center' }) + cell(sumCount('traLoiNgan', 'vanDung'), { align: 'center' }) : ''}
-      ${config.hasTuLuan ? cell(sumCount('tuLuan', 'biet'), { align: 'center' }) + cell(sumCount('tuLuan', 'hieu'), { align: 'center' }) + cell(sumCount('tuLuan', 'vanDung'), { align: 'center' }) : ''}
-      ${cell((() => { const c2 = sumCount('nhieuLuaChon', 'biet'); const y2 = sumCount('dungSai', 'biet') + (config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0) + (config.hasTuLuan ? sumCount('tuLuan', 'biet') : 0); if (!c2 && !y2) return 0; if (c2 && !y2) return c2; if (!c2 && y2) return `${y2} ý`; return `${c2}c+ ${y2} ý`; })(), { bold: true, align: 'center' })}${cell((() => { const c2 = sumCount('nhieuLuaChon', 'hieu'); const y2 = sumCount('dungSai', 'hieu') + (config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0) + (config.hasTuLuan ? sumCount('tuLuan', 'hieu') : 0); if (!c2 && !y2) return 0; if (c2 && !y2) return c2; if (!c2 && y2) return `${y2} ý`; return `${c2}c+ ${y2} ý`; })(), { bold: true, align: 'center' })}${cell((() => { const c2 = sumCount('nhieuLuaChon', 'vanDung'); const y2 = sumCount('dungSai', 'vanDung') + sumCount('dungSai', 'vanDungCao') + (config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0) + (config.hasTuLuan ? sumCount('tuLuan', 'vanDung') : 0); if (!c2 && !y2) return 0; if (c2 && !y2) return c2; if (!c2 && y2) return `${y2} ý`; return `${c2}c+ ${y2} ý`; })(), { bold: true, align: 'center' })}
+      ${config.hasTuLuan ? cell(getFormatTLCau(matrix, 'biet'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'hieu'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'vanDung'), { align: 'center' }) : ''}
+      ${['biet', 'hieu', 'vanDung'].map(lvl => {
+        const storeState = useExamStore.getState();
+        const tlCau = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
+        const nlc = sumCount('nhieuLuaChon', lvl);
+        const tln = config.hasTraLoiNgan ? sumCount('traLoiNgan', lvl) : 0;
+        const c2 = nlc + tln + Math.floor(tlCau);
+        const y2 = sumCount('dungSai', lvl) + (lvl === 'vanDung' ? sumCount('dungSai', 'vanDungCao') : 0);
+        if (!c2 && !y2) return cell('0', { bold: true, align: 'center' });
+        if (c2 && !y2) return cell(String(c2), { bold: true, align: 'center' });
+        if (!c2 && y2) return cell(`${y2} ý`, { bold: true, align: 'center' });
+        return cell(`${c2}c+ ${y2} ý`, { bold: true, align: 'center' });
+      }).join('')}
       ${cell(getLevelTotalQuestions('biet') + getLevelTotalQuestions('hieu') + getLevelTotalQuestions('vanDung'), { bold: true, align: 'center' })}
     </tr>`;
     rows += `<tr>
@@ -1016,13 +1034,29 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
     // Phase 4: TL
     if (config.hasTuLuan) {
         const totalTLN = config.hasTraLoiNgan ? sumCount('traLoiNgan','biet') + sumCount('traLoiNgan','hieu') + sumCount('traLoiNgan','vanDung') : 0;
-        let tlC = isCont ? (dsCauStart + totalDSCau + totalTLN) : 1;
-        if (!isCont) tlC = 1;
+        const tlStart = isCont ? (dsCauStart + totalDSCau + totalTLN) : 1;
+        let tlC = tlStart;
         matrix.forEach((t, ti) => {
             (t.donViKienThuc || []).forEach((dv, di) => {
-                ['biet','hieu','vanDung'].forEach(lvl => {
-                    const n = Number(dv.tuLuan?.[lvl]) || 0;
-                    if (n > 0) { qMap[`${ti}_${di}_tl_${lvl}`] = { s: tlC, e: tlC + n - 1, type: 'tl' }; tlC += n; }
+                ['biet','hieu','vanDung', 'vanDungCao'].forEach(lvl => {
+                    const n = Number(dv.tuLuan?.[lvl]) || (Array.isArray(dv.tuLuan?.subItems) ? dv.tuLuan.subItems.filter(s => s.level === lvl).length : 0);
+                    if (n > 0) {
+                        let qNums = [];
+                        for (let i = 0; i < n; i++) {
+                            const ind = dv.indicatorMap?.[`tuLuan_${lvl}_${i}`];
+                            const label = (typeof ind === 'object' ? ind.label : '') || (dv.tuLuan?.subItems?.filter(s => s.level === lvl)?.[i]?.label || '');
+                            const m = String(label).match(/(?:câu|tl_q|tl\.?)\s*(\d+)/i) || String(label).match(/\d+/);
+                            if (m) qNums.push(parseInt(m[1] || m[0], 10));
+                        }
+                        if (qNums.length > 0) {
+                            const sNum = Math.min(...qNums) + (tlStart - 1);
+                            const eNum = Math.max(...qNums) + (tlStart - 1);
+                            qMap[`${ti}_${di}_tl_${lvl}`] = { s: sNum, e: eNum, type: 'tl' };
+                        } else {
+                            qMap[`${ti}_${di}_tl_${lvl}`] = { s: tlC, e: tlC + n - 1, type: 'tl' };
+                            tlC += n;
+                        }
+                    }
                 });
             });
         });
@@ -1131,43 +1165,64 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
       ${config.hasTuLuan ? ['B', 'H', 'VD'].map(l => cell(l)).join('') : ''}
     </tr>`;
 
-    // Dữ liệu từng chủ đề — kèm mã năng lực (NT/TH/VD)
+    // Dữ liệu từng chủ đề — tách mỗi mức độ nhận thức thành 1 dòng riêng
     let specStt = 1;
     matrix.forEach((topic, index) => {
         const dvList = topic.donViKienThuc || [];
-        const dvCount = dvList.length;
+        if (dvList.length === 0) return;
+
+        const topicTotalRows = dvList.reduce((sum, dv) => {
+            const active = getActiveLevelsForDv(dv, false, config.hasTraLoiNgan, config.hasTuLuan);
+            return sum + active.length;
+        }, 0) || 1;
+
+        let isFirstTopicRow = true;
 
         dvList.forEach((dv, dvIdx) => {
-            const isFirst = dvIdx === 0;
-            rows += '<tr>';
-            if (isFirst) {
-                rows += cell(typeof specStt !== 'undefined' ? specStt++ : (typeof matrixStt !== 'undefined' ? matrixStt++ : index + 1), { align: 'center', rowspan: dvCount });
-                rows += cell(topic.tenChuDe || '', { align: 'left', rowspan: dvCount });
-            }
-            rows += cell(dv.noiDung ? `- ${dv.noiDung}` : '', { align: 'left' });
-            // Cột Yêu cầu cần đạt (render xuống dòng)
-            const ycLines = (dv.yeuCauCanDat || '').split('\n').map(l => l.trim()).filter(Boolean).join('<br/>');
-            rows += `<td style="border:1px solid black;text-align:left;vertical-align:top;">${ycLines}</td>`;
-            // NLC kèm mã năng lực (NT/TH/VD hoặc HH1.x/TD1.x) + câu số
-            rows += cell(fmtNLC_Q(dv.nhieuLuaChon?.biet, 'biet', index, dvIdx, dv));
-            rows += cell(fmtNLC_Q(dv.nhieuLuaChon?.hieu, 'hieu', index, dvIdx, dv));
-            rows += cell(fmtNLC_Q(dv.nhieuLuaChon?.vanDung, 'vanDung', index, dvIdx, dv));
-            // ĐS kèm "ý" + mã năng lực + câu số
-            rows += cell(fmtY_DS(dv.dungSai?.biet, 'biet', index, dvIdx, dv));
-            rows += cell(fmtY_DS(dv.dungSai?.hieu, 'hieu', index, dvIdx, dv));
-            rows += cell(fmtY_DS(dv.dungSai?.vanDung, 'vanDung', index, dvIdx, dv));
-            // TLN kèm "ý" + mã năng lực + câu số
-            rows += cell(config.hasTraLoiNgan ? fmtY_TLN(dv.traLoiNgan?.biet, 'biet', index, dvIdx, dv) : 0);
-            rows += cell(config.hasTraLoiNgan ? fmtY_TLN(dv.traLoiNgan?.hieu, 'hieu', index, dvIdx, dv) : 0);
-            rows += cell(config.hasTraLoiNgan ? fmtY_TLN(dv.traLoiNgan?.vanDung, 'vanDung', index, dvIdx, dv) : 0);
-            
-            if (config.hasTuLuan) {
-              // TL kèm "ý" + mã năng lực + câu số
-              rows += cell(fmtY_TL(dv.tuLuan?.biet, 'biet', index, dvIdx, dv));
-              rows += cell(fmtY_TL(dv.tuLuan?.hieu, 'hieu', index, dvIdx, dv));
-              rows += cell(fmtY_TL(dv.tuLuan?.vanDung, 'vanDung', index, dvIdx, dv));
-            }
-            rows += '</tr>';
+            const activeLevels = getActiveLevelsForDv(dv, false, config.hasTraLoiNgan, config.hasTuLuan);
+            const dvTotalRows = activeLevels.length;
+            const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
+
+            activeLevels.forEach((lvl, lvlIdx) => {
+                const isFirstDvRow = lvlIdx === 0;
+                rows += '<tr>';
+                if (isFirstTopicRow) {
+                    rows += cell(typeof specStt !== 'undefined' ? specStt++ : (typeof matrixStt !== 'undefined' ? matrixStt++ : index + 1), { align: 'center', rowspan: topicTotalRows });
+                    rows += cell(topic.tenChuDe || '', { align: 'left', rowspan: topicTotalRows });
+                }
+                if (isFirstDvRow) {
+                    rows += cell(dv.noiDung ? `- ${dv.noiDung}` : '', { align: 'left', rowspan: dvTotalRows });
+                }
+
+                // Cột Yêu cầu cần đạt (tiêu đề mức độ in đậm + nội dung xuống dòng)
+                const levelYccd = parsedYccd[lvl] || '';
+                const ycLines = levelYccd ? levelYccd.split('\n').map(l => l.trim()).filter(Boolean).join('<br/>') : '';
+                const ycContent = `<b>* ${formatLevelDisplayName(lvl)}:</b>${ycLines ? `<br/>${ycLines}` : ''}`;
+                rows += `<td style="border:1px solid black;text-align:left;vertical-align:top;">${ycContent}</td>`;
+
+                // NLC chỉ điền nếu đúng level của dòng hiện tại
+                rows += cell(lvl === 'biet' ? fmtNLC_Q(dv.nhieuLuaChon?.biet, 'biet', index, dvIdx, dv) : '');
+                rows += cell(lvl === 'hieu' ? fmtNLC_Q(dv.nhieuLuaChon?.hieu, 'hieu', index, dvIdx, dv) : '');
+                rows += cell(lvl === 'vanDung' ? fmtNLC_Q(dv.nhieuLuaChon?.vanDung, 'vanDung', index, dvIdx, dv) : '');
+
+                // ĐS chỉ điền nếu đúng level của dòng hiện tại
+                rows += cell(lvl === 'biet' ? fmtY_DS(dv.dungSai?.biet, 'biet', index, dvIdx, dv) : '');
+                rows += cell(lvl === 'hieu' ? fmtY_DS(dv.dungSai?.hieu, 'hieu', index, dvIdx, dv) : '');
+                rows += cell(lvl === 'vanDung' ? fmtY_DS((Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0), 'vanDung', index, dvIdx, dv) : '');
+
+                // TLN chỉ điền nếu đúng level của dòng hiện tại
+                rows += cell(config.hasTraLoiNgan ? (lvl === 'biet' ? fmtY_TLN(dv.traLoiNgan?.biet, 'biet', index, dvIdx, dv) : '') : 0);
+                rows += cell(config.hasTraLoiNgan ? (lvl === 'hieu' ? fmtY_TLN(dv.traLoiNgan?.hieu, 'hieu', index, dvIdx, dv) : '') : 0);
+                rows += cell(config.hasTraLoiNgan ? (lvl === 'vanDung' ? fmtY_TLN(dv.traLoiNgan?.vanDung, 'vanDung', index, dvIdx, dv) : '') : 0);
+
+                if (config.hasTuLuan) {
+                    rows += cell(lvl === 'biet' ? fmtY_TL(dv.tuLuan?.biet, 'biet', index, dvIdx, dv) : '');
+                    rows += cell(lvl === 'hieu' ? fmtY_TL(dv.tuLuan?.hieu, 'hieu', index, dvIdx, dv) : '');
+                    rows += cell(lvl === 'vanDung' ? fmtY_TL((Number(dv.tuLuan?.vanDung) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0), 'vanDung', index, dvIdx, dv) : '');
+                }
+                rows += '</tr>';
+                isFirstTopicRow = false;
+            });
         });
     });
 
@@ -1184,7 +1239,7 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
       ${cell(sumCount('nhieuLuaChon', 'biet'))}${cell(sumCount('nhieuLuaChon', 'hieu'))}${cell(sumCount('nhieuLuaChon', 'vanDung'))}
       ${cell(sumCount('dungSai', 'biet') * 0.25)}${cell(sumCount('dungSai', 'hieu') * 0.25)}${cell(sumCount('dungSai', 'vanDung') * 0.25)}
       ${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)}
-      ${config.hasTuLuan ? cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung')) : ''}
+      ${config.hasTuLuan ? cell(getFormatTLCau(matrix, 'biet')) + cell(getFormatTLCau(matrix, 'hieu')) + cell(getFormatTLCau(matrix, 'vanDung')) : ''}
     </tr>`;
     rows += `<tr>
       ${cell('Tổng điểm', { bold: true, align: 'center', colspan: 4, bg: 'CBD5E1' })}
@@ -1360,8 +1415,10 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
 <head>
   <meta charset='utf-8'>
   <style>
-    @page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 1cm; }
+    @page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 1.27cm 1cm 1.27cm 1cm; }
     div.WordSection1 { page: WordSection1; }
+    @page WordSection2 { size: 595.3pt 841.9pt; mso-page-orientation: portrait; margin: 2cm 1.5cm 2cm 2cm; }
+    div.WordSection2 { page: WordSection2; }
     body { font-family: 'Times New Roman', serif; font-size: 14pt; }
     p { margin: 0; padding: 0; margin-bottom: 4pt; line-height: 1.2; }
     h2, h3 { margin: 10pt 0; padding: 0; }
@@ -1603,8 +1660,10 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
     html += `<p style="font-size:13pt;"><b>Lưu ý:</b> <i>Mã năng lực được ghi kèm theo số lượng câu hỏi/ý trong Bảng Đặc tả nhằm giúp giáo viên dễ dàng đối chiếu yêu cầu cần đạt với mức độ nhận thức tương ứng khi ra đề kiểm tra. Các mã viết tắt cụ thể theo từng môn được quy ước trong bảng trên.</i></p>`;
 }
 
-    // ==================== 3. ĐỀ THI (KHUNG / ĐỀ AI) ====================
-    html += `<div class="page-break"></div>`;
+    // ==================== 3. ĐỀ THI (KHUNG / ĐỀ AI) - CHUYỂN SANG KHỔ DỌC ====================
+    html += `</div>
+<br clear="all" style="page-break-before:always;mso-break-type:section-break" />
+<div class="WordSection2">`;
     html += `<h2 style="text-align:center;font-size:16pt;">3. KHUNG ĐỀ KIỂM TRA</h2>`;
 
     if (generatedExam && generatedExam.trim() !== '') {
@@ -1713,11 +1772,12 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                 ensureDot(formatTextWithMath(_cleanPA(q.dapAnD))),
                 q.dapAnA, q.dapAnB, q.dapAnC, q.dapAnD,
                 examConfig.isCauTruc4213,
-                String(q.dapAnDung || q.dapAnA || q.answer || q.noiDung || '').match(/^[A-D]/i)?.[0]
+                String(q.dapAnDung || q.dapAnA || q.answer || q.noiDung || '').match(/^[A-D]/i)?.[0],
+                config.showExamAnswerUnderline !== false
             );
             const meta = qMeta[`phan1_cau${i + 1}`];
             if (meta && meta.chiBao && meta.level && !meta.chiBao.startsWith(getShortLevel(meta.level))) { meta.chiBao = getShortLevel(meta.level) + ' - ' + meta.chiBao; }
-            if (meta) {
+            if (meta && (config.showExamRedMetadata !== false)) {
                 const is4213 = examConfig.isCauTruc4213;
                 const metaStyle = is4213 ? 'font-size:11pt;font-style:italic;color:red;' : 'font-size:11pt;font-style:italic;';
                 html += `<p style="${metaStyle}">* Kiến thức: ${meta.kienThuc || ''}</p>`;
@@ -1775,14 +1835,15 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                         ensureDot(formatTextWithMath(_cleanPA2(slotData.dapAnD))),
                         slotData.dapAnA, slotData.dapAnB, slotData.dapAnC, slotData.dapAnD,
                         examConfig.isCauTruc4213,
-                        String(slotData.dapAnDung || slotData.dapAnA || slotData.answer || slotData.noiDung || '').match(/^[A-D]/i)?.[0]
+                        String(slotData.dapAnDung || slotData.dapAnA || slotData.answer || slotData.noiDung || '').match(/^[A-D]/i)?.[0],
+                        config.showExamAnswerUnderline !== false
                     );
                 } else {
                     html += `<p><b>Câu ${displayNum}${isMinistry || examConfig.isCauTruc4213 ? '.' : ` (${diemCauP1Str} điểm).`}</b> <i>(Ghi nội dung câu hỏi vào đây...)</i></p>`;
                 }
                 const meta = qMeta[`phan1_cau${i + 1}`];
             if (meta && meta.chiBao && meta.level && !meta.chiBao.startsWith(getShortLevel(meta.level))) { meta.chiBao = getShortLevel(meta.level) + ' - ' + meta.chiBao; }
-                if (meta) {
+                if (meta && (config.showExamRedMetadata !== false)) {
                     const is4213 = examConfig.isCauTruc4213;
                     const metaStyle = is4213 ? 'font-size:11pt;font-style:italic;color:red;' : 'font-size:11pt;font-style:italic;';
                     html += `<p style="${metaStyle}">* Kiến thức: ${meta.kienThuc || ''}</p>`;
@@ -1850,18 +1911,20 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                     const meta = qMeta[`phan2_y${flatIdx}`];
                                         if (p.y) {
                         let finalLabel = `${p.label}.`;
-                        if (examConfig.isCauTruc4213) {
+                        if (examConfig.isCauTruc4213 && (config.showExamAnswerUnderline !== false)) {
                             const ans = String(answers[idx] || '').trim().replace(/[,.;]+$/, '').toUpperCase();
                             if (ans === 'Đ' || ans === 'ĐÚNG' || ans === 'D') {
                                 finalLabel = `<span style="color:red;font-weight:bold;text-decoration:underline;">${p.label})</span>`;
                             } else {
                                 finalLabel = `<span>${p.label})</span>`;
                             }
+                        } else {
+                            finalLabel = `<span>${p.label})</span>`;
                         }
                         html += `<p style="margin-left:2em;">${finalLabel} <span>${formatTextWithMath(p.y)}</span></p>`;
                     }
 
-                    if (examConfig.isCauTruc4213 && meta && meta.kienThuc) {
+                    if (examConfig.isCauTruc4213 && meta && meta.kienThuc && (config.showExamRedMetadata !== false)) {
                         html += `<p style="font-size:11pt;font-style:italic;color:red;">* Kiến thức: ${meta.kienThuc}</p>`;
                         if (meta.chiBao) {
                             html += `<p style="font-size:11pt;font-style:italic;color:red;margin-bottom:12pt;">* NLTD/chỉ báo: ${formatChiBaoText(meta?.level, meta?.chiBao)}</p>`;
@@ -1931,13 +1994,15 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                         const answers = extractABCD(slotData.dapAnDung);
                         const formatY = (label, yText, idx) => {
                             let finalLabel = `${label}.`;
-                            if (examConfig.isCauTruc4213) {
+                            if (examConfig.isCauTruc4213 && (config.showExamAnswerUnderline !== false)) {
                                 const ans = String(answers[idx] || '').trim().replace(/[,.;]+$/, '').toUpperCase();
                                 if (ans === 'Đ' || ans === 'ĐÚNG' || ans === 'D') {
                                     finalLabel = `<span style="color:red;font-weight:bold;text-decoration:underline;">${label})</span>`;
                                 } else {
                                     finalLabel = `<span>${label})</span>`;
                                 }
+                            } else {
+                                finalLabel = `<span>${label})</span>`;
                             }
                             return `<p style="margin-left:2em;">${finalLabel} <span>${formatTextWithMath(cleanText(yText))}</span></p>`;
                         };
@@ -1957,8 +2022,8 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                 } else {
                     html += `<p><b>Câu ${displayNum}${isMinistry || examConfig.isCauTruc4213 ? '.' : ` (${diemCauP2Str} điểm).`}</b></p>`;
                     if (isMinistry || examConfig.isCauTruc4213) {
-                        const styleLab = examConfig.isCauTruc4213 ? 'color:red;font-weight:bold;' : '';
-                        const fmtLab = (l) => examConfig.isCauTruc4213 ? `<span style="${styleLab}">${l})</span>` : `${l}.`;
+                        const styleLab = (examConfig.isCauTruc4213 && config.showExamAnswerUnderline !== false) ? 'color:red;font-weight:bold;' : '';
+                        const fmtLab = (l) => (examConfig.isCauTruc4213 && config.showExamAnswerUnderline !== false) ? `<span style="${styleLab}">${l})</span>` : `${l}.`;
                         html += `<p style="margin-left:2em;">${fmtLab('a')} <i>(Ghi nội dung câu hỏi vào đây...)</i></p>`;
                         html += `<p style="margin-left:2em;">${fmtLab('b')} <i>(Ghi nội dung câu hỏi vào đây...)</i></p>`;
                         html += `<p style="margin-left:2em;">${fmtLab('c')} <i>(Ghi nội dung câu hỏi vào đây...)</i></p>`;
@@ -1974,7 +2039,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                     }
                 }
                 const meta = qMeta[`phan2_cau${i + 1}`];
-                if (meta) {
+                if (meta && (config.showExamRedMetadata !== false)) {
                     const is4213 = examConfig.isCauTruc4213;
                     const metaStyle = is4213 ? 'font-size:11pt;font-style:italic;color:red;' : 'font-size:11pt;font-style:italic;';
                     html += `<p style="${metaStyle}">* Kiến thức: ${meta.kienThuc || ''}</p>`;
@@ -1982,16 +2047,6 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                         html += `<p style="${metaStyle}margin-bottom:12pt;">${meta.chiBao}</p>`;
                     } else {
                         html += `<p style="${metaStyle}margin-bottom:0pt;">* NLTD/chỉ báo: ${formatChiBaoText(meta?.level, meta?.chiBao)}</p>`;
-
-  const getShortLevel = (lvl) => {
-    if (lvl === 'biet') return 'NB';
-    if (lvl === 'hieu') return 'TH';
-    if (lvl === 'vanDung') return 'VD';
-    if (lvl === 'vanDungCao') return 'VDC';
-    return '';
-};
-
-                    
                     }
                 }
             }
@@ -2041,13 +2096,13 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                     } else {
                         html += `<br/>`;
                     }
-            if (examConfig.isCauTruc4213 && q.dapAnDung) {
+            if (examConfig.isCauTruc4213 && (config.showExamAnswerUnderline !== false) && q.dapAnDung) {
                 const cleanAnsLocal = String(q.dapAnDung || '').replace(/\*/g, '');
                 html += `<p style="font-size:11pt;font-style:italic;color:red;">* Đáp án: ${formatTextWithMath(cleanAnsLocal)}</p>`;
             }
             const meta = qMeta[`phan3_cau${i + 1}`];
                 if (meta && meta.chiBao && meta.level && !meta.chiBao.startsWith(getShortLevel(meta.level))) { meta.chiBao = getShortLevel(meta.level) + ' - ' + meta.chiBao; }
-            if (meta) {
+            if (meta && (config.showExamRedMetadata !== false)) {
                 const is4213 = examConfig.isCauTruc4213;
                 const metaStyle = is4213 ? 'font-size:11pt;font-style:italic;color:red;' : 'font-size:11pt;font-style:italic;';
                 html += `<p style="${metaStyle}">* Kiến thức: ${meta.kienThuc || ''}</p>`;
@@ -2115,13 +2170,13 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                         html += `<br/>`;
                     }
                 }
-                if (examConfig.isCauTruc4213 && slotData && slotData.dapAnDung) {
+                if (examConfig.isCauTruc4213 && (config.showExamAnswerUnderline !== false) && slotData && slotData.dapAnDung) {
                     const cleanAnsLocal = String(slotData.dapAnDung || '').replace(/\*/g, '');
                     html += `<p style="font-size:11pt;font-style:italic;color:red;">* Đáp án: ${formatTextWithMath(cleanAnsLocal)}</p>`;
                 }
                 const meta = qMeta[`phan3_cau${i + 1}`];
                 if (meta && meta.chiBao && meta.level && !meta.chiBao.startsWith(getShortLevel(meta.level))) { meta.chiBao = getShortLevel(meta.level) + ' - ' + meta.chiBao; }
-                if (meta) {
+                if (meta && (config.showExamRedMetadata !== false)) {
                     const is4213 = examConfig.isCauTruc4213;
                     const metaStyle = is4213 ? 'font-size:11pt;font-style:italic;color:red;' : 'font-size:11pt;font-style:italic;';
                     html += `<p style="${metaStyle}">* Kiến thức: ${meta.kienThuc || ''}</p>`;
@@ -2180,19 +2235,9 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
             const cauTienTo = examConfig.isCauTruc4213 ? `Câu ${displayNum} (${tlDiemStr} điểm).` : `Câu ${displayNum}.`;
             
             const renderMeta = (m) => {
-                if (examConfig.isCauTruc4213 && m && m.kienThuc) {
+                if (examConfig.isCauTruc4213 && m && m.kienThuc && (config.showExamRedMetadata !== false)) {
                     let h = `<p style="font-size:11pt;font-style:italic;color:red;">* Kiến thức: ${m.kienThuc}</p>`;
                     if (m.chiBao) h += `<p style="font-size:11pt;font-style:italic;color:red;margin-bottom:0pt;">* NLTD/chỉ báo: ${formatChiBaoText(m?.level, m?.chiBao)}</p>`;
-
-  const getShortLevel = (lvl) => {
-    if (lvl === 'biet') return 'NB';
-    if (lvl === 'hieu') return 'TH';
-    if (lvl === 'vanDung') return 'VD';
-    if (lvl === 'vanDungCao') return 'VDC';
-    return '';
-};
-
-                    
                     return h;
                 }
                 return '';
@@ -2298,7 +2343,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                     html += `<p><b>${cauTienTo}</b> <i>(Ghi nội dung câu hỏi vào đây...)</i></p>`;
                 }
                 const meta = qMeta[`phan4_y${currentEmptyTlIdx}`];
-                if (meta) {
+                if (meta && (config.showExamRedMetadata !== false)) {
                     const is4213 = examConfig.isCauTruc4213;
                     const metaStyle = is4213 ? 'font-size:11pt;font-style:italic;color:red;' : 'font-size:11pt;font-style:italic;';
                     html += `<p style="${metaStyle}">* Kiến thức: ${meta.kienThuc || ''}</p>`;

@@ -844,7 +844,7 @@ function DraftQuestionCard({ question, index, availableSlots, onPush, isSelected
 // COMPONENT CHÍNH: Step5_AIGenerator
 // =============================================================================
 export default function Step5_AIGenerator() {
-  const { matrix, config, examConfig, tuLuanConfig, examHeader, draftQuestions, setDraftQuestions, examSlots, pushToExamSlot } = useExamStore();
+  const { matrix, config, examConfig, tuLuanConfig, examHeader, khtnConfig, draftQuestions, setDraftQuestions, examSlots, pushToExamSlot } = useExamStore();
   const [examContent, setExamContent] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [parseError, setParseError] = useState('');
@@ -853,7 +853,14 @@ export default function Step5_AIGenerator() {
   const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
 
   const handleCopyExamPrompt = async () => {
-    let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+    const monHocName = examHeader?.monHoc || '........................';
+    // KHTN → lấy từ nút chọn lớp; môn khác → bóc số lớp từ tên môn (vd "Toán 6" → "6")
+    const isKHTN = /khoa\s*học\s*tự\s*nhiên|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(examHeader?.monHoc || '');
+    const gradeName = isKHTN
+      ? (khtnConfig?.lop || '8')
+      : (examHeader?.grade || examHeader?.lop || examHeader?.monHoc?.match(/\b([6-9]|1[0-2])\b/)?.[0] || '........................');
+    let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC môn ${monHocName} lớp ${gradeName} BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+
 
     prompt += `\n⚠️ QUY TẮC TRÌNH BÀY CÔNG THỨC TOÁN/LÝ/HÓA (BẮT BUỘC):\n`;
     prompt += `- CÔNG THỨC TOÁN/HÓA: TUYỆT ĐỐI KHÔNG dùng định dạng LaTeX ($...$) cho các mũi tên phản ứng hóa học (->, =>, <=>) và kí hiệu nhiệt độ (độ C, ^oC). Bắt buộc viết chúng dưới dạng text thường.\n`;
@@ -971,7 +978,29 @@ Giải thích: [Ngắn gọn]
 
     prompt += `\n🎓 ĐẶC THÙ TỪNG BỘ MÔN:\n`;
     prompt += `- MÔN TOÁN: 100% câu hỏi trắc nghiệm phải là bài tập TÍNH TOÁN, tìm x, tính diện tích, giải quyết vấn đề. KHÔNG hỏi lý thuyết suông (kiểu "Phân số là gì?"). Các đáp án nhiễu là kết quả của việc tính nhầm dấu, sai công thức.\n`;
-    prompt += `- MÔN KHOA HỌC TỰ NHIÊN (Lý, Hóa, Sinh): Câu hỏi đi thẳng vào bản chất hiện tượng, sơ đồ thí nghiệm, phản ứng hóa học, hoặc bài tập thực tiễn đời sống.\n`;
+    prompt += `- MÔN KHOA HỌC TỰ NHIÊN (KHTN): Câu hỏi đi thẳng vào bản chất hiện tượng, sơ đồ thí nghiệm, phản ứng hóa học, hoặc bài tập thực tiễn đời sống.\\n`;
+    if (/khoa học tự nhiên|khtn/i.test(examHeader?.monHoc || '')) {
+      prompt += `\\n📌 CHÚ THÍCH MÃ NĂNG LỰC KHTN (BẮT BUỘC đọc khi ra đề — Căn cứ CTGDPT 2018):\\n`;
+      prompt += `► Nhóm Nhận thức (NT):\\n`;
+      prompt += `  [NT1] Nhận biết: Nhận biết, kể tên, phát biểu, nêu được đối tượng/khái niệm/quy luật\\n`;
+      prompt += `  [NT2] Thông hiểu: Trình bày, mô tả bằng ngôn ngữ/viết/sơ đồ/công thức\\n`;
+      prompt += `  [NT3] Thông hiểu: So sánh, phân loại, phân biệt theo tiêu chí\\n`;
+      prompt += `  [NT4] Thông hiểu: Phân tích đặc điểm sự vật/hiện tượng theo logic nhất định\\n`;
+      prompt += `  [NT5] Thông hiểu: Tìm từ khoá, kết nối thông tin, lập dàn ý văn bản khoa học\\n`;
+      prompt += `  [NT6] Vận dụng: Giải thích quan hệ nhân quả, cấu tạo–chức năng\\n`;
+      prompt += `  [NT7] Vận dụng: Nhận ra điểm sai, chỉnh sửa, đưa nhận định phê phán\\n`;
+      prompt += `► Nhóm Tìm hiểu tự nhiên (TH):\\n`;
+      prompt += `  [TH1] Thông hiểu: Đề xuất vấn đề, đặt câu hỏi khoa học\\n`;
+      prompt += `  [TH2] Thông hiểu: Đưa phán đoán, xây dựng giả thuyết\\n`;
+      prompt += `  [TH3] Thông hiểu: Lập kế hoạch, thiết kế phương án thí nghiệm\\n`;
+      prompt += `  [TH4] Vận dụng: Thực hiện thí nghiệm, thu thập/xử lý dữ liệu, rút ra kết luận\\n`;
+      prompt += `  [TH5] Vận dụng: Viết báo cáo, vẽ hình, thiết kế mô hình/dụng cụ\\n`;
+      prompt += `  [TH6] Vận dụng: Ra quyết định, đề xuất giải pháp xử lý vấn đề\\n`;
+      prompt += `► Nhóm Vận dụng kiến thức (VD):\\n`;
+      prompt += `  [VD1] Vận dụng: Vận dụng giải thích hiện tượng thực tế, giải bài tập định lượng\\n`;
+      prompt += `  [VD2] Vận dụng cao: Đề xuất giải pháp bảo vệ môi trường, phát triển bền vững\\n`;
+      prompt += `⚠️ Câu Đúng/Sai: ý a=NT1(NB), ý b=NT1(NB), ý c=NT3(TH), ý d=VD2(VDCao) — TUYỆT ĐỐI không có VDCao ở ý a,b,c\\n`;
+    }
     prompt += `- MÔN KHOA HỌC XÃ HỘI (Sử, Địa, GDCD): Sử/Địa ưu tiên nguyên nhân, hệ quả, phân tích số liệu/biểu đồ. Riêng GDCD/KTPL: 100% câu hỏi Vận dụng phải là TÌNH HUỐNG THỰC TẾ (ví dụ: nhân vật A, B vi phạm gì) để học sinh xử lý.\n`;
     prompt += `- MÔN NGỮ VĂN: Tập trung ĐỌC HIỂU (nhận diện tu từ, tác dụng nghệ thuật, phương thức biểu đạt). Tự luận hướng đến cảm thụ và nghị luận.\n`;
     prompt += `- MÔN TIẾNG ANH: Kiểm tra từ vựng trong ngữ cảnh (Context), chức năng giao tiếp. Đáp án nhiễu phải có cấu trúc tương đồng để phân loại học sinh.\n`;
@@ -1083,6 +1112,14 @@ Giải thích: [Ngắn gọn]
     const isToanMon = /toán|toan/i.test(monHoc);
     const isSinhMon = /sinh/i.test(monHoc);
     const getAutoCode = (level) => {
+      const isKHTNMon = /khoa học tự nhiên|khtn/i.test(monHoc);
+      if (isKHTNMon) {
+        // Mã chuẩn theo CTGDPT 2018 (NT1-NT7, TH1-TH6, VD1-VD2)
+        if (level === 'biet') return 'NT1';
+        if (level === 'hieu') return 'NT3';
+        if (level === 'vanDung') return 'VD1';
+        if (level === 'vanDungCao') return 'VD2';
+      }
       if (isHoaMon) {
         if (level === 'biet') return 'HH1.1';
         if (level === 'hieu') return 'HH1.2';

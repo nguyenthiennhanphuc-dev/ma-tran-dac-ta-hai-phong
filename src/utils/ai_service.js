@@ -179,11 +179,11 @@ function buildUserPrompt(promptText, documentContext) {
             const tl = dv.tuLuan || {};
 
             totalMCQ += (Number(mcq.biet) || 0) + (Number(mcq.hieu) || 0) + (Number(mcq.vanDung) || 0);
-            totalDS += (Number(ds.biet) || 0) + (Number(ds.hieu) || 0) + (Number(ds.vanDung) || 0);
+            totalDS += (Number(ds.biet) || 0) + (Number(ds.hieu) || 0) + (Number(ds.vanDung) || 0) + (Number(ds.vanDungCao) || 0);
             if (config.hasTraLoiNgan) {
                 totalTLN += (Number(tln.biet) || 0) + (Number(tln.hieu) || 0) + (Number(tln.vanDung) || 0);
             }
-            totalTL += (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0);
+            totalTL += (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0) + (Number(tl.vanDungCao) || 0);
         });
     });
 
@@ -258,9 +258,9 @@ d) HS trung bình nhiều hơn HS giỏi 86 em."
 
             const dvTotal =
                 (Number(mcq.biet) || 0) + (Number(mcq.hieu) || 0) + (Number(mcq.vanDung) || 0) +
-                (Number(ds.biet) || 0) + (Number(ds.hieu) || 0) + (Number(ds.vanDung) || 0) +
+                (Number(ds.biet) || 0) + (Number(ds.hieu) || 0) + (Number(ds.vanDung) || 0) + (Number(ds.vanDungCao) || 0) +
                 (Number(tln.biet) || 0) + (Number(tln.hieu) || 0) + (Number(tln.vanDung) || 0) +
-                (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0);
+                (Number(tl.biet) || 0) + (Number(tl.hieu) || 0) + (Number(tl.vanDung) || 0) + (Number(tl.vanDungCao) || 0);
 
             if (dvTotal > 0) {
                 const tenDVKT = dv.noiDung || 'Chưa rõ';
@@ -281,11 +281,12 @@ d) HS trung bình nhiều hơn HS giỏi 86 em."
                     finalPrompt += ` - Trắc nghiệm nhiều lựa chọn [LOẠI 1]: ${parts.join(', ')}\n`;
                 }
 
-                if (Number(ds.biet) > 0 || Number(ds.hieu) > 0 || Number(ds.vanDung) > 0) {
+                if (Number(ds.biet) > 0 || Number(ds.hieu) > 0 || Number(ds.vanDung) > 0 || Number(ds.vanDungCao) > 0) {
                     const parts = [];
                     if (Number(ds.biet) > 0) parts.push(`${ds.biet} ý Nhận biết`);
                     if (Number(ds.hieu) > 0) parts.push(`${ds.hieu} ý Thông hiểu`);
                     if (Number(ds.vanDung) > 0) parts.push(`${ds.vanDung} ý Vận dụng`);
+                    if (Number(ds.vanDungCao) > 0) parts.push(`${ds.vanDungCao} ý Vận dụng cao`);
                     finalPrompt += ` - Trắc nghiệm Đúng/Sai [LOẠI 2]: ${parts.join(', ')}\n`;
                 }
 
@@ -297,11 +298,12 @@ d) HS trung bình nhiều hơn HS giỏi 86 em."
                     finalPrompt += ` - Trả lời ngắn [LOẠI 3]: ${parts.join(', ')}\n`;
                 }
 
-                if (Number(tl.biet) > 0 || Number(tl.hieu) > 0 || Number(tl.vanDung) > 0) {
+                if (Number(tl.biet) > 0 || Number(tl.hieu) > 0 || Number(tl.vanDung) > 0 || Number(tl.vanDungCao) > 0) {
                     const parts = [];
                     const diemBiet = Number(dv.tuLuan?.diemBiet) || 0;
                     const diemHieu = Number(dv.tuLuan?.diemHieu) || 0;
                     const diemVanDung = Number(dv.tuLuan?.diemVanDung) || 0;
+                    const diemVanDungCao = Number(dv.tuLuan?.diemVanDungCao) || 0;
                     if (Number(tl.biet) > 0) {
                         const diemMoi = diemBiet > 0 ? (diemBiet / Number(tl.biet)) : 0.5;
                         parts.push(`${tl.biet} câu Nhận biết (mỗi câu ${diemMoi}đ)`);
@@ -313,6 +315,10 @@ d) HS trung bình nhiều hơn HS giỏi 86 em."
                     if (Number(tl.vanDung) > 0) {
                         const diemMoi = diemVanDung > 0 ? (diemVanDung / Number(tl.vanDung)) : 0.5;
                         parts.push(`${tl.vanDung} câu Vận dụng (mỗi câu ${diemMoi}đ)`);
+                    }
+                    if (Number(tl.vanDungCao) > 0) {
+                        const diemMoi = diemVanDungCao > 0 ? (diemVanDungCao / Number(tl.vanDungCao)) : 0.5;
+                        parts.push(`${tl.vanDungCao} câu Vận dụng cao (mỗi câu ${diemMoi}đ)`);
                     }
                     finalPrompt += ` - Tự luận [LOẠI 4]: ${parts.join(', ')}\n`;
                 }

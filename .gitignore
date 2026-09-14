@@ -38,7 +38,12 @@ env/
 
 # Temp graphs and export files
 temp_graphs/
+temp_docs/
 *.docx
+*.doc
+*.pdf
+*.pptx
 *.zip
 *.log
+*.jpg
 

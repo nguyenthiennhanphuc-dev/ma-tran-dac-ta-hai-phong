@@ -5,8 +5,10 @@ import QuickStep1_Import from './QuickStep1_Import';
 import QuickStep2_HeaderInfo from './QuickStep2_HeaderInfo';
 import QuickStep5_AIGenerator from './QuickStep5_AIGenerator';
 import QuickStep6_ViewExport from './QuickStep6_ViewExport';
-import { exportToWord } from '../../utils/exportWord';
-import { exportToWordMath, exportToWordMathLatex } from '../../utils/exportWordMath';
+import { exportToWord, exportToWordOMML, exportToWordLatexDocx } from '../../utils/exportWord';
+import { exportToWordMathType } from '../../utils/exportWordMathType';
+import { exportToWordMath } from '../../utils/exportWordMath';
+import { useToast } from '../Toast';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -27,13 +29,14 @@ const QUICK_STEPS = [
 ];
 
 export default function QuickFlow({ handleExportWrapper, activeStep, setActiveStep }) {
+  const toast = useToast();
   const quickState = useQuickStore();
   const examStoreKeys = useExamStore(state => state.geminiApiKeys);
   const examStoreModel = useExamStore(state => state.selectedModel);
 
   // Modal export options state
   const [showNumberingModal, setShowNumberingModal] = useState(false);
-  const [pendingExportType, setPendingExportType] = useState(null); // 'normal' | 'math' | 'latex'
+  const [pendingExportType, setPendingExportType] = useState(null); // 'omml' | 'mathtype' | 'normal' | 'latex'
 
   // Sync API settings from useExamStore to useQuickStore on load
   useEffect(() => {
@@ -74,12 +77,22 @@ export default function QuickFlow({ handleExportWrapper, activeStep, setActiveSt
 
     // Run the actual export wrapper provided by App.jsx to enforce paywall/trial counts
     try {
-      if (exportType === 'normal') {
-        await handleExportWrapper(exportToWord);
-      } else if (exportType === 'math') {
-        await handleExportWrapper(exportToWordMath);
+      if (exportType === 'omml' || exportType === 'math') {
+        await handleExportWrapper(exportToWordOMML);
+      } else if (exportType === 'mathtype') {
+        await handleExportWrapper(() => exportToWordMathType({
+          onStatus: (status, msg) => {
+            if (status === 'fallback') toast.warning(msg);
+            else if (status === 'done') toast.success(msg);
+            else toast.info(msg);
+          }
+        }));
       } else if (exportType === 'latex') {
-        await handleExportWrapper(exportToWordMathLatex);
+        await handleExportWrapper(exportToWordLatexDocx);
+      } else if (exportType === 'legacy_doc') {
+        await handleExportWrapper(exportToWordMath);
+      } else {
+        await handleExportWrapper(exportToWord);
       }
     } catch (error) {
       console.error('Lỗi khi xuất file Word:', error);
@@ -136,25 +149,40 @@ export default function QuickFlow({ handleExportWrapper, activeStep, setActiveSt
             <QuickStep6_ViewExport />
             
             {/* Word Export Buttons - rendered in QuickFlow wrapper */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 pt-6 border-t border-slate-200">
-              <button
-                onClick={() => { setPendingExportType('normal'); setShowNumberingModal(true); }}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-indigo-600 to-blue-600 hover:shadow-lg hover:scale-[1.02]"
-              >
-                <FileDown size={20} /> Xuất Word (Môn thường)
-              </button>
-              <button
-                onClick={() => { setPendingExportType('math'); setShowNumberingModal(true); }}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02]"
-              >
-                <FileDown size={20} /> Xuất Word (Toán/Hóa Công thức)
-              </button>
-              <button
-                onClick={() => { setPendingExportType('latex'); setShowNumberingModal(true); }}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-teal-600 to-emerald-600 hover:shadow-lg hover:scale-[1.02]"
-              >
-                <FileDown size={20} /> Xuất Word (LaTeX)
-              </button>
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => { setPendingExportType('omml'); setShowNumberingModal(true); }}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02] ring-2 ring-blue-300"
+                  title="Công thức Word chuẩn Office (sửa bằng Alt + =), 100% Offline không cần mạng"
+                >
+                  <FileDown size={20} /> Xuất Word Equation (OMML)
+                </button>
+                <button
+                  onClick={() => { setPendingExportType('mathtype'); setShowNumberingModal(true); }}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:scale-[1.02]"
+                  title="Nhúng đối tượng MathType OLE thật sự (click đúp mở MathType 6/7, tự động fallback OMML khi mất mạng)"
+                >
+                  <FileDown size={20} /> Xuất Word MathType (OLE)
+                </button>
+                <button
+                  onClick={() => { setPendingExportType('normal'); setShowNumberingModal(true); }}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-sm transition-all hover:scale-[1.02]"
+                  title="Xuất file docx chuẩn cho các môn KHXH hoặc không công thức"
+                >
+                  <FileDown size={20} /> Xuất Word Chuẩn (.docx)
+                </button>
+                <button
+                  onClick={() => { setPendingExportType('latex'); setShowNumberingModal(true); }}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 shadow-sm transition-all hover:scale-[1.02]"
+                  title="Giữ nguyên mã LaTeX ($...$) trong tài liệu Word"
+                >
+                  <FileDown size={20} /> Xuất Word (LaTeX)
+                </button>
+              </div>
+              <p className="text-center text-xs text-slate-500 mt-2">
+                💡 <b>Word Equation (OMML)</b>: 100% Offline, sửa trực tiếp trên mọi máy với <kbd className="bg-slate-200 px-1 rounded">Alt + =</kbd> | <b>MathType (OLE)</b>: Mở sửa bằng MathType 6/7.
+              </p>
             </div>
           </>
         )}
@@ -278,6 +306,34 @@ export default function QuickFlow({ handleExportWrapper, activeStep, setActiveSt
                     className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                   />
                   <span className="font-medium">Hiển thị mã Năng lực (VD: HH1.1, HH1.2)</span>
+                </label>
+              </div>
+
+              <div className="mb-4">
+                <p className="font-bold text-slate-700 mb-2">4. Tùy chọn Đề thi (Ẩn/Hiện đáp án & chú thích):</p>
+                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={quickState.config.showExamRedMetadata !== false}
+                    onChange={(e) => quickState.updateConfig('showExamRedMetadata', e.target.checked)}
+                    className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 text-sm">Hiển thị chữ màu đỏ (* Kiến thức, * NLTD/chỉ báo)</span>
+                    <p className="text-xs text-slate-500">Bỏ tích để ẩn chữ màu đỏ khi in đề kiểm tra cho học sinh.</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 mt-2">
+                  <input
+                    type="checkbox"
+                    checked={quickState.config.showExamAnswerUnderline !== false}
+                    onChange={(e) => quickState.updateConfig('showExamAnswerUnderline', e.target.checked)}
+                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 text-sm">Gạch chân & tô đỏ đáp án đúng (A, B, C, D / Đúng, Sai)</span>
+                    <p className="text-xs text-slate-500">Bỏ tích để ẩn gạch chân đáp án khi phát đề cho học sinh làm bài.</p>
+                  </div>
                 </label>
               </div>
             </div>

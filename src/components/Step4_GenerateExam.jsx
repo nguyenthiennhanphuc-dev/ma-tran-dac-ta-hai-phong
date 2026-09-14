@@ -5,6 +5,7 @@ import Latex from 'react-latex-next';
 import 'katex/dist/katex.min.css';
 import ClientGraph from './ClientGraph';
 import SimilarQuestionModal from './SimilarQuestionModal';
+import BatchDeleteExamModal from './BatchDeleteExamModal';
 import { generateFullEquivalentExamPrompt } from '../utils/prompt_generator';
 import { parseExamDraft, extractHinhAnhFromText, autoDetectGraphMetadata } from './Step5_AIGenerator';
 
@@ -53,9 +54,12 @@ const findIndicators = (matrix, dvktName, loai, level) => {
 };
 
 export default function Step4_GenerateExam() {
-  const { matrix, config, examConfig, tuLuanConfig, examSlots, examHeader, clearExamSlot, updateExamSlot, draftQuestions, setDraftQuestions, lockedSlots, toggleLockSlot } = useExamStore();
+  const { matrix, config, examConfig, tuLuanConfig, examSlots, examHeader, clearExamSlot, clearMultipleExamSlots, clearAllExamSlots, updateExamSlot, updateConfig, draftQuestions, setDraftQuestions, lockedSlots, toggleLockSlot } = useExamStore();
 
   const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
+
+  // State cho tính năng Xóa nhiều câu hỏi
+  const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
 
   // State cho tính năng Tạo tương tự
   const [similarModalOpen, setSimilarModalOpen] = useState(false);
@@ -94,7 +98,7 @@ export default function Step4_GenerateExam() {
     }
 
     try {
-      const prompt = generateFullEquivalentExamPrompt(filledSlots, lockedSlots);
+      const prompt = generateFullEquivalentExamPrompt(filledSlots, lockedSlots, examConfig, examHeader);
       await navigator.clipboard.writeText(prompt);
       setIsCopiedFull(true);
       setTimeout(() => setIsCopiedFull(false), 3000);
@@ -174,19 +178,46 @@ export default function Step4_GenerateExam() {
           if (numQ <= 0) return;
 
           // Tính điểm thực tế cho mỗi ý tự luận từ ma trận
-          let diemPerY = 0;
           if (typeKey === 'tuLuan') {
-            const diemField = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : 'diemVanDung';
+            if (Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+              const matchingSubs = dv.tuLuan.subItems.filter(s => s.level === level);
+              matchingSubs.forEach((sub, sIdx) => {
+                const mapObj = dv.indicatorMap?.[`tuLuan_${level}_${sIdx}`];
+                const resolvedLabel = sub.label || (typeof mapObj === 'object' ? mapObj.label : '') || sub.qLabel || '';
+                items.push({
+                  topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
+                  dvkt: dv.noiDung || '',
+                  level: level === 'biet' ? 'Nhận biết' : level === 'hieu' ? 'Thông hiểu' : level === 'vanDung' ? 'Vận dụng' : 'Vận dụng cao',
+                  diem: Number(sub.diem) || 0.5,
+                  label: resolvedLabel,
+                  qId: sub.qId || '',
+                  qLabel: sub.qLabel || ''
+                });
+              });
+              return;
+            }
+            const diemField = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
             const totalDiem = Number(dv.tuLuan?.[diemField]) || 0;
-            diemPerY = numQ > 0 ? Math.round((totalDiem / numQ) * 100) / 100 : 0;
+            const diemPerY = numQ > 0 ? Math.round((totalDiem / numQ) * 100) / 100 : 0;
+            for (let i = 0; i < numQ; i++) {
+              const mapObj = dv.indicatorMap?.[`tuLuan_${level}_${i}`];
+              const resolvedLabel = (typeof mapObj === 'object' ? mapObj.label : '') || '';
+              items.push({
+                topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
+                dvkt: dv.noiDung || '',
+                level: level === 'biet' ? 'Nhận biết' : level === 'hieu' ? 'Thông hiểu' : level === 'vanDung' ? 'Vận dụng' : 'Vận dụng cao',
+                diem: diemPerY,
+                label: resolvedLabel
+              });
+            }
+            return;
           }
 
           for (let i = 0; i < numQ; i++) {
             items.push({
               topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
               dvkt: dv.noiDung || '',
-              level: level === 'biet' ? 'Nhận biết' : level === 'hieu' ? 'Thông hiểu' : level === 'vanDung' ? 'Vận dụng' : 'Vận dụng cao',
-              ...(typeKey === 'tuLuan' ? { diem: diemPerY } : {})
+              level: level === 'biet' ? 'Nhận biết' : level === 'hieu' ? 'Thông hiểu' : level === 'vanDung' ? 'Vận dụng' : 'Vận dụng cao'
             });
           }
         });
@@ -208,49 +239,45 @@ export default function Step4_GenerateExam() {
   const mcqItems = getFlatItems('nhieuLuaChon');
   const mcqQuestions = chunkArray(mcqItems, 1);
 
-  // 2. Phần Đúng/Sai — Gom 4 ý vào 1 câu theo cấu trúc 1B, 1H, 2VD
+  // 2. Phần Đúng/Sai — Gom 4 ý vào 1 câu (Cấu trúc 4-2-1-3 / KHTN: a,b Biết; c Hiểu; d Vận dụng)
+  const isKHTN = examHeader?.monHoc?.toLowerCase().includes('khoa học tự nhiên') || examHeader?.monHoc?.toLowerCase().includes('khtn');
+  const isCauTruc4213 = examConfig?.isCauTruc4213 || isKHTN;
+
   const tfQuestions = (() => {
     const chunks = [];
     const levelLabels = {
       biet: 'Nhận biết',
       hieu: 'Thông hiểu',
       vanDung: 'Vận dụng',
-      vanDungCao: 'Vận dụng' // Luôn hiển thị Vận dụng cao là Vận dụng trên UI
+      vanDungCao: isCauTruc4213 ? 'Vận dụng' : 'Vận dụng cao'
     };
 
-    matrix.forEach(topic => {
-      const buckets = { biet: [], hieu: [], vanDung: [], vanDungCao: [] };
-      (topic.donViKienThuc || []).forEach(dv => {
-        const ds = dv.dungSai || {};
-        ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(key => {
-          const count = Number(ds[key]) || 0;
-          for (let i = 0; i < count; i++) {
-            buckets[key].push({
-              topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
-              level: levelLabels[key],
-              levelKey: key
-            });
-          }
-        });
-      });
-
-      // Gộp vanDungCao vào vanDung để bốc chung
+    const buildChunksFromBuckets = (buckets) => {
       const combinedVanDung = [...buckets.vanDung, ...buckets.vanDungCao];
       buckets.vanDung = combinedVanDung;
+      buckets.vanDungCao = [];
 
       const totalItems = buckets.biet.length + buckets.hieu.length + buckets.vanDung.length;
       const numQuestions = Math.ceil(totalItems / 4);
 
       for (let i = 0; i < numQuestions; i++) {
         const chunk = [];
-        
-        // Cố gắng bốc đúng cấu trúc 1 Nhận biết, 1 Thông hiểu, 2 Vận dụng
-        if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
-        if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
-        if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
-        if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
 
-        // Nếu người dùng cấu hình tay không chuẩn (không đủ cơ cấu trên), lấy bù từ các bucket còn dư
+        if (isCauTruc4213) {
+          // Chuẩn CV 4956: ý a, b mức Nhận biết, ý c mức Thông hiểu, ý d mức Vận dụng
+          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+          if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+          if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+        } else {
+          // Chuẩn THPT 2025: 1 Nhận biết, 1 Thông hiểu, 2 Vận dụng
+          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+          if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+          if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+          if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+        }
+
+        // Nếu cấu hình tay không đủ cơ cấu trên, lấy bù từ các bucket còn dư
         while (chunk.length < 4) {
           if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
           else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
@@ -258,7 +285,7 @@ export default function Step4_GenerateExam() {
           else break;
         }
 
-        // Sắp xếp lại chunk theo đúng thứ tự mức độ nhận thức (B -> H -> VD)
+        // Sắp xếp lại chunk theo đúng thứ tự mức độ nhận thức (B -> B -> H -> VD)
         const order = { 'biet': 1, 'hieu': 2, 'vanDung': 3, 'vanDungCao': 4 };
         chunk.sort((a, b) => order[a.levelKey] - order[b.levelKey]);
 
@@ -266,7 +293,49 @@ export default function Step4_GenerateExam() {
           chunks.push(chunk);
         }
       }
-    });
+    };
+
+    if (config.groupTfByTopic) {
+      // Gom theo từng chủ đề
+      matrix.forEach(topic => {
+        const buckets = { biet: [], hieu: [], vanDung: [], vanDungCao: [] };
+        (topic.donViKienThuc || []).forEach(dv => {
+          const ds = dv.dungSai || {};
+          ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(key => {
+            const count = Number(ds[key]) || 0;
+            for (let i = 0; i < count; i++) {
+              buckets[key].push({
+                topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
+                dvkt: dv.noiDung || '',
+                level: levelLabels[key],
+                levelKey: key
+              });
+            }
+          });
+        });
+        buildChunksFromBuckets(buckets);
+      });
+    } else {
+      // Gom chung toàn đề để đảm bảo luôn đủ 4 ý/câu theo chuẩn a,b Biết; c Hiểu; d Vận dụng
+      const globalBuckets = { biet: [], hieu: [], vanDung: [], vanDungCao: [] };
+      matrix.forEach(topic => {
+        (topic.donViKienThuc || []).forEach(dv => {
+          const ds = dv.dungSai || {};
+          ['biet', 'hieu', 'vanDung', 'vanDungCao'].forEach(key => {
+            const count = Number(ds[key]) || 0;
+            for (let i = 0; i < count; i++) {
+              globalBuckets[key].push({
+                topic: topic.tenChuDe || 'Chưa nhập tên chủ đề',
+                dvkt: dv.noiDung || '',
+                level: levelLabels[key],
+                levelKey: key
+              });
+            }
+          });
+        });
+      });
+      buildChunksFromBuckets(globalBuckets);
+    }
 
     return chunks;
   })();
@@ -275,46 +344,125 @@ export default function Step4_GenerateExam() {
   const saItems = getFlatItems('traLoiNgan');
   const saQuestions = chunkArray(saItems, 1);
 
-  // 4. Phần Tự luận — Gom theo ĐVKT (mặc định) hoặc theo tuLuanConfig (khi enabled)
+  // 4. Phần Tự luận — Gom và sắp xếp theo số thứ tự câu (Câu 1, Câu 2, Câu 3...) đồng bộ 100% Ma trận
   const tlItems = getFlatItems('tuLuan');
   const tlQuestions = (() => {
-    if (hasManualTLConfig && tlItems.length > 0) {
-      // Khi có manual config: lấy items từ matrix theo thứ tự, nhóm theo cấu trúc câu từ tuLuanConfig
-      let itemIdx = 0;
-      const result = [];
-      tuLuanConfig.questions.forEach(q => {
-        const numY = q.subItems?.length || 1;
+    if (tlItems.length === 0) return [];
+
+    // Helper: trích xuất số thứ tự câu (ví dụ "Câu 1a" -> 1, "Câu 2" -> 2, "TL.1" -> 1, "tl_q1" -> 1)
+    const extractQNum = (it) => {
+      if (!it) return null;
+      const candidates = [it.qLabel, it.label, it.qId];
+      for (const str of candidates) {
+        if (!str) continue;
+        const m = String(str).match(/(?:câu|tl_q|tl\.?)\s*(\d+)/i) || String(str).match(/\d+/);
+        if (m) return parseInt(m[1] || m[0], 10);
+      }
+      return null;
+    };
+
+    // Helper: trích xuất ký tự ý (a, b, c...) nếu có
+    const extractSubLetter = (str) => {
+      if (!str) return '';
+      const m = String(str).match(/(?:câu\s*\d+|tl\s*\d+)?([a-z])\b/i) || String(str).match(/([a-z])\)/i);
+      return m ? m[1].toLowerCase() : '';
+    };
+
+    const grouped = {};
+    const unnumbered = [];
+    const usedIndices = new Set();
+
+    // 1. Nếu có cấu hình câu hỏi tự luận (tuLuanConfig.questions)
+    const questionsConfig = tuLuanConfig?.questions || [];
+    if (questionsConfig.length > 0) {
+      questionsConfig.forEach((q, qIdx) => {
+        const qNum = extractQNum(q) || (qIdx + 1);
+        const expectedPrefix = (q.label || `Câu ${qNum}`).toLowerCase().trim();
         const chunk = [];
-        for (let y = 0; y < numY; y++) {
-          const matrixItem = tlItems[itemIdx] || { topic: '', dvkt: '', level: 'Tự luận', diem: 0 };
-          chunk.push({
-            ...matrixItem,
-            diem: q.subItems?.[y]?.diem || matrixItem.diem
+
+        tlItems.forEach((item, idx) => {
+          if (usedIndices.has(idx)) return;
+          const itemNum = extractQNum(item);
+          const itemLabel = (item.label || item.qLabel || '').toLowerCase().trim();
+
+          const isMatch = (item.qId && q.id && item.qId === q.id) ||
+                          (itemNum !== null && itemNum === qNum) ||
+                          (itemLabel && itemLabel.startsWith(expectedPrefix));
+          if (isMatch) {
+            chunk.push({
+              ...item,
+              diem: q.subItems?.[chunk.length]?.diem || item.diem
+            });
+            usedIndices.add(idx);
+          }
+        });
+
+        if (chunk.length > 0) {
+          chunk.sort((a, b) => {
+            const letterA = extractSubLetter(a.label);
+            const letterB = extractSubLetter(b.label);
+            if (letterA && letterB) return letterA.localeCompare(letterB);
+            return (a.label || '').localeCompare(b.label || '');
           });
-          itemIdx++;
+          grouped[qNum] = chunk;
         }
-        if (chunk.length > 0) result.push(chunk);
       });
-      return result;
     }
-    // Mặc định: Nhóm các ý theo ĐVKT (đơn vị kiến thức)
-    const dvktGroups = {};
-    tlItems.forEach(item => {
-      const key = item.dvkt || '_unknown';
-      if (!dvktGroups[key]) dvktGroups[key] = [];
-      dvktGroups[key].push(item);
-    });
-    // Mỗi nhóm ĐVKT: chia thành chunk tối đa 2 ý → mỗi chunk = 1 câu
-    const result = [];
-    Object.values(dvktGroups).forEach(group => {
-      for (let i = 0; i < group.length; i += 2) {
-        result.push(group.slice(i, i + 2));
+
+    // 2. Quét các item chưa được gán theo tuLuanConfig (hoặc khi không có config)
+    tlItems.forEach((item, idx) => {
+      if (usedIndices.has(idx)) return;
+      const num = extractQNum(item);
+      if (num !== null) {
+        if (!grouped[num]) grouped[num] = [];
+        grouped[num].push(item);
+        usedIndices.add(idx);
+      } else {
+        unnumbered.push(item);
       }
     });
+
+    // 3. Sắp xếp các câu theo thứ tự tăng dần 1, 2, 3...
+    const result = [];
+    const sortedNums = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+    sortedNums.forEach(num => {
+      const chunk = grouped[num];
+      chunk.sort((a, b) => {
+        const letterA = extractSubLetter(a.label);
+        const letterB = extractSubLetter(b.label);
+        if (letterA && letterB) return letterA.localeCompare(letterB);
+        return (a.label || '').localeCompare(b.label || '');
+      });
+      result.push(chunk);
+    });
+
+    // 4. Các item còn lại không có số câu: gom theo ĐVKT (tối đa 2 ý/câu)
+    if (unnumbered.length > 0) {
+      const dvktGroups = {};
+      unnumbered.forEach(item => {
+        const key = item.dvkt || '_unknown';
+        if (!dvktGroups[key]) dvktGroups[key] = [];
+        dvktGroups[key].push(item);
+      });
+      Object.values(dvktGroups).forEach(grp => {
+        for (let i = 0; i < grp.length; i += 2) {
+          result.push(grp.slice(i, i + 2));
+        }
+      });
+    }
+
     return result;
   })();
 
   const alphabet = ['a)', 'b)', 'c)', 'd)', 'e)', 'f)'];
+
+  // Đếm số câu đã điền trong từng phần để phục vụ xóa nhanh
+  const p1FilledCount = mcqQuestions.filter((_, i) => examSlots[`phan1_cau${i + 1}`]).length;
+  const p2FilledCount = tfQuestions.filter((_, i) => examSlots[`phan2_cau${i + 1}`]).length;
+  const p3FilledCount = saQuestions.filter((_, i) => examSlots[`phan3_cau${i + 1}`]).length;
+  const phanTLPrefix = config.hasTraLoiNgan ? 'phan4' : 'phan3';
+  const p4FilledCount = tlQuestions.filter((_, i) => examSlots[`${phanTLPrefix}_cau${i + 1}`]).length;
+  const totalFilledQuestionsCount = p1FilledCount + p2FilledCount + p3FilledCount + p4FilledCount;
 
   return (
     <div className="w-full">
@@ -330,6 +478,22 @@ export default function Step4_GenerateExam() {
             <p className="text-sm text-slate-500">Xem trước và chỉnh sửa nội dung đề thi</p>
           </div>
           
+          {/* Nút Xóa nhiều câu hỏi */}
+          <button
+            type="button"
+            onClick={() => setBatchDeleteModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-all shadow-sm hover:shadow cursor-pointer"
+            title="Mở bảng chọn để xóa nhanh 1 hoặc nhiều câu hỏi đã điền trong khung đề"
+          >
+            <Trash2 size={18} />
+            <span>Xóa nhiều câu hỏi...</span>
+            {totalFilledQuestionsCount > 0 && (
+              <span className="px-2 py-0.5 text-xs bg-red-200 text-red-800 rounded-full font-bold">
+                {totalFilledQuestionsCount}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={handleCopyFullEquivalentPrompt}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white shadow-lg transition-all ${isCopiedFull ? 'bg-green-600 scale-105' : 'bg-gradient-to-r from-orange-500 to-rose-500 hover:shadow-xl hover:scale-105'}`}
@@ -345,6 +509,44 @@ export default function Step4_GenerateExam() {
             <Lock size={16} /> Đang khóa <strong>{lockedSlots.length}</strong> câu hỏi. Khi tạo Đề Tương Đương, AI sẽ giữ nguyên 100% nội dung các câu này.
           </div>
         )}
+
+        {/* THANH TÙY CHỌN HIỂN THỊ TRÊN ĐỀ THI & FILE XUẤT */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border border-slate-200 p-3 rounded-xl shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Tùy chọn hiển thị Đề thi & File Word:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Nút Ẩn / Hiện chữ màu đỏ */}
+            <button
+              type="button"
+              onClick={() => updateConfig('showExamRedMetadata', config.showExamRedMetadata === false ? true : false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm ${
+                config.showExamRedMetadata !== false
+                  ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                  : 'bg-slate-200/80 text-slate-500 border-slate-300 hover:bg-slate-300'
+              }`}
+              title="Bật/Tắt dòng chữ màu đỏ (* Kiến thức, * NLTD/chỉ báo) khi xuất file Word"
+            >
+              <span>{config.showExamRedMetadata !== false ? '🔴' : '⚪'}</span>
+              <span>{config.showExamRedMetadata !== false ? 'Chữ màu đỏ: Đang hiện' : 'Chữ màu đỏ: Đã ẩn'}</span>
+            </button>
+
+            {/* Nút Ẩn / Hiện gạch chân đáp án đúng */}
+            <button
+              type="button"
+              onClick={() => updateConfig('showExamAnswerUnderline', config.showExamAnswerUnderline === false ? true : false)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm ${
+                config.showExamAnswerUnderline !== false
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                  : 'bg-slate-200/80 text-slate-500 border-slate-300 hover:bg-slate-300'
+              }`}
+              title="Bật/Tắt gạch chân & tô đỏ đáp án đúng khi xuất file Word"
+            >
+              <span>{config.showExamAnswerUnderline !== false ? '✍️' : '🚫'}</span>
+              <span>{config.showExamAnswerUnderline !== false ? 'Gạch chân đáp án: Đang hiện' : 'Gạch chân đáp án: Đã ẩn'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-300 p-8 rounded-lg shadow-inner min-h-[400px]">
@@ -357,9 +559,26 @@ export default function Step4_GenerateExam() {
                 PHẦN A. TRẮC NGHIỆM KHÁCH QUAN
               </h2>
             )}
-            <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "I. Trắc nghiệm nhiều lựa chọn" : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn"}
-            </h3>
+            <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
+              <h3 className="text-lg font-bold text-slate-800">
+                {examConfig.isCauTruc4213 ? "I. Trắc nghiệm nhiều lựa chọn" : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn"}
+              </h3>
+              {p1FilledCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${p1FilledCount} câu hỏi đã điền trong Phần I không?`)) {
+                      const keys = mcqQuestions.map((_, i) => `phan1_cau${i + 1}`).filter(k => examSlots[k]);
+                      clearMultipleExamSlots(keys);
+                    }
+                  }}
+                  className="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                  title="Xóa nhanh tất cả câu hỏi trong Phần I"
+                >
+                  <Trash2 size={12} /> Xóa Phần I ({p1FilledCount})
+                </button>
+              )}
+            </div>
             <div className="space-y-4">
               {mcqQuestions.map((qChunk, qIndex) => {
                 const slotKey = `phan1_cau${qIndex + 1}`;
@@ -433,9 +652,26 @@ export default function Step4_GenerateExam() {
         {/* PHẦN II. ĐÚNG/SAI — CHÙM CÂU HỎI (1 Đề bài chung + 4 ý a, b, c, d) */}
         {tfQuestions.length > 0 && (
           <div className="mb-10">
-            <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "II. Trắc nghiệm đúng sai" : "PHẦN II. Câu trắc nghiệm đúng sai"}
-            </h3>
+            <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
+              <h3 className="text-lg font-bold text-slate-800">
+                {examConfig.isCauTruc4213 ? "II. Trắc nghiệm đúng sai" : "PHẦN II. Câu trắc nghiệm đúng sai"}
+              </h3>
+              {p2FilledCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${p2FilledCount} câu hỏi đã điền trong Phần II không?`)) {
+                      const keys = tfQuestions.map((_, i) => `phan2_cau${i + 1}`).filter(k => examSlots[k]);
+                      clearMultipleExamSlots(keys);
+                    }
+                  }}
+                  className="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                  title="Xóa nhanh tất cả câu hỏi trong Phần II"
+                >
+                  <Trash2 size={12} /> Xóa Phần II ({p2FilledCount})
+                </button>
+              )}
+            </div>
             <div className="space-y-6">
               {tfQuestions.map((qChunk, qIndex) => {
                 const slotKey = `phan2_cau${qIndex + 1}`;
@@ -548,9 +784,26 @@ export default function Step4_GenerateExam() {
         {/* PHẦN III. TRẢ LỜI NGẮN — NÂNG CẤP ĐỘC LẬP TỪNG CÂU */}
         {config.hasTraLoiNgan && saQuestions.length > 0 && (
           <div className="mb-10">
-            <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "III. Trắc nghiệm trả lời ngắn" : "PHẦN III. Câu trắc nghiệm trả lời ngắn"}
-            </h3>
+            <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
+              <h3 className="text-lg font-bold text-slate-800">
+                {examConfig.isCauTruc4213 ? "III. Trắc nghiệm trả lời ngắn" : "PHẦN III. Câu trắc nghiệm trả lời ngắn"}
+              </h3>
+              {p3FilledCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${p3FilledCount} câu hỏi đã điền trong Phần III không?`)) {
+                      const keys = saQuestions.map((_, i) => `phan3_cau${i + 1}`).filter(k => examSlots[k]);
+                      clearMultipleExamSlots(keys);
+                    }
+                  }}
+                  className="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                  title="Xóa nhanh tất cả câu hỏi trong Phần III"
+                >
+                  <Trash2 size={12} /> Xóa Phần III ({p3FilledCount})
+                </button>
+              )}
+            </div>
             <div className="space-y-4">
               {saQuestions.map((qChunk, qIndex) => {
                 const slotKey = `phan3_cau${qIndex + 1}`;
@@ -645,9 +898,26 @@ export default function Step4_GenerateExam() {
                 PHẦN B. TỰ LUẬN
               </h2>
             )}
-            <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
-              {examConfig.isCauTruc4213 ? "IV. Tự luận" : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
-            </h3>
+            <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
+              <h3 className="text-lg font-bold text-slate-800">
+                {examConfig.isCauTruc4213 ? "IV. Tự luận" : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
+              </h3>
+              {p4FilledCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${p4FilledCount} câu hỏi đã điền trong Phần Tự luận không?`)) {
+                      const keys = tlQuestions.map((_, i) => `${phanTLPrefix}_cau${i + 1}`).filter(k => examSlots[k]);
+                      clearMultipleExamSlots(keys);
+                    }
+                  }}
+                  className="text-xs px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                  title="Xóa nhanh tất cả câu hỏi trong Phần Tự luận"
+                >
+                  <Trash2 size={12} /> Xóa Tự luận ({p4FilledCount})
+                </button>
+              )}
+            </div>
             <div className="space-y-4">
               {tlQuestions.map((qChunk, qIndex) => {
                 const phanTL = config.hasTraLoiNgan ? 4 : 3;
@@ -703,7 +973,7 @@ export default function Step4_GenerateExam() {
                           </>
                         )}
                         <span className="text-xs font-semibold px-2 py-1 bg-purple-100 text-purple-700 rounded">
-                          [{qChunk[0].topic}] - {qChunk[0].level}
+                          {qChunk.some(it => it.topic !== qChunk[0].topic) ? '[Đa chủ đề]' : `[${qChunk[0].topic}]`} - {qChunk.length > 1 ? `${qChunk.length} ý` : qChunk[0].level}
                         </span>
                       </div>
                     </div>
@@ -711,11 +981,16 @@ export default function Step4_GenerateExam() {
                     <div className="space-y-4 pl-4">
                       {[['a', 'yA', 'dapAnA', 'diemA', 0], ['b', 'yB', 'dapAnB', 'diemB', 1], ['c', 'yC', 'dapAnC', 'diemC', 2]].slice(0, qChunk.length).map(([label, yKey, daKey, diKey, yIdx]) => {
                         const matrixDiem = qChunk[yIdx]?.diem || 0;
+                        const isMultiTopic = qChunk.some(it => it.topic !== qChunk[0].topic);
                         return (
                           <div key={label} className="bg-white/50 p-3 rounded border border-slate-200">
                             <div className="flex gap-3 items-start mb-2">
                               <span className="font-semibold text-slate-800 mt-2">{label})
-                                {qChunk[yIdx] && <span className="text-xs font-normal text-purple-600 ml-1">({qChunk[yIdx].level} - {matrixDiem}đ)</span>}
+                                {qChunk[yIdx] && (
+                                  <span className="text-xs font-normal text-purple-600 ml-1">
+                                    ({isMultiTopic ? `[${qChunk[yIdx].topic}] ` : ''}{qChunk[yIdx].level} - {matrixDiem}đ)
+                                  </span>
+                                )}
                               </span>
                               <textarea
                                 className="flex-1 bg-white border border-slate-200 p-2 rounded text-sm outline-none resize-y min-h-[50px]"
@@ -791,6 +1066,23 @@ export default function Step4_GenerateExam() {
         metaInfo={similarMetaInfo}
         examHeader={examHeader}
         otherQuestions={similarOtherQs}
+      />
+
+      {/* Modal Xóa Nhiều Câu Hỏi */}
+      <BatchDeleteExamModal
+        isOpen={batchDeleteModalOpen}
+        onClose={() => setBatchDeleteModalOpen(false)}
+        mcqQuestions={mcqQuestions}
+        tfQuestions={tfQuestions}
+        saQuestions={saQuestions}
+        tlQuestions={tlQuestions}
+        examSlots={examSlots}
+        lockedSlots={lockedSlots}
+        config={config}
+        examConfig={examConfig}
+        onClearSlot={clearExamSlot}
+        onClearMultipleSlots={clearMultipleExamSlots}
+        onClearAllSlots={clearAllExamSlots}
       />
     </div>
   );

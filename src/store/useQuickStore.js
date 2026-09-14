@@ -93,7 +93,7 @@ const getTopicTuLuanDiem = (topic, diemField) => {
   return topic.donViKienThuc.reduce((sum, dv) => {
     const tl = dv.tuLuan || {};
     if (Array.isArray(tl.subItems) && tl.subItems.length > 0) {
-      const levelMap = { diemBiet: 'biet', diemHieu: 'hieu', diemVanDung: 'vanDung' };
+      const levelMap = { diemBiet: 'biet', diemHieu: 'hieu', diemVanDung: 'vanDung', diemVanDungCao: 'vanDungCao' };
       const level = levelMap[diemField];
       if (level) {
         return sum + tl.subItems.filter(s => s.level === level).reduce((s2, sub) => s2 + (sub.diem || 0), 0);
@@ -101,6 +101,69 @@ const getTopicTuLuanDiem = (topic, diemField) => {
     }
     return sum + (tl[diemField] ? (Number(tl[diemField]) || 0) : 0);
   }, 0);
+};
+
+// =============================================================================
+// HELPER: Tính số câu Tự luận quy đổi tại mức độ nhận thức (level)
+// =============================================================================
+const getTuLuanCauCount = (matrix, level, tuLuanConfig = null) => {
+  if (!matrix || !Array.isArray(matrix)) return 0;
+
+  const allSubs = [];
+  matrix.forEach(topic => {
+    (topic.donViKienThuc || []).forEach(dv => {
+      const tl = dv.tuLuan;
+      if (tl && Array.isArray(tl.subItems) && tl.subItems.length > 0) {
+        tl.subItems.forEach((sub, idx) => {
+          allSubs.push({
+            ...sub,
+            dvId: dv.id,
+            topicId: topic.id,
+            uniqueIdx: `${dv.id}_${idx}`
+          });
+        });
+      }
+    });
+  });
+
+  if (allSubs.length === 0) {
+    let rawCount = 0;
+    matrix.forEach(topic => {
+      (topic.donViKienThuc || []).forEach(dv => {
+        rawCount += Number(dv.tuLuan?.[level]) || 0;
+      });
+    });
+    return rawCount;
+  }
+
+  const qGroups = {};
+  allSubs.forEach(sub => {
+    let qKey = sub.qId;
+    if (!qKey) {
+      const str = String(sub.label || sub.qLabel || '');
+      const m = str.match(/câu\s*(\d+)/i) || str.match(/TL\.?(\d+)/i) || str.match(/(\d+)/);
+      qKey = m ? `tl_q${m[1]}` : (sub.id || sub.uniqueIdx);
+    }
+    if (!qGroups[qKey]) {
+      qGroups[qKey] = [];
+    }
+    qGroups[qKey].push(sub);
+  });
+
+  let totalCauInLevel = 0;
+  Object.values(qGroups).forEach(subs => {
+    const totalPts = subs.reduce((s, item) => s + (Number(item.diem) || 0), 0);
+    const levelSubs = subs.filter(item => item.level === level);
+    const levelPts = levelSubs.reduce((s, item) => s + (Number(item.diem) || 0), 0);
+
+    if (totalPts > 0) {
+      totalCauInLevel += (levelPts / totalPts);
+    } else if (subs.length > 0) {
+      totalCauInLevel += (levelSubs.length / subs.length);
+    }
+  });
+
+  return Math.round(totalCauInLevel * 100) / 100;
 };
 
 // =============================================================================
@@ -129,15 +192,16 @@ const getInitialState = () => ({
     exportTemplate: 'ministry',
     showCompetencySymbol: true,
     showCompetencyCode: true,
+    showExamRedMetadata: true,
+    showExamAnswerUnderline: true,
     groupTfByTopic: false,
   },
   tuLuanConfig: {
     enabled: false,
     questions: [
-      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
-      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 1.0 }] },
-      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', subItems: [{ diem: 1.0 }] },
-      { id: 'tl_q4', label: 'Câu 4', kienThuc: '', subItems: [{ diem: 1.0 }] },
+      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
+      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
     ],
   },
   examConfig: {
@@ -398,8 +462,18 @@ export const useQuickStore = create(
     clearExamSlot: (slotKey) => set((state) => {
       const newSlots = { ...state.examSlots };
       delete newSlots[slotKey];
-      return { examSlots: newSlots };
+      const newLocked = (state.lockedSlots || []).filter(k => k !== slotKey);
+      return { examSlots: newSlots, lockedSlots: newLocked };
     }),
+    clearMultipleExamSlots: (slotKeys = []) => set((state) => {
+      const newSlots = { ...state.examSlots };
+      slotKeys.forEach(k => {
+        delete newSlots[k];
+      });
+      const newLocked = (state.lockedSlots || []).filter(k => !slotKeys.includes(k));
+      return { examSlots: newSlots, lockedSlots: newLocked };
+    }),
+    clearAllExamSlots: () => set({ examSlots: {}, lockedSlots: [] }),
     updateExamSlot: (slotKey, subKey, value) => set((state) => {
       const oldSlot = state.examSlots[slotKey] || {};
       return { examSlots: { ...state.examSlots, [slotKey]: { ...oldSlot, [subKey]: value } } };
@@ -491,6 +565,51 @@ export const useQuickStore = create(
           )
         };
       })
+    })),
+
+    // Xóa YCCĐ của 1 ĐVKT
+    clearDvYccd: (topicId, dvId) => set((state) => ({
+      matrix: state.matrix.map(topic => {
+        if (topic.id !== topicId) return topic;
+        return {
+          ...topic,
+          donViKienThuc: (topic.donViKienThuc || []).map(dv =>
+            dv.id === dvId ? { ...dv, yeuCauCanDat: '' } : dv
+          )
+        };
+      })
+    })),
+
+    // Xóa YCCĐ của tất cả ĐVKT trong 1 chủ đề
+    clearTopicYccd: (topicId) => set((state) => ({
+      matrix: state.matrix.map(topic => {
+        if (topic.id !== topicId) return topic;
+        return {
+          ...topic,
+          donViKienThuc: (topic.donViKienThuc || []).map(dv => ({ ...dv, yeuCauCanDat: '' }))
+        };
+      })
+    })),
+
+    // Xóa YCCĐ của nhiều ĐVKT được chọn (danh sách dvId)
+    clearBatchYccd: (dvIdList) => set((state) => {
+      const setIds = new Set(dvIdList);
+      return {
+        matrix: state.matrix.map(topic => ({
+          ...topic,
+          donViKienThuc: (topic.donViKienThuc || []).map(dv =>
+            setIds.has(dv.id) ? { ...dv, yeuCauCanDat: '' } : dv
+          )
+        }))
+      };
+    }),
+
+    // Xóa toàn bộ YCCĐ của tất cả các bài trong toàn bộ ma trận
+    clearAllYccd: () => set((state) => ({
+      matrix: state.matrix.map(topic => ({
+        ...topic,
+        donViKienThuc: (topic.donViKienThuc || []).map(dv => ({ ...dv, yeuCauCanDat: '' }))
+      }))
     })),
 
     updateDvIndicators: (topicId, dvId, indicators) => set((state) => ({
@@ -791,10 +910,23 @@ export const useQuickStore = create(
     }),
     {
       name: 'quick-exam-storage',
-      version: 1,
+      version: 2,
+      migrate: (persistedState, version) => {
+        if (version < 2) {
+          persistedState.tuLuanConfig = {
+            enabled: false,
+            questions: [
+              { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+              { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
+              { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+            ],
+          };
+        }
+        return persistedState;
+      }
     }
   )
 );
 
 // Export helpers cho các component sử dụng
-export { getTopicSum, getTopicTuLuanDiem, getTotalSoTiet, isNewMathStructure };
+export { getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet, isNewMathStructure };

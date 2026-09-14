@@ -1,16 +1,20 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useExamStore, getTopicSum, getTopicTuLuanDiem, getTotalSoTiet } from '../store/useExamStore';
+import { useExamStore, getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet } from '../store/useExamStore';
 import { Plus, Trash2, Settings2, Sparkles, PlusCircle, X, Bot, FileSpreadsheet, ClipboardList, Wand2, Maximize2, Minimize2, CheckCircle2, ChevronRight, BookOpen, Brain, Lightbulb, Lock, FileText, Upload, Save, PlayCircle, Info, Link, Check, BookTemplate, HelpCircle, Download } from 'lucide-react';
 
 import { formatGroupedLabels } from '../utils/labelUtils';
+import DungSaiConfigModal from './DungSaiConfigModal';
 import { searchIndicators, chemistryCompetencyGroups } from './data/chemistryIndicators';
 import { searchMathIndicators, mathCompetencyGroups } from './data/mathIndicators';
 import { biologyCompetencyGroups } from './data/biologyIndicators';
 import { physicsCompetencyGroups } from './data/physicsIndicators';
 import { geographyCompetencyGroups } from './data/geographyIndicators';
+import { searchKhtnIndicators, khtnCompetencyGroupsByLop } from './data/khtnIndicators';
+import { suggestKhtnCode, KHTN_COMPETENCY_GROUPS, KHTN_CODE_MAP, detectPhanMon, PHAN_MON_LABELS, getRowKhtnCode, formatYccdWithCode } from '../data/khtnCompetencyData';
+import { parseYccdByLevel, updateYccdForLevel, formatLevelDisplayName } from '../utils/specTableHelper';
 
 // Component Autocomplete dùng chung cho mọi môn
-const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry }) => {
+const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry, isKHTN, khtnLop }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchText, setSearchText] = useState(value || '');
   const containerRef = useRef(null);
@@ -33,8 +37,9 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
     if (!searchText) return [];
     if (isMath) return searchMathIndicators(searchText);
     if (isChemistry) return searchIndicators(searchText);
+    if (isKHTN) return searchKhtnIndicators(searchText, khtnLop);
     return [];
-  }, [searchText, isMath, isChemistry]);
+  }, [searchText, isMath, isChemistry, isKHTN, khtnLop]);
 
   const handleChange = (e) => {
     setSearchText(e.target.value);
@@ -43,7 +48,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
   };
 
   const handleSelect = (item) => {
-    const newVal = `[${item.code}] ${item.content}`;
+    const newVal = searchText ? `${searchText} [${item.code}]` : `[${item.code}]`;
     setSearchText(newVal);
     onChange(newVal);
     setShowDropdown(false);
@@ -80,24 +85,69 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
   const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
   const isPhysics = /lý|lí|vật lí|vật lý/i.test(examHeader?.monHoc || '');
   const isGeography = /địa|địa lí|địa lý/i.test(examHeader?.monHoc || '');
+  const isKHTN = Boolean(
+    examConfig.subject === 'khtn' || 
+    examConfig.isCauTruc4213 || 
+    /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(examHeader?.monHoc || '') ||
+    /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
+  );
+
+  // Chuẩn hóa mã KHTN cũ sang chuẩn CTGDPT 2018 (NT1-NT7, TH1-TH6, VD1-VD2)
+  const normalizeKhtnCode = (code) => {
+    if (!code) return '';
+    if (code === 'KHTN1.1') return 'NT1';
+    if (code === 'KHTN1.2') return 'NT2';
+    if (code === 'KHTN1.3') return 'NT3';
+    if (code === 'KHTN1.4') return 'NT6';
+    if (code === 'KHTN3.1') return 'VD1';
+    if (code === 'KHTN2.4' || code === 'KHTN2.2') return 'VD2';
+    return code;
+  };
+
   const [showSmartImport, setShowSmartImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importTextFast, setImportTextFast] = useState('');
   const [showTuLuanModal, setShowTuLuanModal] = useState(false);
+  const [showDungSaiModal, setShowDungSaiModal] = useState(false);
   const [importTargetTopicId, setImportTargetTopicId] = useState(null);
   const [indicatorModal, setIndicatorModal] = useState({ show: false, topicId: null, dvId: null, selected: [] });
   // [CT TOAN 2018] Dialog chon lop de go i y YCCD
   const [ct2018Dialog, setCt2018Dialog] = useState({ show: false, lop: 8 });
+  // khtnSelectedLop được lưu trong store (khtnConfig.lop) để persist qua các bước
+  const khtnSelectedLop = khtnConfig?.lop || '8';
+  const setKhtnSelectedLop = (lop) => updateKhtnConfig('lop', lop);
+
+  // Tự động nhận diện lớp cho môn KHTN từ đề bài / tên bài
+  useEffect(() => {
+    if (!isKHTN) return;
+    const fullText = `${examHeader?.kyThi || ''} ${examHeader?.monHoc || ''} ${(matrix || []).map(t => `${t.tenChuDe} ${(t.donViKienThuc || []).map(d => d.noiDung).join(' ')}`).join(' ')}`.toLowerCase();
+    let detected = null;
+    if (/lớp\s*6|khtn\s*6|\bkhối\s*6\b|kính lúp|kính hiển vi|đo khối lượng|đo thời gian|đo chiều dài|đo nhiệt độ|tế bào.*đơn vị/i.test(fullText)) detected = '6';
+    else if (/lớp\s*7|khtn\s*7|\bkhối\s*7\b|nam châm|từ trường|quang hợp ở thực vật/i.test(fullText)) detected = '7';
+    else if (/lớp\s*8|khtn\s*8|\bkhối\s*8\b|định luật bảo toàn khối lượng|áp suất chất lỏng/i.test(fullText)) detected = '8';
+    else if (/lớp\s*9|khtn\s*9|\bkhối\s*9\b|khúc xạ ánh sáng|năng lượng tái tạo/i.test(fullText)) detected = '9';
+
+    if (detected && detected !== khtnConfig?.lop) {
+      updateKhtnConfig('lop', detected);
+    }
+  }, [isKHTN, examHeader, matrix]);
+
+  // Tu dong chuyen sang cau truc KHTN 4-2-1-3 khi mon la KHTN ma chua duoc chon
+  useEffect(() => {
+    if (isKHTN && !examConfig.isCauTruc4213) {
+      setCauTrucDe('4.01');
+    }
+  }, [isKHTN]);
 
   // Nguồn dữ liệu nhóm năng lực tùy theo môn
-  const compGroups = isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : (isBiology ? biologyCompetencyGroups : (isPhysics ? physicsCompetencyGroups : (isGeography ? geographyCompetencyGroups : null))));
+  const compGroups = isKHTN ? (khtnCompetencyGroupsByLop[Number(khtnSelectedLop)] || khtnCompetencyGroupsByLop[8]) : (isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : (isBiology ? biologyCompetencyGroups : (isPhysics ? physicsCompetencyGroups : (isGeography ? geographyCompetencyGroups : null)))));
 
   // =======================================================================
   // HELPERS: Tính tổng từ tất cả ĐVKT của tất cả Chủ đề
@@ -126,15 +176,16 @@ export default function Step2_MatrixBuilder() {
 
   const getLevelTotalQuestions = (level) => {
     let dsCount = sumAll('dungSai', level);
-    if (level === 'vanDung') dsCount += sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDung' && !isKHTN) dsCount += sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDungCao' && isKHTN) dsCount = sumAll('dungSai', 'vanDungCao');
     return sumAll('nhieuLuaChon', level) +
       (dsCount * 0.25) +
       (config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0) +
-      sumAll('tuLuan', level);
+      getTuLuanCauCount(matrix, level, tuLuanConfig);
   };
 
   const getTopicTuLuanPoints = (topic) =>
-    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung');
+    getTopicTuLuanDiem(topic, 'diemBiet') + getTopicTuLuanDiem(topic, 'diemHieu') + getTopicTuLuanDiem(topic, 'diemVanDung') + getTopicTuLuanDiem(topic, 'diemVanDungCao');
 
   const getColumnTotalPoints = (type) => {
     if (type === 'tuLuan') return Math.round(matrix.reduce((sum, t) => sum + getTopicTuLuanPoints(t), 0) * 100) / 100;
@@ -147,32 +198,49 @@ export default function Step2_MatrixBuilder() {
   };
 
   const getLevelTotalPoints = (level) => {
-    const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : 'diemVanDung';
+    const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
     const raw = matrix.reduce((sum, topic) => {
       let dsCount = getTopicSum(topic, 'dungSai', level);
-      // VDC hiểu ngầm → gộp điểm VDC vào cột VD
-      if (level === 'vanDung') dsCount += getTopicSum(topic, 'dungSai', 'vanDungCao');
-      return sum +
-        getTopicSum(topic, 'nhieuLuaChon', level) * examConfig.diemMoiCauP1 +
-        dsCount * examConfig.diemMoiYP2 +
-        (config.hasTraLoiNgan ? getTopicSum(topic, 'traLoiNgan', level) * examConfig.diemMoiYP3 : 0) +
-        getTopicTuLuanDiem(topic, tlKey);
+      if (level === 'vanDung' && !isKHTN) dsCount += getTopicSum(topic, 'dungSai', 'vanDungCao');
+      if (level === 'vanDungCao') dsCount = isKHTN ? getTopicSum(topic, 'dungSai', 'vanDungCao') : 0;
+      
+      const p1Pts = level === 'vanDungCao' ? 0 : getTopicSum(topic, 'nhieuLuaChon', level) * examConfig.diemMoiCauP1;
+      const dsPts = dsCount * examConfig.diemMoiYP2;
+      const p3Pts = (config.hasTraLoiNgan && level !== 'vanDungCao') ? getTopicSum(topic, 'traLoiNgan', level) * examConfig.diemMoiYP3 : 0;
+      const tlPts = getTopicTuLuanDiem(topic, tlKey);
+
+      return sum + p1Pts + dsPts + p3Pts + tlPts;
     }, 0);
     return Math.round(raw * 100) / 100;
   };
 
-  const getGrandTotalPoints = () => getLevelTotalPoints('biet') + getLevelTotalPoints('hieu') + getLevelTotalPoints('vanDung');
+  const getGrandTotalPoints = () => getLevelTotalPoints('biet') + getLevelTotalPoints('hieu') + getLevelTotalPoints('vanDung') + (isKHTN ? getLevelTotalPoints('vanDungCao') : 0);
 
   const getTopicSoTiet = (topic) => getTotalSoTiet(topic);
 
-  // Helper: Format tổng per ĐVKT dạng "1c+ 2 ý" (phân biệt NLC = câu, ĐS/TLN/TL = ý)
-  // Tự luận được tách riêng, không cộng vào tổng ý
+  // Helper: Format tổng per ĐVKT dạng "1c+ 2 ý" (hoặc điểm số thập phân nếu là KHTN)
   const formatDvLevelSummary = (dv, level) => {
+    if (isKHTN) {
+      let pts = 0;
+      pts += (Number(dv.nhieuLuaChon?.[level]) || 0) * (examConfig.diemMoiCauP1 || 0.25);
+      pts += (Number(dv.dungSai?.[level]) || 0) * (examConfig.diemMoiYP2 || 0.25);
+      if (config.hasTraLoiNgan) {
+        pts += (Number(dv.traLoiNgan?.[level]) || 0) * (examConfig.diemMoiYP3 || 0.25);
+      }
+      if (config.hasTuLuan) {
+        const subs = (dv.tuLuan?.subItems || []).filter(s => s.level === level);
+        pts += subs.reduce((s, sub) => s + (Number(sub.diem) || 0), 0);
+      }
+      const val = Math.round(pts * 100) / 100;
+      if (val <= 0) return '';
+      return val.toFixed(2).replace('.00', '').replace('.', ',');
+    }
     const nlc = Number(dv.nhieuLuaChon?.[level]) || 0;
     const ds = Number(dv.dungSai?.[level]) || 0;
     const tln = config.hasTraLoiNgan ? (Number(dv.traLoiNgan?.[level]) || 0) : 0;
+    const tl = config.hasTuLuan ? (dv.tuLuan?.subItems || []).filter(s => s.level === level).length : 0;
     const totalCau = nlc;
-    const totalY = ds + tln;
+    const totalY = ds + tln + tl;
     if (totalCau === 0 && totalY === 0) return '';
     if (totalCau > 0 && totalY === 0) return `${totalCau}`;
     if (totalCau === 0 && totalY > 0) return `${totalY} ý`;
@@ -212,8 +280,39 @@ export default function Step2_MatrixBuilder() {
                     </button>
                   </div>
                 </div>
-                {!examConfig.isCauTruc4213 && indCode && (
-                  <div className="text-[8px] leading-[10px] font-extrabold text-indigo-600 mt-0.5">({indCode})</div>
+                {isKHTN ? (() => {
+                  const activeCode = getRowKhtnCode(dv, level);
+                  return (
+                    <div className="mt-0.5">
+                      <select
+                        value={activeCode}
+                        onChange={(e) => {
+                          const newCode = e.target.value;
+                          updateLevelIndicatorCode(topicId, dv.id, level, newCode);
+                          const currentYccd = dv.yeuCauCanDat || '';
+                          const parsed = parseYccdByLevel(currentYccd);
+                          const currentLevelText = parsed[level] || '';
+                          const formatted = formatYccdWithCode(currentLevelText, newCode, formatLevelDisplayName(level));
+                          const updatedText = updateYccdForLevel(currentYccd, level, formatted);
+                          updateDvYccd(topicId, dv.id, updatedText);
+                        }}
+                        className="text-[9px] font-black px-1 py-0.5 rounded border border-green-300 bg-green-50 text-green-800 cursor-pointer focus:outline-none"
+                        title={KHTN_CODE_MAP[activeCode]?.fullText || `Mã: ${activeCode}`}
+                      >
+                        {KHTN_COMPETENCY_GROUPS.map(g => (
+                          <optgroup key={g.groupKey} label={g.groupShort}>
+                            {g.codes.map(c => (
+                              <option key={c.code} value={c.code}>[{c.code}]</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })() : (
+                  !examConfig.isCauTruc4213 && indCode && (
+                    <div className="text-[8px] leading-[10px] font-extrabold text-indigo-600 mt-0.5">({indCode})</div>
+                  )
                 )}
               </div>
             );
@@ -240,7 +339,8 @@ export default function Step2_MatrixBuilder() {
     const nlc = ((Number(dv.nhieuLuaChon?.biet) || 0) + (Number(dv.nhieuLuaChon?.hieu) || 0) + (Number(dv.nhieuLuaChon?.vanDung) || 0)) * examConfig.diemMoiCauP1;
     const ds = ((Number(dv.dungSai?.biet) || 0) + (Number(dv.dungSai?.hieu) || 0) + (Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0)) * examConfig.diemMoiYP2;
     const tln = config.hasTraLoiNgan ? ((Number(dv.traLoiNgan?.biet) || 0) + (Number(dv.traLoiNgan?.hieu) || 0) + (Number(dv.traLoiNgan?.vanDung) || 0)) * examConfig.diemMoiYP3 : 0;
-    const tl = (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0);
+    const tl = (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0)
+             + (Number(dv.tuLuan?.diemVanDung) || 0) + (Number(dv.tuLuan?.diemVanDungCao) || 0);
     return Math.round((nlc + ds + tln + tl) * 100) / 100;
   };
 
@@ -254,12 +354,41 @@ export default function Step2_MatrixBuilder() {
     return `${cauStr} (${y} ý)`;
   };
 
-  // Format tổng câu cho dòng "Tổng số câu": "6c+ 6 ý"
+  // Format Tự luận cho dòng "Tổng số câu": hiển thị số câu (ví dụ 1 câu thay vì 2 ý)
+  const fmtTuLuanCau = (level) => {
+    const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    if (cau === 0) return '';
+    return cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+  };
+
+  const fmtTuLuanTooltip = (level) => {
+    const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    const y = sumAll('tuLuan', level);
+    if (cau === 0) return '';
+    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    return y > cau ? `${cauStr} câu (${y} ý)` : `${cauStr} câu`;
+  };
+
+  // Format tổng câu cho dòng "Tổng số câu": "7c+ 2 ý"
   const fmtTongCau = (level) => {
-    const c = sumAll('nhieuLuaChon', level);
-    const y = sumAll('dungSai', level) +
-      (config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0) +
-      (config.hasTuLuan ? sumAll('tuLuan', level) : 0);
+    const tlCau = getTuLuanCauCount(matrix, level, tuLuanConfig);
+    const nlc = sumAll('nhieuLuaChon', level);
+    const tln = config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0;
+    const tlInt = Math.floor(tlCau);
+    const c = nlc + tln + tlInt;
+
+    let dsCount = sumAll('dungSai', level);
+    if (level === 'vanDung' && !isKHTN) dsCount += sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDungCao' && isKHTN) dsCount = sumAll('dungSai', 'vanDungCao');
+    const y = dsCount;
+
+    const tlRem = tlCau - tlInt;
+    if (tlRem > 0) {
+      const cauVal = Math.round((c + tlRem) * 10) / 10;
+      const cauStr = cauVal % 1 === 0 ? String(cauVal) : cauVal.toFixed(1).replace('.', ',');
+      return y > 0 ? `${cauStr}c+ ${y} ý` : `${cauStr}c`;
+    }
+
     if (c === 0 && y === 0) return '';
     if (c > 0 && y === 0) return `${c}`;
     if (c === 0 && y > 0) return `${y} ý`;
@@ -267,7 +396,12 @@ export default function Step2_MatrixBuilder() {
   };
 
   // Grand total câu quy đổi
-  const grandTotalCau = getLevelTotalQuestions('biet') + getLevelTotalQuestions('hieu') + getLevelTotalQuestions('vanDung');
+  const grandTotalCau = Math.round((
+    getLevelTotalQuestions('biet') +
+    getLevelTotalQuestions('hieu') +
+    getLevelTotalQuestions('vanDung') +
+    (isKHTN ? getLevelTotalQuestions('vanDungCao') : 0)
+  ) * 100) / 100;
 
   // Helper: Render cell input kèm mã năng lực chỉ báo (nếu có)
   const renderCellInput = (topicId, dv, type, level) => {
@@ -329,28 +463,73 @@ export default function Step2_MatrixBuilder() {
              </div>
              
              {/* Hiển thị Nhãn câu và Mã năng lực */}
-             {mappings.length > 0 && (
-               <div className="flex flex-wrap justify-center gap-[2px] mt-1">
-                 {examConfig.isCauTruc4213 ? (
-                     <div className="flex flex-col items-center">
-                       <span className="text-[10px] font-black text-blue-700 leading-none text-center">
-                         {formatGroupedLabels(mappings.map(m => typeof m === 'object' ? m.label : ''))}
-                       </span>
-                     </div>
-                 ) : (
-                   mappings.map((m, idx) => {
-                     const qLabel = typeof m === 'object' ? m.label : '';
-                     const indCode = typeof m === 'object' ? m.code : m;
-                     return (
-                       <div key={idx} className="flex flex-col items-center bg-slate-100 border border-slate-200 rounded px-0.5 py-0.5 min-w-[24px]">
-                         {qLabel && <span className="text-[8px] font-black text-blue-700 leading-none">{qLabel}</span>}
-                         {indCode && <span className="text-[7.5px] font-extrabold text-indigo-600 leading-none mt-0.5">{indCode}</span>}
-                       </div>
-                     );
-                   })
-                 )}
-               </div>
-             )}
+              {isKHTN ? (() => {
+                const activeCode = getRowKhtnCode(dv, level);
+                
+                // Format số ý Đúng/Sai giống văn bản của Bộ/Sở: "1/2 ý a, b", "1/4 ý c", "1/4 ý d"
+                let dsLabel = null;
+                if (type === 'dungSai') {
+                  if (level === 'biet') dsLabel = count === 2 ? '1/2 ý a, b' : (count === 1 ? '1/4 ý' : `${count} ý`);
+                  else if (level === 'hieu') dsLabel = count === 1 ? '1/4 ý c' : `${count} ý`;
+                  else if (level === 'vanDung' || level === 'vanDungCao') dsLabel = count === 1 ? '1/4 ý d' : `${count} ý`;
+                }
+
+                return (
+                  <div className="flex flex-col items-center gap-[2px] mt-0.5 w-full">
+                    {dsLabel && (
+                      <span className="text-[9px] font-bold text-slate-700 leading-none text-center">
+                        {dsLabel}
+                      </span>
+                    )}
+                    <select
+                      value={activeCode}
+                      onChange={(e) => {
+                        const newCode = e.target.value;
+                        updateLevelIndicatorCode(topicId, dv.id, level, newCode);
+                        const currentYccd = dv.yeuCauCanDat || '';
+                        const parsed = parseYccdByLevel(currentYccd);
+                        const currentLevelText = parsed[level] || '';
+                        const formatted = formatYccdWithCode(currentLevelText, newCode, formatLevelDisplayName(level));
+                        const updatedText = updateYccdForLevel(currentYccd, level, formatted);
+                        updateDvYccd(topicId, dv.id, updatedText);
+                      }}
+                      className="text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-300 bg-blue-50 text-blue-800 cursor-pointer focus:outline-none hover:bg-blue-100 transition-colors text-center"
+                      title={KHTN_CODE_MAP[activeCode]?.fullText || `Mã: ${activeCode}`}
+                    >
+                      {KHTN_COMPETENCY_GROUPS.map(g => (
+                        <optgroup key={g.groupKey} label={g.groupShort}>
+                          {g.codes.map(c => (
+                            <option key={c.code} value={c.code}>[{c.code}]</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })() : (
+                mappings.length > 0 && (
+                  <div className="flex flex-wrap justify-center gap-[2px] mt-1">
+                    {examConfig.isCauTruc4213 ? (
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-black text-blue-700 leading-none text-center">
+                          {formatGroupedLabels(mappings.map(m => typeof m === 'object' ? m.label : ''))}
+                        </span>
+                      </div>
+                    ) : (
+                      mappings.map((m, idx) => {
+                        const qLabel = typeof m === 'object' ? m.label : '';
+                        const indCode = typeof m === 'object' ? m.code : m;
+                        return (
+                          <div key={idx} className="flex flex-col items-center bg-slate-100 border border-slate-200 rounded px-0.5 py-0.5 min-w-[24px]">
+                            {qLabel && <span className="text-[8px] font-black text-blue-700 leading-none">{qLabel}</span>}
+                            {indCode && <span className="text-[7.5px] font-extrabold text-indigo-600 leading-none mt-0.5">{indCode}</span>}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )
+              )}
           </div>
         )}
       </div>
@@ -471,13 +650,15 @@ export default function Step2_MatrixBuilder() {
               <div className="flex items-start gap-1 group">
                 <span className="text-[10px] text-slate-400 font-bold mt-1.5 shrink-0">{dvIdx + 1}.</span>
                 <div className="flex-1 flex flex-col gap-0.5">
-                  {(isChemistry || isMath) ? (
+                  {(isChemistry || isMath || isKHTN) ? (
                     <SubjectAutocomplete
                       placeholder={`ĐVKT ${dvIdx + 1}...`}
                       value={dv.noiDung}
                       onChange={(newVal) => updateDonVi(topic.id, dv.id, 'noiDung', newVal)}
                       isMath={isMath}
                       isChemistry={isChemistry}
+                      isKHTN={isKHTN}
+                      khtnLop={khtnSelectedLop}
                     />
                   ) : (
                     <textarea
@@ -488,6 +669,25 @@ export default function Step2_MatrixBuilder() {
                       onChange={(e) => updateDonVi(topic.id, dv.id, 'noiDung', e.target.value)}
                     />
                   )}
+                  {/* Badge phân môn KHTN */}
+                  {isKHTN && (() => {
+                    const pm = dv.phanMon || detectPhanMon(dv.noiDung, khtnSelectedLop);
+                    const pmInfo = pm ? PHAN_MON_LABELS[pm] : null;
+                    const nextPm = pm === 'vatli' ? 'hoahoc' : (pm === 'hoahoc' ? 'sinhhoc' : 'vatli');
+                    return pmInfo ? (
+                      <div className="mt-0.5 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => updateDonVi(topic.id, dv.id, 'phanMon', nextPm)}
+                          className="text-[8px] font-bold px-1.5 py-0.2 rounded-full border cursor-pointer hover:opacity-80 transition-opacity"
+                          style={{ color: pmInfo.color, borderColor: pmInfo.color, backgroundColor: pmInfo.color + '15' }}
+                          title="Bấm để đổi phân môn (Vật lí / Hóa học / Sinh học)"
+                        >
+                          {pmInfo.icon} {pmInfo.label}
+                        </button>
+                      </div>
+                    ) : null;
+                  })()}
                   <div className="flex items-center gap-1">
                     <span className="text-[9px] text-slate-400">Tiết:</span>
                     <input
@@ -598,6 +798,7 @@ export default function Step2_MatrixBuilder() {
                 {renderTuLuanCell(topic.id, dv.id, dv, 'biet')}
                 {renderTuLuanCell(topic.id, dv.id, dv, 'hieu')}
                 {renderTuLuanCell(topic.id, dv.id, dv, 'vanDung')}
+                {isKHTN && renderTuLuanCell(topic.id, dv.id, dv, 'vanDungCao')}
               </>
             )}
 
@@ -605,6 +806,7 @@ export default function Step2_MatrixBuilder() {
             <td className="border border-slate-300 p-2 text-center font-bold bg-orange-50/50 text-[11px] whitespace-nowrap">{formatDvLevelSummary(dv, 'biet')}</td>
             <td className="border border-slate-300 p-2 text-center font-bold bg-orange-50/50 text-[11px] whitespace-nowrap">{formatDvLevelSummary(dv, 'hieu')}</td>
             <td className="border border-slate-300 p-2 text-center font-bold bg-orange-50/50 text-[11px] whitespace-nowrap">{formatDvLevelSummary(dv, 'vanDung')}</td>
+            {isKHTN && <td className="border border-slate-300 p-2 text-center font-bold bg-red-50/50 text-[11px] whitespace-nowrap text-red-700">{formatDvLevelSummary(dv, 'vanDungCao')}</td>}
 
             {/* CỘT TỈ LỆ — HIỂN THỊ RIÊNG CHO TỪNG BÀI */}
             <td className="border border-slate-300 p-2 text-center font-bold text-blue-700 bg-slate-50/50">
@@ -712,9 +914,28 @@ export default function Step2_MatrixBuilder() {
             >
               <option value="3">TNKQ: 3-2-2 → Tự luận: 3đ</option>
               <option value="3.5">TNKQ: 3.5-2-1.5 → Tự luận: 3đ</option>
-              <option value="4.01">TNKQ: 4-2-1 → Tự luận: 3đ</option>
+              <option value="4.01">🔬 KHTN THCS: Cấu trúc 4-2-1-3 (TNKQ 4-2-1đ → Tự luận: 3đ - CV 4956)</option>
               <option value="4">Toán: 4-2-0 → Tự luận: 4đ (16 TN + 2 ĐS)</option>
             </select>
+          )}
+
+          {/* Badge trang thai Cau truc KHTN 4-2-1-3 */}
+          {isKHTN && (
+            <div className="flex items-center gap-2">
+              {examConfig.isCauTruc4213 ? (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-100 text-teal-800 text-xs font-bold border border-teal-300 shadow-sm">
+                  ✅ Đang chọn: KHTN 4-2-1-3
+                </span>
+              ) : (
+                <button
+                  onClick={() => setCauTrucDe('4.01')}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold shadow hover:bg-amber-600 transition-all border border-amber-400"
+                  title="Bấm để kích hoạt Cấu trúc KHTN 4-2-1-3 chuẩn CV 4956"
+                >
+                  ⚡ Chọn Cấu trúc KHTN 4-2-1-3
+                </button>
+              )}
+            </div>
           )}
 
           <div className="w-px h-6 bg-slate-300 mx-2"></div>
@@ -762,7 +983,7 @@ export default function Step2_MatrixBuilder() {
 
           <div className="w-px h-6 bg-slate-300 mx-1"></div>
 
-          {/* TOGGLE GOM NHÓM ĐÚNG/SAI THEO CHỦ ĐỀ */}
+          {/* TOGGLE GOM NHÓM ĐÚNG/SAI THEO CHỦ ĐỀ & CẤU HÌNH ĐÚNG/SAI */}
           <div className="flex items-center gap-2">
             <label className="flex items-center cursor-pointer select-none" title="Khi bật, 4 mệnh đề Đúng/Sai sẽ lấy từ các bài khác nhau trong cùng chủ đề để kiểm tra kiến thức tổng hợp">
               <div className="relative">
@@ -777,6 +998,22 @@ export default function Step2_MatrixBuilder() {
               </div>
               <div className="ml-2 text-sm font-bold text-slate-700">Đ/S theo Chủ đề</div>
             </label>
+
+            <button
+              type="button"
+              onClick={() => setShowDungSaiModal(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs border-2 transition-all cursor-pointer ${
+                dungSaiConfig?.enabled
+                  ? 'bg-indigo-100 border-indigo-400 text-indigo-800 hover:bg-indigo-200'
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+              }`}
+              title="Cấu hình chi tiết số câu, phạm vi và vị trí phân bổ câu Đúng/Sai"
+            >
+              <Settings2 size={15} /> Cấu hình Đúng/Sai
+              {dungSaiConfig?.enabled && (
+                <span className="ml-1 text-[10px] bg-indigo-600 text-white rounded-full w-4 h-4 flex items-center justify-center">✓</span>
+              )}
+            </button>
           </div>
 
           {config.hasTuLuan && (
@@ -817,6 +1054,22 @@ export default function Step2_MatrixBuilder() {
             >
               📚 Gợi ý YCCĐ CT2018
             </button>
+          )}
+
+          {/* [KHTN THCS] Chon khoi lop */}
+          {isKHTN && (
+            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-lg">
+              <span className="text-xs font-bold text-teal-800">🔬 KHTN - Chọn lớp:</span>
+              {['6','7','8','9'].map(lop => (
+                <button
+                  key={lop}
+                  onClick={() => setKhtnSelectedLop(lop)}
+                  className={`text-xs font-bold px-2.5 py-1 rounded transition-all ${khtnSelectedLop === lop ? 'bg-teal-600 text-white shadow' : 'bg-white text-teal-700 border border-teal-200 hover:bg-teal-100'}`}
+                >
+                  Lớp {lop}
+                </button>
+              ))}
+            </div>
           )}
 
         </div>
@@ -919,6 +1172,87 @@ export default function Step2_MatrixBuilder() {
         </div>
       </div>
 
+      {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY CHUAN CV 4956/SGDDT */}
+      {isKHTN && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-extrabold text-teal-900 text-sm flex items-center gap-2">
+              <span className="text-base">📋</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN CÔNG VĂN 4956/SGDĐT
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={autoFillMatrix}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1.5 rounded-lg shadow font-bold text-xs hover:from-teal-700 hover:to-emerald-700 hover:shadow-md transition-all"
+                title="Tự động chia đúng 100% theo Bảng phân bố ma trận của Sở GD&ĐT"
+              >
+                <span>⚡</span> Tự động điền chuẩn CV 4956
+              </button>
+              <span className="text-xs bg-teal-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+                Cấu trúc 4 - 2 - 1 - 3
+              </span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border border-teal-200 bg-white rounded-lg shadow-sm text-center">
+              <thead className="bg-teal-700 text-white font-bold">
+                <tr>
+                  <th className="p-2 border border-teal-600 text-left">Phần bài thi</th>
+                  <th className="p-2 border border-teal-600">Nhận biết (40%)</th>
+                  <th className="p-2 border border-teal-600">Thông hiểu (30%)</th>
+                  <th className="p-2 border border-teal-600">Vận dụng (20%)</th>
+                  <th className="p-2 border border-teal-600">VD Cao (10%)</th>
+                  <th className="p-2 border border-teal-600">Tổng điểm</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-teal-100 text-slate-700 font-medium">
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần I: Trắc nghiệm 4 lựa chọn (16 câu)</td>
+                  <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">12 câu (3.0đ)</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">4 câu (1.0đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">16 câu (4.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần II: Trắc nghiệm Đúng/Sai (2 câu)</td>
+                  <td className="p-1.5 bg-blue-50/40 font-bold text-blue-800" colSpan="3">
+                    2 câu, mỗi câu gồm 4 lệnh hỏi: (02 Biết; 01 Hiểu; 01 Vận dụng) → Tổng: 4 Biết (1.0đ) + 2 Hiểu (0.5đ) + 2 VD (0.5đ)
+                  </td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">2 câu (2.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần III: Trả lời ngắn (4 câu)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">2 câu (0.5đ)</td>
+                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">2 câu (0.5đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">4 câu (1.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-teal-900">Phần IV: Tự luận (3 câu)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">1 câu (1.0đ)</td>
+                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">1 câu (1.0đ)</td>
+                  <td className="p-1.5 bg-red-50/70 font-bold text-red-700">1 câu (1.0đ)</td>
+                  <td className="p-1.5 font-bold">3 câu (3.0đ)</td>
+                </tr>
+              </tbody>
+              <tfoot className="bg-teal-100 font-black text-teal-950">
+                <tr>
+                  <td className="p-2 text-left uppercase">TỔNG CỘNG</td>
+                  <td className="p-2 text-blue-800">4.0 điểm (40%)</td>
+                  <td className="p-2 text-emerald-800">3.0 điểm (30%)</td>
+                  <td className="p-2 text-orange-800">2.0 điểm (20%)</td>
+                  <td className="p-2 text-red-800">1.0 điểm (10%)</td>
+                  <td className="p-2 text-teal-900 text-sm">10.0 điểm (100%)</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
       <table className="w-full border-collapse border border-slate-400 text-sm">
         <thead className="bg-slate-100 text-center font-semibold">
           <tr>
@@ -926,14 +1260,14 @@ export default function Step2_MatrixBuilder() {
             <th rowSpan="4" className="border border-slate-400 p-2 w-28">Chủ đề/Chương</th>
             <th rowSpan="4" className="border border-slate-400 p-2 w-72">Nội dung/đơn vị KT</th>
             <th rowSpan="4" className="border border-slate-400 p-2 w-20 bg-yellow-50">Số tiết</th>
-            <th colSpan={config.hasTuLuan ? "12" : "9"} className="border border-slate-400 p-2">Mức độ đánh giá</th>
-            <th colSpan="3" rowSpan="3" className="border border-slate-400 p-2">Tổng (Ý)</th>
-            <th rowSpan="4" className="border border-slate-400 p-2 w-16">Tỉ lệ %</th>
+            <th colSpan={config.hasTuLuan ? (isKHTN ? "13" : "12") : "9"} className="border border-slate-400 p-2">Mức độ đánh giá</th>
+            <th colSpan={isKHTN ? "4" : "3"} rowSpan="3" className="border border-slate-400 p-2">{isKHTN ? "Điểm theo mức độ" : "Tổng (Ý)"}</th>
+            <th rowSpan="4" className="border border-slate-400 p-2 w-16">{isKHTN ? "Tỉ lệ % điểm" : "Tỉ lệ %"}</th>
             <th rowSpan="4" className="border border-slate-400 p-2 w-10">Xóa</th>
           </tr>
           <tr>
             <th colSpan="9" className="border border-slate-400 p-1 bg-blue-50">TNKQ</th>
-            {config.hasTuLuan && <th colSpan="3" rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
+            {config.hasTuLuan && <th colSpan={isKHTN ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
           </tr>
           <tr>
             <th colSpan="3" className="border border-slate-400 p-1 bg-blue-50/80">Nhiều lựa chọn</th>
@@ -946,10 +1280,16 @@ export default function Step2_MatrixBuilder() {
             <th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>H</th><th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
             {config.hasTuLuan && (
               <>
-                <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Biết</th><th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Hiểu</th><th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">VD</th>
+                <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Biết</th>
+                <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Hiểu</th>
+                <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">VD</th>
+                {isKHTN && <th className="border border-slate-400 p-0 font-medium bg-red-50/50 w-12 text-[10px] text-red-700 font-bold">VDC</th>}
               </>
             )}
-            <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">B</th><th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">H</th><th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">VD</th>
+            <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">B</th>
+            <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">H</th>
+            <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">VD</th>
+            {isKHTN && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700 w-8 font-bold">VDC</th>}
           </tr>
         </thead>
 
@@ -974,11 +1314,13 @@ export default function Step2_MatrixBuilder() {
                 <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
                 <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
                 <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
+                {isKHTN && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
               </>
             )}
             <td className="border border-slate-400 p-2 text-orange-700">{getLevelTotalItems('biet')}</td>
             <td className="border border-slate-400 p-2 text-orange-700">{getLevelTotalItems('hieu')}</td>
             <td className="border border-slate-400 p-2 text-orange-700">{getLevelTotalItems('vanDung')}</td>
+            {isKHTN && <td className="border border-slate-400 p-2 text-red-700">{getLevelTotalItems('vanDungCao')}</td>}
             <td className="border border-slate-400 p-2"></td><td className="border border-slate-400 p-2"></td>
           </tr>
 
@@ -995,14 +1337,16 @@ export default function Step2_MatrixBuilder() {
             <td className={`border border-slate-300 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? (sumAll('traLoiNgan', 'vanDung') || '') : ''}</td>
             {config.hasTuLuan && (
               <>
-                <td className="border border-slate-300 p-2 text-green-800">{sumAll('tuLuan', 'biet') || ''}</td>
-                <td className="border border-slate-300 p-2 text-green-800">{sumAll('tuLuan', 'hieu') || ''}</td>
-                <td className="border border-slate-300 p-2 text-green-800">{sumAll('tuLuan', 'vanDung') || ''}</td>
+                <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('biet')}>{fmtTuLuanCau('biet')}</td>
+                <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('hieu')}>{fmtTuLuanCau('hieu')}</td>
+                <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('vanDung')}>{fmtTuLuanCau('vanDung')}</td>
+                {isKHTN && <td className="border border-slate-300 p-2 text-red-800 font-bold text-center" title={fmtTuLuanTooltip('vanDungCao')}>{fmtTuLuanCau('vanDungCao')}</td>}
               </>
             )}
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('biet')}</td>
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('hieu')}</td>
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('vanDung')}</td>
+            {isKHTN && <td className="border border-slate-300 p-2 font-bold text-red-700 text-[11px] whitespace-nowrap">{fmtTongCau('vanDungCao')}</td>}
             <td className="border border-slate-300 p-2 font-black text-slate-800">{grandTotalCau}</td>
             <td className="border border-slate-300 p-2"></td>
           </tr>
@@ -1012,10 +1356,11 @@ export default function Step2_MatrixBuilder() {
             <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('nhieuLuaChon')}</td>
             <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('dungSai')}</td>
             <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-200' : ''}`}>{getColumnTotalPoints('traLoiNgan')}</td>
-            {config.hasTuLuan && <td colSpan="3" className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
+            {config.hasTuLuan && <td colSpan={isKHTN ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
             <td className="border border-slate-400 p-2 text-red-600">{getLevelTotalPoints('biet')}</td>
             <td className="border border-slate-400 p-2 text-red-600">{getLevelTotalPoints('hieu')}</td>
             <td className="border border-slate-400 p-2 text-red-600">{getLevelTotalPoints('vanDung')}</td>
+            {isKHTN && <td className="border border-slate-400 p-2 text-red-600 font-black">{getLevelTotalPoints('vanDungCao')}</td>}
             <td className="border border-slate-400 p-2 font-black text-red-600 text-lg">{getGrandTotalPoints()}</td>
             <td className="border border-slate-400 p-2"></td>
           </tr>
@@ -1025,10 +1370,11 @@ export default function Step2_MatrixBuilder() {
             <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('nhieuLuaChon') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('dungSai') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-100' : ''}`}>{config.hasTraLoiNgan ? ((getColumnTotalPoints('traLoiNgan') / 10) * 100).toFixed(1).replace('.0', '') + '%' : '0%'}</td>
-            {config.hasTuLuan && <td colSpan="3" className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
+            {config.hasTuLuan && <td colSpan={isKHTN ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             <td className="border border-slate-400 p-2 text-blue-700">{((getLevelTotalPoints('biet') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td className="border border-slate-400 p-2 text-blue-700">{((getLevelTotalPoints('hieu') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td className="border border-slate-400 p-2 text-blue-700">{((getLevelTotalPoints('vanDung') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
+            {isKHTN && <td className="border border-slate-400 p-2 text-red-700 font-bold">{((getLevelTotalPoints('vanDungCao') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             <td className="border border-slate-400 p-2 font-black text-green-700">{((getGrandTotalPoints() / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td className="border border-slate-400 p-2"></td>
           </tr>
@@ -1317,6 +1663,39 @@ export default function Step2_MatrixBuilder() {
                           </div>
                         </div>
 
+                        {/* Phạm vi phân bổ ý */}
+                        {(q.subItems?.length > 1) && (
+                          <div className="flex flex-col gap-1 mt-1 mb-1">
+                            <span className="text-[10px] text-slate-500 font-semibold">📦 Phạm vi ý:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {(q.kieuY === 'doc_lap' ? [
+                                { value: 'cung_bai',             label: 'Cùng 1 bài' },
+                                { value: 'cac_bai_cung_chu_de',  label: 'Các bài cùng CĐ' },
+                                { value: 'cac_chu_de_khac_nhau', label: 'Các chủ đề khác' },
+                              ] : [
+                                { value: 'cung_dvkt',            label: 'Cùng 1 ĐVKT' },
+                                { value: 'cac_dvkt_cung_chu_de', label: 'Các ĐVKT cùng CĐ' },
+                              ]).map(opt => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => {
+                                    const updated = [...tuLuanConfig.questions];
+                                    updated[qIdx] = { ...updated[qIdx], phamVi: opt.value };
+                                    setTuLuanConfig({ questions: updated });
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-colors ${
+                                    (q.phamVi || (q.kieuY === 'doc_lap' ? 'cung_bai' : 'cung_dvkt')) === opt.value
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Chọn kiến thức Toán — chỉ hiện khi môn Toán */}
                         {isMath && (
                           <div className="flex items-center gap-1.5 mb-2">
@@ -1408,13 +1787,18 @@ export default function Step2_MatrixBuilder() {
               {(() => {
                 const totalAllDiem = tuLuanConfig.questions.reduce((s, q) => s + q.subItems.reduce((s2, sub) => s2 + (Number(sub.diem) || 0), 0), 0);
                 const totalAllY = tuLuanConfig.questions.reduce((s, q) => s + q.subItems.length, 0);
+                const isKHTN = examConfig.subject === 'khtn' || examConfig.isCauTruc4213;
+                const targetDiem = isKHTN ? 3.0 : 4.0;
+                const matchDiem = Math.abs(totalAllDiem - targetDiem) < 0.01;
                 return (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
                     <p className="text-sm font-bold text-amber-800">
                       Tổng cộng: {tuLuanConfig.questions.length} câu · {totalAllY} ý · {totalAllDiem.toFixed(2).replace('.00', '')}đ
                     </p>
                     <p className="text-[10px] text-amber-600 mt-0.5">
-                      {Math.abs(totalAllDiem - 4.0) < 0.01 ? '✅ Khớp với cấu trúc Toán 4đ Tự luận' : `⚠️ Lệch so với 4đ Tự luận (chênh ${Math.abs(totalAllDiem - 4.0).toFixed(2)}đ)`}
+                      {matchDiem
+                        ? '✅ Khớp với cấu trúc 3 câu - 3.0đ Tự luận'
+                        : `⚠️ Lệch so với ${targetDiem}đ Tự luận (chênh ${Math.abs(totalAllDiem - targetDiem).toFixed(2)}đ)`}
                     </p>
                   </div>
                 );
@@ -1428,10 +1812,9 @@ export default function Step2_MatrixBuilder() {
                   setTuLuanConfig({
                     enabled: false,
                     questions: [
-                      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
-                      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', subItems: [{ diem: 0.5 }, { diem: 1.0 }] },
-                      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', subItems: [{ diem: 1.0 }] },
-                      { id: 'tl_q4', label: 'Câu 4', kienThuc: '', subItems: [{ diem: 1.0 }] },
+                      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+                      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
+                      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
                     ],
                   });
                 }}
@@ -1440,7 +1823,10 @@ export default function Step2_MatrixBuilder() {
                 Khôi phục mặc định
               </button>
               <button
-                onClick={() => setShowTuLuanModal(false)}
+                onClick={() => {
+                  setTuLuanConfig({ enabled: true });
+                  setShowTuLuanModal(false);
+                }}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 shadow-md transition-all"
               >
                 Đóng & Lưu cấu hình
@@ -1449,6 +1835,17 @@ export default function Step2_MatrixBuilder() {
           </div>
         </div>
       )}
+
+      {/* ============ MODAL CẤU HÌNH ĐÚNG/SAI ============ */}
+      <DungSaiConfigModal
+        show={showDungSaiModal}
+        onClose={() => setShowDungSaiModal(false)}
+        matrix={matrix}
+        dungSaiConfig={dungSaiConfig}
+        setDungSaiConfig={setDungSaiConfig}
+        isKHTN={isKHTN}
+      />
+
       {/* Modal Chọn Năng lực chỉ báo */}
       {indicatorModal.show && compGroups && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

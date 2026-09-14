@@ -8,7 +8,8 @@ import Step4_GenerateExam from './components/Step4_GenerateExam';
 import Step5_AIGenerator from './components/Step5_AIGenerator';
 import Step6_SimilarExam from './components/Step6_SimilarExam';
 import QuickFlow from './components/quick/QuickFlow';
-import { exportToWord } from './utils/exportWord';
+import { exportToWord, exportToWordOMML, exportToWordLatexDocx } from './utils/exportWord';
+import { exportToWordMathType } from './utils/exportWordMathType';
 import { exportToWordMath, exportToWordMathLatex } from './utils/exportWordMath';
 import { useExamStore } from './store/useExamStore';
 import { FileDown, BookOpenCheck, Save, FolderOpen, Crown, Gift, X, KeyRound, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Check, Settings, TableProperties, FileText, Bot, Eye, Mail, ArrowRight, Loader2, Sparkles, Cpu } from 'lucide-react';
@@ -207,7 +208,7 @@ export default function App() {
     const isPremium = localStorage.getItem('isPremium');
 
     if (isPremium === 'true') {
-      exportFunc();
+      await exportFunc();
       return;
     }
 
@@ -223,7 +224,7 @@ export default function App() {
         if (checkData.isPremium) {
           localStorage.setItem('isPremium', 'true');
           setIsCheckingTrial(false);
-          exportFunc();
+          await exportFunc();
           return;
         }
 
@@ -258,21 +259,21 @@ export default function App() {
           toast.warning(`Bạn vừa dùng lượt xuất file cuối cùng. Hãy nâng cấp Premium để tiếp tục sử dụng.`);
         }
 
-        exportFunc();
+        await exportFunc();
       } catch (err) {
         // Lỗi mạng → fallback về localStorage
         setIsCheckingTrial(false);
         console.warn('Không kết nối được server trial, dùng localStorage fallback:', err);
-        fallbackLocalStorageExport(exportFunc);
+        await fallbackLocalStorageExport(exportFunc);
       }
     } else {
       // Chưa có Apps Script URL hoặc chưa có visitorId → dùng localStorage thuần
-      fallbackLocalStorageExport(exportFunc);
+      await fallbackLocalStorageExport(exportFunc);
     }
   };
 
   // Hàm fallback khi không kết nối được server
-  const fallbackLocalStorageExport = (exportFunc) => {
+  const fallbackLocalStorageExport = async (exportFunc) => {
     const currentCount = Number(localStorage.getItem('exportCount')) || 0;
 
     if (currentCount < 5) {
@@ -287,15 +288,27 @@ export default function App() {
         toast.warning(`Bạn vừa dùng lượt xuất file cuối cùng. Hãy nâng cấp Premium để tiếp tục sử dụng.`);
       }
 
-      exportFunc();
+      await exportFunc();
     } else {
       setShowPaywall(true);
     }
   };
-
-  // ============================================================
-  // CÁC HÀM EMAIL VERIFICATION ĐÃ BỊ LOẠI BỎ
-  // ============================================================
+  
+  // Điều phối hàm xuất file Word theo loại người dùng chọn
+  const resolveExportFunction = (type) => {
+    if (type === 'omml' || type === 'math') return exportToWordOMML;
+    if (type === 'mathtype') return (opts) => exportToWordMathType({
+      ...opts,
+      onStatus: (status, msg) => {
+        if (status === 'fallback') toast.warning(msg);
+        else if (status === 'done') toast.success(msg);
+        else toast.info(msg);
+      }
+    });
+    if (type === 'latex') return exportToWordLatexDocx;
+    if (type === 'legacy_doc') return exportToWordMath;
+    return exportToWord; // normal or khtn
+  };
 
   // Hàm kích hoạt mã Premium (đọc danh sách mã từ Google Sheets CSV + đánh dấu trên server)
   const handleActivate = async () => {
@@ -650,23 +663,45 @@ export default function App() {
                 {currentStep === 4 && (
                   <>
                     <Step4_GenerateExam />
-                    {/* Nút xuất Word — chỉ hiện ở bước cuối */}
-                    <div className="mt-8 flex flex-wrap items-center justify-center gap-4 pt-6 border-t border-slate-200">
-                      <button
-                        onClick={() => { setPendingExportType('normal'); setShowNumberingModal(true); }}
-                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-indigo-600 to-blue-600 hover:shadow-lg hover:scale-[1.02]">
-                        <FileDown size={20} /> Xuất Word (Môn thường)
-                      </button>
-                      <button
-                        onClick={() => { setPendingExportType('math'); setShowNumberingModal(true); }}
-                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02]">
-                        <FileDown size={20} /> Xuất Word (Toán/Hóa Công thức)
-                      </button>
-                      <button
-                        onClick={() => { setPendingExportType('latex'); setShowNumberingModal(true); }}
-                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-teal-600 to-emerald-600 hover:shadow-lg hover:scale-[1.02]">
-                        <FileDown size={20} /> Xuất Word (LaTeX)
-                      </button>
+                    {/* Nhóm nút xuất Word đa dạng công nghệ */}
+                    <div className="mt-8 pt-6 border-t border-slate-200">
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <button
+                          onClick={() => { setPendingExportType('omml'); setShowNumberingModal(true); }}
+                          className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02] ring-2 ring-blue-300"
+                          title="Công thức Word chuẩn Office (sửa bằng Alt + =), 100% Offline không cần mạng">
+                          <FileDown size={20} /> Xuất Word Equation (OMML)
+                        </button>
+                        <button
+                          onClick={() => { setPendingExportType('mathtype'); setShowNumberingModal(true); }}
+                          className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:scale-[1.02]"
+                          title="Nhúng đối tượng MathType OLE thật sự (click đúp mở MathType 6/7, tự động fallback OMML khi mất mạng)">
+                          <FileDown size={20} /> Xuất Word MathType (OLE)
+                        </button>
+                        <button
+                          onClick={() => { setPendingExportType('normal'); setShowNumberingModal(true); }}
+                          className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-sm transition-all hover:scale-[1.02]"
+                          title="Xuất file docx chuẩn cho các môn KHXH hoặc không công thức">
+                          <FileDown size={20} /> Xuất Word Chuẩn (.docx)
+                        </button>
+                        <button
+                          onClick={() => { setPendingExportType('latex'); setShowNumberingModal(true); }}
+                          className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 shadow-sm transition-all hover:scale-[1.02]"
+                          title="Giữ nguyên mã LaTeX ($...$) trong tài liệu Word">
+                          <FileDown size={20} /> Xuất Word (LaTeX)
+                        </button>
+                        {/* [KHTN THCS] Nút xuất Word đặc thù KHTN */}
+                        {/khoa học tự nhiên|khtn/i.test(useExamStore.getState().examHeader?.monHoc || '') && (
+                          <button
+                            onClick={() => { setPendingExportType('khtn'); setShowNumberingModal(true); }}
+                            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-teal-500 to-cyan-600 hover:shadow-lg hover:scale-[1.02] ring-2 ring-teal-300">
+                            <FileDown size={20} /> Xuất Word (KHTN THCS)
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-center text-xs text-slate-500 mt-2">
+                        💡 <b>Word Equation (OMML)</b>: 100% Offline, sửa trực tiếp trên mọi máy với <kbd className="bg-slate-200 px-1 rounded">Alt + =</kbd> | <b>MathType (OLE)</b>: Mở sửa bằng MathType 6/7.
+                      </p>
                     </div>
                   </>
                 )}
@@ -1121,7 +1156,7 @@ export default function App() {
                   onClick={() => {
                     useExamStore.getState().updateConfig('isContinuousNumbering', true);
                     setShowNumberingModal(false);
-                    handleExportWrapper(pendingExportType === 'normal' ? exportToWord : pendingExportType === 'latex' ? exportToWordMathLatex : exportToWordMath);
+                    handleExportWrapper(resolveExportFunction(pendingExportType));
                   }}
                   className="w-full text-left p-4 mb-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 transition-all group"
                 >
@@ -1137,7 +1172,7 @@ export default function App() {
                   onClick={() => {
                     useExamStore.getState().updateConfig('isContinuousNumbering', false);
                     setShowNumberingModal(false);
-                    handleExportWrapper(pendingExportType === 'normal' ? exportToWord : pendingExportType === 'latex' ? exportToWordMathLatex : exportToWordMath);
+                    handleExportWrapper(resolveExportFunction(pendingExportType));
                   }}
                   className="w-full text-left p-4 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300 transition-all group"
                 >
@@ -1169,6 +1204,34 @@ export default function App() {
                     className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                   />
                   <span className="font-medium">Hiển thị mã năng lực [HH1.1] trong cột YCCĐ</span>
+                </label>
+              </div>
+
+              <div className="mb-4">
+                <p className="font-bold text-slate-700 mb-2">4. Tùy chọn Đề thi (Ẩn/Hiện đáp án & chú thích):</p>
+                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={config.showExamRedMetadata !== false}
+                    onChange={(e) => useExamStore.getState().updateConfig('showExamRedMetadata', e.target.checked)}
+                    className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 text-sm">Hiển thị chữ màu đỏ (* Kiến thức, * NLTD/chỉ báo)</span>
+                    <p className="text-xs text-slate-500">Bỏ tích để ẩn chữ màu đỏ khi in đề kiểm tra cho học sinh.</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 mt-2">
+                  <input
+                    type="checkbox"
+                    checked={config.showExamAnswerUnderline !== false}
+                    onChange={(e) => useExamStore.getState().updateConfig('showExamAnswerUnderline', e.target.checked)}
+                    className="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <div>
+                    <span className="font-semibold text-slate-800 text-sm">Gạch chân & tô đỏ đáp án đúng (A, B, C, D / Đúng, Sai)</span>
+                    <p className="text-xs text-slate-500">Bỏ tích để ẩn gạch chân đáp án khi phát đề cho học sinh làm bài.</p>
+                  </div>
                 </label>
               </div>
 
