@@ -2828,7 +2828,9 @@ export const exportToWord = async (options = {}) => {
   if (returnBlob) {
     return blob;
   }
-  const defaultName = isKHTNMon ? "Ma_Tran_Dac_Ta_De_Kiem_Tra_KHTN.docx" : "Ma_Tran_Dac_Ta_De_Kiem_Tra.docx";
+  const defaultName = isCauTrucKHTNVao10
+    ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10.docx"
+    : (isKHTNMon ? "Ma_Tran_Dac_Ta_De_KHTN_4213.docx" : "Ma_Tran_Dac_Ta_De_Kiem_Tra.docx");
   saveAs(blob, fileName || defaultName);
   return blob;
 };

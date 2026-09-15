@@ -194,12 +194,24 @@ export function generateSimilarQuestionPrompt(slotData, metaInfo, options = {}) 
     prompt += `Giải thích: [Giải thích từng phương án — nêu rõ tại sao đáp án đúng và tại sao từng phương án sai]\n`;
   } else if (loai === 2) {
     const isKHTN = (monHoc || '').toLowerCase().includes('khoa học tự nhiên') || (monHoc || '').toLowerCase().includes('khtn');
+    // Phân biệt KHTN Vào 10 (QĐ 1038): a,b=Thông hiểu; c,d=Vận dụng
+    // vs KHTN THCS 4-2-1-3 (CV 4956): a,b=Nhận biết; c=Thông hiểu; d=Vận dụng
+    const isVao10 = metaInfo?.isCauTrucKHTNVao10 || (metaInfo?.kyThi && /tuyển sinh|vào 10/i.test(metaInfo.kyThi));
     prompt += templatePrefix;
     prompt += `[LOẠI 2: TRẮC NGHIỆM ĐÚNG/SAI — CHÙM CÂU HỎI]\n`;
     if (slotData.dapAnDung) {
       prompt += `⚠️ BẮT BUỘC: Chuỗi đúng/sai VẪN LÀ [${slotData.dapAnDung}] giống câu gốc.\n`;
     }
-    if (isKHTN) {
+    if (isKHTN && isVao10) {
+      // Cấu trúc KHTN Tuyển sinh Vào 10 (QĐ 1038 Hải Phòng)
+      prompt += `⚠️ QUY TẮC CẤU TRÚC 4 MỆNH ĐỀ (QĐ 1038 - KHTN VÀO 10): Ý a) mức Thông hiểu, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng. Tuyệt đối không có Nhận biết và không có Vận dụng cao. Hãy tuân thủ đúng trật tự này.\n`;
+      prompt += `Câu 1 (Chủ đề: ${topic}): [Nội dung đề bài chung mới]\n`;
+      prompt += `a) (Mức độ: Thông hiểu) [Mệnh đề a mới]\n`;
+      prompt += `b) (Mức độ: Thông hiểu) [Mệnh đề b mới]\n`;
+      prompt += `c) (Mức độ: Vận dụng) [Mệnh đề c mới]\n`;
+      prompt += `d) (Mức độ: Vận dụng) [Mệnh đề d mới]\n`;
+    } else if (isKHTN) {
+      // Cấu trúc KHTN THCS định kì 4-2-1-3 (CV 4956)
       prompt += `⚠️ QUY TẮC CẤU TRÚC 4 MỆNH ĐỀ (CV 4956): Ý a) mức Nhận biết, ý b) mức Nhận biết, ý c) mức Thông hiểu, ý d) mức Vận dụng. Tuyệt đối không ra Vận dụng cao ở câu Đúng/Sai. Hãy tuân thủ đúng trật tự này.\n`;
       prompt += `Câu 1 (Chủ đề: ${topic}): [Nội dung đề bài chung mới]\n`;
       prompt += `a) (Mức độ: Nhận biết) [Mệnh đề a mới]\n`;
@@ -271,7 +283,8 @@ export function generateSimilarQuestionPrompt(slotData, metaInfo, options = {}) 
  * @returns {string} Prompt text để dán vào Gemini
  */
 export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, examConfig = {}, examHeader = {}) {
-  const isKHTN = (examHeader?.monHoc || '').toLowerCase().includes('khoa học tự nhiên') || (examHeader?.monHoc || '').toLowerCase().includes('khtn') || examConfig?.isCauTruc4213;
+  const isKHTN = (examHeader?.monHoc || '').toLowerCase().includes('khoa học tự nhiên') || (examHeader?.monHoc || '').toLowerCase().includes('khtn') || examConfig?.isCauTruc4213 || examConfig?.isCauTrucKHTNVao10;
+  const isVao10 = examConfig?.isCauTrucKHTNVao10 || (examHeader?.kyThi && /tuyển sinh|vào 10/i.test(examHeader.kyThi));
 
   let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dưới đây là nội dung của một ĐỀ THI MẪU (Đề số 1).\n`;
   prompt += `Nhiệm vụ của bạn là dựa vào cấu trúc và mức độ khó của đề mẫu này, tạo ra một ĐỀ THI MỚI (Đề số 2) tương đương 100% về cấu trúc, độ phân hóa và định dạng.\n\n`;
@@ -287,7 +300,9 @@ export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, exa
   prompt += `3. NẾU CÂU GỐC CÓ CHỨA "Hình ảnh: {"loai":...}": Bắt buộc câu mới cũng phải có thẻ Hình ảnh JSON tương ứng, chỉ thay đổi các hệ số bên trong JSON cho khớp với bài toán mới.\n`;
   prompt += `4. BẢO TOÀN LOẠI CÂU HỎI: Câu nào là Trắc nghiệm nhiều lựa chọn thì sinh mới Trắc nghiệm nhiều lựa chọn. Câu nào là Đúng/Sai thì sinh mới Đúng/Sai (gồm 4 ý a,b,c,d). Câu tự luận có bao nhiêu ý thì sinh ra bấy nhiêu ý.\n`;
   prompt += `5. BẮT BUỘC VẼ HÌNH: NẾU lời giải của bất kỳ bài toán nào có chứa hàm số, đồ thị, hình học hoặc biểu đồ: BẮT BUỘC phải sinh ra một thẻ "Hình ảnh:" chứa JSON minh họa ở cuối phần giải thích.\n`;
-  if (isKHTN) {
+  if (isKHTN && isVao10) {
+    prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ (QĐ 1038 - KHTN VÀO 10): Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Thông hiểu, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng. Tuyệt đối không có Nhận biết và không có Vận dụng cao ở câu Đúng/Sai.\n`;
+  } else if (isKHTN) {
     prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ (CV 4956): Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Nhận biết, ý c) mức Thông hiểu, ý d) mức Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
   } else {
     prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ: Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao.\n`;
@@ -338,7 +353,12 @@ export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, exa
         prompt += `[⚠️ LƯU Ý: Chuỗi đúng/sai VẪN LÀ ${q.dapAnDung}]\n`;
       }
       prompt += `Câu ${cauIndex}: ${q.noiDung || ''}\n`;
-      if (isKHTN) {
+      if (isKHTN && isVao10) {
+        prompt += `a) (Mức độ: Thông hiểu) ${q.yA || ''}\n`;
+        prompt += `b) (Mức độ: Thông hiểu) ${q.yB || ''}\n`;
+        prompt += `c) (Mức độ: Vận dụng) ${q.yC || ''}\n`;
+        prompt += `d) (Mức độ: Vận dụng) ${q.yD || ''}\n`;
+      } else if (isKHTN) {
         prompt += `a) (Mức độ: Nhận biết) ${q.yA || ''}\n`;
         prompt += `b) (Mức độ: Nhận biết) ${q.yB || ''}\n`;
         prompt += `c) (Mức độ: Thông hiểu) ${q.yC || ''}\n`;

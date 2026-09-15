@@ -123,7 +123,7 @@ export default function Step4_GenerateExam() {
 
     setSimilarSlotKey(slotKey);
     setSimilarSlotData(slotData);
-    setSimilarMetaInfo({ ...metaInfo, indicators });
+    setSimilarMetaInfo({ ...metaInfo, indicators, isCauTrucKHTNVao10, isCauTruc4213 });
     setSimilarOtherQs(otherQs);
     setSimilarModalOpen(true);
   };
@@ -568,14 +568,14 @@ export default function Step4_GenerateExam() {
         {/* PHẦN I. TRẮC NGHIỆM NHIỀU LỰA CHỌN */}
         {mcqQuestions.length > 0 && (
           <div className="mb-10">
-            {examConfig.isCauTruc4213 && (
+            {isCauTruc4213 && (
               <h2 className="text-xl font-black text-blue-900 mb-6 border-b-2 border-blue-200 pb-2 uppercase">
                 PHẦN A. TRẮC NGHIỆM KHÁCH QUAN
               </h2>
             )}
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <h3 className="text-lg font-bold text-slate-800">
-                {examConfig.isCauTruc4213 ? "I. Trắc nghiệm nhiều lựa chọn" : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn"}
+                {isCauTruc4213 ? "I. Trắc nghiệm nhiều lựa chọn" : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn"}
               </h3>
               {p1FilledCount > 0 && (
                 <button
@@ -668,7 +668,7 @@ export default function Step4_GenerateExam() {
           <div className="mb-10">
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <h3 className="text-lg font-bold text-slate-800">
-                {examConfig.isCauTruc4213 ? "II. Trắc nghiệm đúng sai" : "PHẦN II. Câu trắc nghiệm đúng sai"}
+                {isCauTruc4213 ? "II. Trắc nghiệm đúng sai" : "PHẦN II. Câu trắc nghiệm đúng sai"}
               </h3>
               {p2FilledCount > 0 && (
                 <button
@@ -800,7 +800,7 @@ export default function Step4_GenerateExam() {
           <div className="mb-10">
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <h3 className="text-lg font-bold text-slate-800">
-                {examConfig.isCauTruc4213 ? "III. Trắc nghiệm trả lời ngắn" : "PHẦN III. Câu trắc nghiệm trả lời ngắn"}
+                {isCauTruc4213 ? "III. Trắc nghiệm trả lời ngắn" : "PHẦN III. Câu trắc nghiệm trả lời ngắn"}
               </h3>
               {p3FilledCount > 0 && (
                 <button
@@ -907,14 +907,14 @@ export default function Step4_GenerateExam() {
         {/* PHẦN IV. TỰ LUẬN — 3 Ý ĐỘC LẬP a, b, c */}
         {tlQuestions.length > 0 && (
           <div className="mb-10">
-            {examConfig.isCauTruc4213 && (
+            {isCauTruc4213 && (
               <h2 className="text-xl font-black text-blue-900 mb-6 border-b-2 border-blue-200 pb-2 uppercase mt-8">
                 PHẦN B. TỰ LUẬN
               </h2>
             )}
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <h3 className="text-lg font-bold text-slate-800">
-                {examConfig.isCauTruc4213 ? "IV. Tự luận" : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
+                {isCauTruc4213 ? "IV. Tự luận" : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
               </h3>
               {p4FilledCount > 0 && (
                 <button
