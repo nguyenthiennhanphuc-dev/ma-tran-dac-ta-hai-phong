@@ -1169,15 +1169,23 @@ export default function Step2_MatrixBuilder() {
           {isKHTN && (
             <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-lg">
               <span className="text-xs font-bold text-teal-800">🔬 KHTN - Chọn lớp:</span>
-              {['6','7','8','9'].map(lop => (
-                <button
-                  key={lop}
-                  onClick={() => setKhtnSelectedLop(lop)}
-                  className={`text-xs font-bold px-2.5 py-1 rounded transition-all ${khtnSelectedLop === lop ? 'bg-teal-600 text-white shadow' : 'bg-white text-teal-700 border border-teal-200 hover:bg-teal-100'}`}
-                >
-                  Lớp {lop}
-                </button>
-              ))}
+              {isCauTrucKHTNVao10 ? (
+                // Khi là cấu trúc Vào 10: chỉ hiển thị lớp 9, không cho đổi
+                <span className="text-xs font-bold px-2.5 py-1 rounded bg-teal-600 text-white shadow">
+                  Lớp 9 <span className="text-teal-200 font-normal">(cố định)</span>
+                </span>
+              ) : (
+                // KHTN THCS bình thường: cho chọn 6/7/8/9
+                ['6','7','8','9'].map(lop => (
+                  <button
+                    key={lop}
+                    onClick={() => setKhtnSelectedLop(lop)}
+                    className={`text-xs font-bold px-2.5 py-1 rounded transition-all ${khtnSelectedLop === lop ? 'bg-teal-600 text-white shadow' : 'bg-white text-teal-700 border border-teal-200 hover:bg-teal-100'}`}
+                  >
+                    Lớp {lop}
+                  </button>
+                ))
+              )}
             </div>
           )}
 

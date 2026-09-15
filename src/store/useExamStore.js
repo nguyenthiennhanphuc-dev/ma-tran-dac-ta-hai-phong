@@ -1233,7 +1233,7 @@ export const useExamStore = create(
                   { qNo, letter: 'a', lvl: 'hieu', label: `II.${qNo}a`, code: 'NT2' },
                   { qNo, letter: 'b', lvl: 'hieu', label: `II.${qNo}b`, code: 'NT3' },
                   { qNo, letter: 'c', lvl: 'vanDung', label: `II.${qNo}c`, code: 'VD1' },
-                  { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD2' }
+                  { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD1' }
                 );
               }
             }
@@ -1603,7 +1603,7 @@ export const useExamStore = create(
                     { qNo, letter: 'a', lvl: 'biet', label: `II.${qNo}a`, code: 'NT1' },
                     { qNo, letter: 'b', lvl: 'biet', label: `II.${qNo}b`, code: 'NT1' },
                     { qNo, letter: 'c', lvl: 'hieu', label: `II.${qNo}c`, code: 'NT3' },
-                    { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD2' }
+                    { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD1' }
                   );
                 }
               } else {
@@ -1612,7 +1612,7 @@ export const useExamStore = create(
                   { lvl: 'biet', letter: 'a', code: 'NT1' },
                   { lvl: 'biet', letter: 'b', code: 'NT1' },
                   { lvl: 'hieu', letter: 'c', code: 'NT3' },
-                  { lvl: 'vanDung', letter: 'd', code: 'VD2' }
+                  { lvl: 'vanDung', letter: 'd', code: 'VD1' }
                 ];
                 const usedInQuestion = new Set();
                 tfSubDefs.forEach(subDef => {
@@ -2734,10 +2734,14 @@ export const useExamStore = create(
           if (!persistedState.khtnConfig) {
             persistedState.khtnConfig = {
               lop: '8',
+              manualLop: false,
               tichHopNLS: true,
               tichHopAI: true,
               tichHopSTEM: false,
             };
+          } else if (persistedState.khtnConfig.manualLop === undefined) {
+            // Đảm bảo field manualLop luôn tồn tại trong store đã lưu
+            persistedState.khtnConfig.manualLop = false;
           }
         }
 

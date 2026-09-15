@@ -196,12 +196,12 @@ export const generateKhtnVao10Matrix = () => {
         { qNo, letter: 'a', lvl: 'hieu', label: `II.${qNo}a`, code: 'NT2' },
         { qNo, letter: 'b', lvl: 'hieu', label: `II.${qNo}b`, code: 'NT3' },
         { qNo, letter: 'c', lvl: 'vanDung', label: `II.${qNo}c`, code: 'VD1' },
-        { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD2' }
+        { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD1' }
       );
       indicatorMap[`dungSai_hieu_0`] = { code: 'NT2', label: `II.${qNo}a` };
       indicatorMap[`dungSai_hieu_1`] = { code: 'NT3', label: `II.${qNo}b` };
       indicatorMap[`dungSai_vanDung_0`] = { code: 'VD1', label: `II.${qNo}c` };
-      indicatorMap[`dungSai_vanDung_1`] = { code: 'VD2', label: `II.${qNo}d` };
+      indicatorMap[`dungSai_vanDung_1`] = { code: 'VD1', label: `II.${qNo}d` };
     }
 
     // Nhãn cho Phần III (Trả lời ngắn: Vận dụng)
