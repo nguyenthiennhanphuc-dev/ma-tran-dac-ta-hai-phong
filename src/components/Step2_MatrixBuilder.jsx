@@ -128,30 +128,44 @@ export default function Step2_MatrixBuilder() {
   // [CT TOAN 2018] Dialog chon lop de go i y YCCD
   const [ct2018Dialog, setCt2018Dialog] = useState({ show: false, lop: 8 });
   // khtnSelectedLop được lưu trong store (khtnConfig.lop) để persist qua các bước
-  const khtnSelectedLop = khtnConfig?.lop || '8';
-  const setKhtnSelectedLop = (lop) => updateKhtnConfig('lop', lop);
+  const khtnSelectedLop = isCauTrucKHTNVao10 ? (khtnConfig?.lop || '9') : (khtnConfig?.lop || '8');
+  const setKhtnSelectedLop = (lop) => {
+    updateKhtnConfig('lop', lop);
+    updateKhtnConfig('manualLop', true);
+  };
 
   // Tự động nhận diện lớp cho môn KHTN từ đề bài / tên bài
   useEffect(() => {
     if (!isKHTN) return;
+    // Nếu là cấu trúc Vào 10: luôn cố định lớp 9
+    if (isCauTrucKHTNVao10) {
+      if (khtnConfig?.lop !== '9') {
+        updateKhtnConfig('lop', '9');
+      }
+      return;
+    }
+    // Nếu người dùng đã tự bấm chọn lớp (manualLop): TUYỆT ĐỐI KHÔNG ghi đè khi Autofill hoặc sửa ma trận
+    if (khtnConfig?.manualLop) return;
+
     const fullText = `${examHeader?.kyThi || ''} ${examHeader?.monHoc || ''} ${(matrix || []).map(t => `${t.tenChuDe} ${(t.donViKienThuc || []).map(d => d.noiDung).join(' ')}`).join(' ')}`.toLowerCase();
     let detected = null;
-    if (/lớp\s*6|khtn\s*6|\bkhối\s*6\b|kính lúp|kính hiển vi|đo khối lượng|đo thời gian|đo chiều dài|đo nhiệt độ|tế bào.*đơn vị/i.test(fullText)) detected = '6';
-    else if (/lớp\s*7|khtn\s*7|\bkhối\s*7\b|nam châm|từ trường|quang hợp ở thực vật/i.test(fullText)) detected = '7';
+    // Kiểm tra từ lớp 9 xuống lớp 6 để ưu tiên lớp lớn hơn, và BỎ 'kính lúp' khỏi lớp 6 vì 'kính lúp' là bài học SGK KHTN 9 (Ánh sáng)!
+    if (/lớp\s*9|khtn\s*9|\bkhối\s*9\b|khúc xạ ánh sáng|thấu kính|năng lượng tái tạo/i.test(fullText)) detected = '9';
     else if (/lớp\s*8|khtn\s*8|\bkhối\s*8\b|định luật bảo toàn khối lượng|áp suất chất lỏng/i.test(fullText)) detected = '8';
-    else if (/lớp\s*9|khtn\s*9|\bkhối\s*9\b|khúc xạ ánh sáng|năng lượng tái tạo/i.test(fullText)) detected = '9';
+    else if (/lớp\s*7|khtn\s*7|\bkhối\s*7\b|nam châm|từ trường|quang hợp ở thực vật/i.test(fullText)) detected = '7';
+    else if (/lớp\s*6|khtn\s*6|\bkhối\s*6\b|kính hiển vi quang học|đo khối lượng|đo thời gian|đo chiều dài|đo nhiệt độ|tế bào.*đơn vị/i.test(fullText)) detected = '6';
 
     if (detected && detected !== khtnConfig?.lop) {
       updateKhtnConfig('lop', detected);
     }
-  }, [isKHTN, examHeader, matrix]);
+  }, [isKHTN, isCauTrucKHTNVao10, examHeader, matrix, khtnConfig?.manualLop]);
 
   // Tu dong chuyen sang cau truc KHTN 4-2-1-3 khi mon la KHTN ma chua duoc chon
   useEffect(() => {
-    if (isKHTN && !examConfig.isCauTruc4213) {
+    if (isKHTN && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10) {
       setCauTrucDe('4.01');
     }
-  }, [isKHTN]);
+  }, [isKHTN, examConfig.isCauTruc4213, examConfig.isCauTrucKHTNVao10]);
 
   // Nguồn dữ liệu nhóm năng lực tùy theo môn
   const compGroups = isKHTN ? (khtnCompetencyGroupsByLop[Number(khtnSelectedLop)] || khtnCompetencyGroupsByLop[8]) : (isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : (isBiology ? biologyCompetencyGroups : (isPhysics ? physicsCompetencyGroups : (isGeography ? geographyCompetencyGroups : null)))));

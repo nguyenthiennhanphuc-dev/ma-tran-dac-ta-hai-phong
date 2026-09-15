@@ -380,6 +380,11 @@ export const useExamStore = create(
               hasTuLuan: false,
               hasTraLoiNgan: true,
             },
+            khtnConfig: {
+              ...state.khtnConfig,
+              lop: '9',
+              manualLop: true
+            },
             examHeader: {
               ...state.examHeader,
               thoiGian: '60 phút',
@@ -520,6 +525,11 @@ export const useExamStore = create(
             hasTuLuan: false,
             hasTraLoiNgan: true,
           },
+          khtnConfig: {
+            ...state.khtnConfig,
+            lop: '9',
+            manualLop: true,
+          },
           examHeader: {
             ...state.examHeader,
             thoiGian: '60 phút',
@@ -557,6 +567,11 @@ export const useExamStore = create(
           ...state.config,
           hasTuLuan: false,
           hasTraLoiNgan: true,
+        },
+        khtnConfig: {
+          ...state.khtnConfig,
+          lop: '9',
+          manualLop: true,
         },
         examHeader: {
           ...state.examHeader,
