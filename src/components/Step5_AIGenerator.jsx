@@ -871,13 +871,28 @@ export default function Step5_AIGenerator() {
     const isToanMon = /toán|toan/i.test(monHoc);
     const isSinhMon = /sinh/i.test(monHoc);
     const isKHTNMon = /khoa\s*học\s*tự\s*nhiên|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHoc);
-    // Tính lớp: KHTN → lấy từ nút chọn lớp; môn khác → bóc từ tên môn (vd "Toán 6" → "6")
+    const isKHTN = isKHTNMon || examConfig?.subject === 'khtn' || examConfig?.isCauTruc4213 || examConfig?.isCauTrucKHTNVao10;
+    const isCauTrucKHTNVao10 = Boolean(
+      examConfig?.isCauTrucKHTNVao10 ||
+      (!config.hasTuLuan && isKHTN && (examConfig?.tongDiemP1 === 5.5 || examConfig?.tongDiemP2 === 3.0)) ||
+      (examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(examHeader.kyThi) && isKHTN && !config.hasTuLuan)
+    );
+    const isCauTruc4213 = !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 || isKHTN);
+
+    // Tính lớp: KHTN Vào 10 → mặc định lớp 9; KHTN thường → lấy từ nút chọn lớp; môn khác → bóc từ tên môn (vd "Toán 6" → "6")
     const _isKHTNForGrade = isKHTNMon;
-    const gradeName = _isKHTNForGrade
+    const gradeName = isCauTrucKHTNVao10
+      ? (khtnConfig?.lop || '9')
+      : _isKHTNForGrade
       ? (khtnConfig?.lop || '8')
       : (examHeader?.grade || examHeader?.lop || examHeader?.monHoc?.match(/\b([6-9]|1[0-2])\b/)?.[0] || '........................');
-    let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC môn ${monHocName} lớp ${gradeName} BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
 
+    let prompt = '';
+    if (isCauTrucKHTNVao10) {
+      prompt = `Bạn là một chuyên gia ra đề thi tuyển sinh vào lớp 10 THPT xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ THI TUYỂN SINH VÀO LỚP 10 THPT MÔN KHOA HỌC TỰ NHIÊN (CHUẨN QUYẾT ĐỊNH 1038/QĐ-SGDĐT HẢI PHÒNG - THỜI GIAN LÀM BÀI: 60 PHÚT - 100% TRẮC NGHIỆM GỒM 40 LỆNH HỎI) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+    } else {
+      prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC môn ${monHocName} lớp ${gradeName} BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+    }
 
     prompt += `\n⚠️ QUY TẮC TRÌNH BÀY CÔNG THỨC TOÁN/LÝ/HÓA (BẮT BUỘC):\n`;
     prompt += `- CÔNG THỨC TOÁN/HÓA: TUYỆT ĐỐI KHÔNG dùng định dạng LaTeX ($...$) cho các mũi tên phản ứng hóa học (->, =>, <=>) và kí hiệu nhiệt độ (độ C, ^oC). Bắt buộc viết chúng dưới dạng text thường.\n`;
@@ -908,10 +923,6 @@ D. [Lựa chọn D]
 Đáp án đúng: [Chỉ ghi chữ cái A, B, C hoặc D]
 Giải thích: [Giải thích ngắn gọn]
 `;
-
-    const isKHTN = examHeader?.monHoc?.toLowerCase().includes('khoa học tự nhiên') || examHeader?.monHoc?.toLowerCase().includes('khtn');
-    const isCauTrucKHTNVao10 = examConfig?.isCauTrucKHTNVao10 || (!config.hasTuLuan && isKHTN && examConfig?.tongDiemP1 === 5.5);
-    const isCauTruc4213 = !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 || isKHTN);
 
     prompt += `\n[LOẠI 2: TRẮC NGHIỆM ĐÚNG/SAI — CHÙM CÂU HỎI] (Mỗi ý đúng được ${examConfig.diemMoiYP2} điểm)\n`;
     prompt += `⚠️ QUAN TRỌNG: Mỗi câu Đúng/Sai BẮT BUỘC có 1 ĐỀ BÀI CHUNG ở đầu. Sau đó phát triển 4 ý a,b,c,d.\n`;
@@ -952,11 +963,19 @@ Giải thích: [Giải thích ngắn gọn]
     prompt += `Đáp án đúng: a-Đ, b-S, c-Đ, d-S\n`;
     prompt += `Giải thích: [Giải thích ngắn gọn vì sao đúng/sai]\n`;
     if (config.hasTraLoiNgan) {
-      prompt += `[LOẠI 3: TRẢ LỜI NGẮN] (Mỗi câu đúng được ${examConfig.diemMoiYP3} điểm)
-⚠️ QUY TẮC THÉP: BẮT BUỘC phải đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG CHỈ LÀ MỘT CON SỐ CỤ THỂ (ví dụ: 15, 0.5, 100...). Tuyệt đối không hỏi lý thuyết yêu cầu trả lời bằng chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
+      prompt += `[LOẠI 3: TRẢ LỜI NGẮN] (Mỗi câu đúng được ${examConfig.diemMoiYP3} điểm)\n`;
+      if (isCauTrucKHTNVao10) {
+        prompt += `⚠️ ĐẶC BIỆT (ĐỀ THI TUYỂN SINH VÀO 10 KHTN - QĐ 1038 HẢI PHÒNG):
+- Gồm 6 câu Trả lời ngắn là 6 câu ở mức độ VẬN DỤNG tính toán/xử lý số liệu thực tiễn (2 câu phân môn Vật lí, 2 câu phân môn Hóa học, 2 câu phân môn Sinh học).
+- Đáp án mỗi câu BẮT BUỘC là MỘT CON SỐ CỤ THỂ, TỐI ĐA 4 CHỮ SỐ (ví dụ: 15, 0.5, 120, 1500). Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
+`;
+      } else {
+        prompt += `⚠️ QUY TẮC THÉP: BẮT BUỘC phải đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG CHỈ LÀ MỘT CON SỐ CỤ THỂ (ví dụ: 15, 0.5, 100...). Tuyệt đối không hỏi lý thuyết yêu cầu trả lời bằng chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
 ⚠️ GIỚI HẠN ĐÁP ÁN: Con số đáp án TỐI ĐA 4 CHỮ SỐ (bất kể có dấu phẩy/chấm thập phân hay không). Ví dụ hợp lệ: 5, 12, 150, 1500, 0.25, 12.5. Ví dụ KHÔNG hợp lệ: 12345, 100000.
 ⚠️ NGOẠI LỆ môn Xã hội (Sử, Địa, GDCD, Văn, Tiếng Anh): Nếu câu hỏi không thể định lượng bằng số, đáp án CÓ THỂ là 1 từ/cụm từ ngắn (tối đa 5 từ), ví dụ: "1945", "Hà Nội", "Nguyễn Du".
-Câu [Số] (Mức độ: ..., Chủ đề: ..., Mã năng lực: ...): [Nội dung câu hỏi ngắn đòi hỏi tính toán hoặc đếm số lượng]
+`;
+      }
+      prompt += `Câu [Số] (Mức độ: ..., Chủ đề: ..., Mã năng lực: ...): [Nội dung câu hỏi ngắn đòi hỏi tính toán hoặc đếm số lượng]
 Đáp án đúng: [CHỈ GHI DUY NHẤT 1 CON SỐ, TỐI ĐA 4 CHỮ SỐ]
 Giải thích: [Cách giải/Lý do ngắn gọn]\n\n`;
     }
@@ -1049,7 +1068,11 @@ Giải thích: [Ngắn gọn]
       prompt += `► Nhóm Vận dụng kiến thức (VD):\n`;
       prompt += `  [VD1] Vận dụng: Vận dụng giải thích hiện tượng thực tế, giải bài tập định lượng\n`;
       prompt += `  [VD2] Vận dụng cao: Đề xuất giải pháp bảo vệ môi trường, phát triển bền vững\n`;
-      prompt += `⚠️ Câu Đúng/Sai: ý a=NT1 (Nhận biết), ý b=NT1 (Nhận biết), ý c=NT3 (Thông hiểu), ý d=VD1 (Vận dụng) — TUYỆT ĐỐI không có Vận dụng cao ở câu Đúng/Sai (Vận dụng cao chỉ có ở phần Tự luận)\n`;
+      if (isCauTrucKHTNVao10) {
+        prompt += `⚠️ Câu Đúng/Sai (chuẩn QĐ 1038/QĐ-SGDĐT Hải Phòng): Mỗi câu gồm 4 ý: 2 ý Thông hiểu (ý a, b) và 2 ý Vận dụng (ý c, d). TUYỆT ĐỐI không có ý Nhận biết hay Vận dụng cao ở câu Đúng/Sai.\n`;
+      } else {
+        prompt += `⚠️ Câu Đúng/Sai: ý a=NT1 (Nhận biết), ý b=NT1 (Nhận biết), ý c=NT3 (Thông hiểu), ý d=VD1 (Vận dụng) — TUYỆT ĐỐI không có Vận dụng cao ở câu Đúng/Sai (Vận dụng cao chỉ có ở phần Tự luận)\n`;
+      }
     }
     prompt += `- MÔN KHOA HỌC XÃ HỘI (Sử, Địa, GDCD): Sử/Địa ưu tiên nguyên nhân, hệ quả, phân tích số liệu/biểu đồ. Riêng GDCD/KTPL: 100% câu hỏi Vận dụng phải là TÌNH HUỐNG THỰC TẾ (ví dụ: nhân vật A, B vi phạm gì) để học sinh xử lý.\n`;
     prompt += `- MÔN NGỮ VĂN: Tập trung ĐỌC HIỂU (nhận diện tu từ, tác dụng nghệ thuật, phương thức biểu đạt). Tự luận hướng đến cảm thụ và nghị luận.\n`;
@@ -1394,7 +1417,9 @@ Giải thích: [Ngắn gọn]
       prompt += `📊 TỔNG HỢP GOM CÂU BẮT BUỘC:\n`;
       if (soCauDungSai > 0) {
         prompt += `  → LOẠI 2: Gom thành ${soCauDungSai} Câu (mỗi Câu gồm 1 ĐỀ BÀI CHUNG + 4 ý a, b, c, d xoay quanh đề bài đó).\n`;
-        if (isCauTruc4213) {
+        if (isCauTrucKHTNVao10) {
+          prompt += `     ⚠️ BẮT BUỘC (QĐ 1038/QĐ-SGDĐT HẢI PHÒNG): 4 ý trong mỗi câu Đúng/Sai gồm: ý a) Thông hiểu, ý b) Thông hiểu, ý c) Vận dụng, ý d) Vận dụng. Tuyệt đối không có ý Nhận biết hay Vận dụng cao ở câu Đúng/Sai.\n`;
+        } else if (isCauTruc4213) {
           prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt cấu trúc CV 4956: ý a) Nhận biết, ý b) Nhận biết, ý c) Thông hiểu, ý d) Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
         } else {
           prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt thứ tự mức độ nhận thức: ý a) Nhận biết, ý b) Thông hiểu, ý c) Vận dụng, ý d) Vận dụng cao.\n`;
@@ -1404,7 +1429,13 @@ Giải thích: [Ngắn gọn]
         }
       }
       // NÂNG CẤP: Trả lời ngắn độc lập
-      if (soCauTraLoiNgan > 0) prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu độc lập (TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
+      if (soCauTraLoiNgan > 0) {
+        if (isCauTrucKHTNVao10) {
+          prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trả lời ngắn độc lập ở mức độ VẬN DỤNG (2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học - đáp án là 1 con số cụ thể tối đa 4 chữ số, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
+        } else {
+          prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu độc lập (TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
+        }
+      }
       if (config.hasTuLuan && soCauTuLuan > 0) {
         if (hasManualTLConfig) {
           const cauStructureDesc = tuLuanConfig.questions.map((q, i) => {

@@ -40,8 +40,15 @@ export default function Step3_Specification() {
   const isKHTNMon = Boolean(
     examConfig.subject === 'khtn' || 
     examConfig.isCauTruc4213 || 
+    examConfig.isCauTrucKHTNVao10 ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examHeader?.monHoc || '') ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
+  );
+
+  const isCauTrucKHTNVao10 = Boolean(
+    examConfig?.isCauTrucKHTNVao10 ||
+    (!config.hasTuLuan && isKHTNMon && (examConfig?.tongDiemP1 === 5.5 || examConfig?.tongDiemP2 === 3.0)) ||
+    (examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(examHeader.kyThi) && isKHTNMon && !config.hasTuLuan)
   );
 
   // =======================================================================
@@ -382,20 +389,28 @@ export default function Step3_Specification() {
     }
 
     const monHoc = examHeader?.monHoc || (isKHTNMon ? 'Khoa học tự nhiên' : 'Môn học');
-    // Ưu tiên: KHTN → lấy từ nút chọn lớp; môn khác → bóc số lớp từ tên môn (vd "Toán 6" → "6")
-    const lop = isKHTNMon
+    // Ưu tiên: KHTN Vào 10 → mặc định lớp 9; KHTN thường → lấy từ nút chọn lớp; môn khác → bóc số lớp từ tên môn
+    const lop = isCauTrucKHTNVao10
+      ? (khtnConfig?.lop || '9')
+      : isKHTNMon
       ? (khtnConfig?.lop || '8')
       : (examHeader?.lop || examHeader?.monHoc?.match(/\b([6-9]|1[0-2])\b/)?.[0] || '');
 
-    let prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn ${monHoc}${lop ? ` lớp ${lop}` : ''} theo Chương trình GDPT 2018 (Công văn 4956/SGDĐT). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
-    prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể. Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
+    let prompt = '';
+    if (isCauTrucKHTNVao10) {
+      prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi Tuyển sinh vào lớp 10 THPT môn ${monHoc} (chương trình THCS - chủ yếu lớp 9) theo Quyết định 1038/QĐ-SGDĐT của Sở GD&ĐT Hải Phòng (Chương trình GDPT 2018). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+      prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở 3 mức độ (Nhận biết, Thông hiểu, Vận dụng). Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
+    } else {
+      prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn ${monHoc}${lop ? ` lớp ${lop}` : ''} theo Chương trình GDPT 2018 (Công văn 4956/SGDĐT). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+      prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể. Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
+    }
 
     dvList.forEach((dv, index) => {
       // Tính tổng số lượng câu/ý của từng mức độ cho ĐVKT này
       const sumBiet = (dv.nhieuLuaChon?.biet || 0) + (dv.dungSai?.biet || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.biet || 0) : 0) + (typeof dv.tuLuan?.biet === 'object' ? dv.tuLuan.biet.y : (dv.tuLuan?.biet || 0));
       const sumHieu = (dv.nhieuLuaChon?.hieu || 0) + (dv.dungSai?.hieu || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.hieu || 0) : 0) + (typeof dv.tuLuan?.hieu === 'object' ? dv.tuLuan.hieu.y : (dv.tuLuan?.hieu || 0));
       const sumVD = (dv.nhieuLuaChon?.vanDung || 0) + (dv.dungSai?.vanDung || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.vanDung || 0) : 0) + (typeof dv.tuLuan?.vanDung === 'object' ? dv.tuLuan.vanDung.y : (dv.tuLuan?.vanDung || 0));
-      const sumVDC = (Number(dv.dungSai?.vanDungCao) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0);
+      const sumVDC = isCauTrucKHTNVao10 ? 0 : ((Number(dv.dungSai?.vanDungCao) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0));
 
       let requiredLevels = [];
       if (sumBiet > 0) requiredLevels.push("Nhận biết");
@@ -411,7 +426,7 @@ export default function Step3_Specification() {
           if (sumBiet > 0) reqWithCodes.push(`  + Nhận biết [${getRowKhtnCode(dv, 'biet')}]`);
           if (sumHieu > 0) reqWithCodes.push(`  + Thông hiểu [${getRowKhtnCode(dv, 'hieu')}]`);
           if (sumVD > 0) reqWithCodes.push(`  + Vận dụng [${getRowKhtnCode(dv, 'vanDung')}]`);
-          if (sumVDC > 0) reqWithCodes.push(`  + Vận dụng cao [${getRowKhtnCode(dv, 'vanDungCao')}]`);
+          if (!isCauTrucKHTNVao10 && sumVDC > 0) reqWithCodes.push(`  + Vận dụng cao [${getRowKhtnCode(dv, 'vanDungCao')}]`);
           prompt += `- Mức độ và mã năng lực cần viết:\n${reqWithCodes.join('\n')}\n\n`;
         } else {
           prompt += `- Mức độ cần viết: [ ${requiredLevels.join(", ")} ]\n\n`;
@@ -443,11 +458,18 @@ export default function Step3_Specification() {
       prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
       prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
       prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi theo CT GDPT 2018 tương ứng với mã năng lực được giao.\n`;
-      prompt += `3. Định dạng đầu ra BẮT BUỘC KÈM ĐÚNG MÃ CHỈ BÁO NĂNG LỰC KHTN:\n`;
-      prompt += `   - Nhận biết [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Nhận biết [NT1]: Nêu được...]\n`;
-      prompt += `   - Thông hiểu [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Thông hiểu [NT3]: Phân biệt được... (hoặc [NT2], [TH3] nếu là thí nghiệm)]\n`;
-      prompt += `   - Vận dụng [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [VD1]: Vận dụng kiến thức giải thích... (hoặc [TH4], [NT6])]\n`;
-      prompt += `   - Vận dụng cao [VD2]: [Ghi đúng 1 câu ngắn gọn... Đề xuất giải pháp/biện pháp thực tiễn, bảo vệ môi trường]`;
+      if (isCauTrucKHTNVao10) {
+        prompt += `3. Định dạng đầu ra BẮT BUỘC KÈM ĐÚNG MÃ CHỈ BÁO NĂNG LỰC KHTN (CHỈ 3 MỨC ĐỘ: NHẬN BIẾT, THÔNG HIỂU, VẬN DỤNG):\n`;
+        prompt += `   - Nhận biết [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Nhận biết [NT1]: Nêu được...]\n`;
+        prompt += `   - Thông hiểu [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Thông hiểu [NT3]: Phân biệt được... (hoặc [NT2], [TH3] nếu là thí nghiệm)]\n`;
+        prompt += `   - Vận dụng [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [VD1]: Vận dụng kiến thức giải thích... (hoặc [TH4], [NT6])]`;
+      } else {
+        prompt += `3. Định dạng đầu ra BẮT BUỘC KÈM ĐÚNG MÃ CHỈ BÁO NĂNG LỰC KHTN:\n`;
+        prompt += `   - Nhận biết [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Nhận biết [NT1]: Nêu được...]\n`;
+        prompt += `   - Thông hiểu [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Thông hiểu [NT3]: Phân biệt được... (hoặc [NT2], [TH3] nếu là thí nghiệm)]\n`;
+        prompt += `   - Vận dụng [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [VD1]: Vận dụng kiến thức giải thích... (hoặc [TH4], [NT6])]\n`;
+        prompt += `   - Vận dụng cao [VD2]: [Ghi đúng 1 câu ngắn gọn... Đề xuất giải pháp/biện pháp thực tiễn, bảo vệ môi trường]`;
+      }
     } else {
       prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
       prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
