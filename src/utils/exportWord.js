@@ -248,9 +248,11 @@ export const exportToWord = async (options = {}) => {
   const isKHTNMon = Boolean(
     examConfig?.subject === 'khtn' ||
     examConfig?.isCauTruc4213 ||
+    examConfig?.isCauTrucKHTNVao10 ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examHeader?.monHoc || '') ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
   );
+  const isCauTrucKHTNVao10 = Boolean(examConfig?.isCauTrucKHTNVao10 || (!config.hasTuLuan && isKHTNMon && examConfig?.tongDiemP1 === 5.5));
 
   // Hàm phát hiện mã năng lực Hóa học từ nội dung YCCĐ (đồng bộ Step3_Specification)
   const getIndicatorForLevel = (text, level) => {
@@ -511,7 +513,7 @@ export const exportToWord = async (options = {}) => {
 
   // === TÍNH MAP CÂU SỐ TRONG KHUNG ĐỀ CHO TỪNG Ô ===
   const qMap = {};
-  const isCont = isKHTNMon ? true : (examConfig.isCauTruc4213 ? false : config.isContinuousNumbering);
+  const isCont = isCauTrucKHTNVao10 ? false : (isKHTNMon ? true : (examConfig.isCauTruc4213 ? false : config.isContinuousNumbering));
   let nlcC = 1;
   matrix.forEach((t, ti) => {
     (t.donViKienThuc || []).forEach((dv, di) => {
@@ -543,7 +545,15 @@ export const exportToWord = async (options = {}) => {
           const ec = Math.floor((topicDsYC + n - 1) / 4) + dsCauCurrent;
           const sy = ['a','b','c','d'][topicDsYC % 4];
           const ey = ['a','b','c','d'][(topicDsYC + n - 1) % 4];
-          if (isKHTNMon) {
+          if (isCauTrucKHTNVao10) {
+            if (lvl === 'hieu' && n === 2) {
+              qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý a, b`;
+            } else if (lvl === 'vanDung' && n === 2) {
+              qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý c, d`;
+            } else {
+              qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý ${sy}`;
+            }
+          } else if (isKHTNMon) {
             if (lvl === 'biet' && n === 2) {
               qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý a, b`;
             } else if (lvl === 'hieu' && n === 1) {
@@ -1324,7 +1334,14 @@ export const exportToWord = async (options = {}) => {
 
         for (let q = 0; q < numQuestions; q++) {
           const chunk = [];
-          if (examConfig.isCauTruc4213 || isKHTNMon) {
+          const isCauTrucKHTNVao10 = examConfig?.isCauTrucKHTNVao10 || (!config.hasTuLuan && isKHTNMon && examConfig?.tongDiemP1 === 5.5);
+          if (isCauTrucKHTNVao10) {
+            // Chuẩn QĐ 1038 Hải Phòng: 2 ý Thông hiểu, 2 ý Vận dụng
+            if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+            if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+            if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+            if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+          } else if (examConfig.isCauTruc4213 || isKHTNMon) {
             // Chuẩn CV 4956: a, b mức Nhận biết; c mức Thông hiểu; d mức Vận dụng
             if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
             if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
@@ -1337,10 +1354,17 @@ export const exportToWord = async (options = {}) => {
             if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
           }
           while (chunk.length < 4) {
-            if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
-            else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
-            else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
-            else break;
+            if (isCauTrucKHTNVao10) {
+              if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+              else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+              else if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+              else break;
+            } else {
+              if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+              else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+              else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+              else break;
+            }
           }
           const order = { 'biet': 1, 'hieu': 2, 'vanDung': 3, 'vanDungCao': 4 };
           chunk.sort((a, b) => order[a.levelKey] - order[b.levelKey]);
@@ -1415,14 +1439,14 @@ export const exportToWord = async (options = {}) => {
 
     // BIẾN ĐẾM TOÀN CỤC CHO ĐÁNH SỐ CÂU HỎI LIÊN TỤC (ĐỀ THI)
     let globalQuestionIndex = 1;
-    const isContinuous = examConfig.isCauTruc4213 ? false : config.isContinuousNumbering;
+    const isContinuous = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? false : config.isContinuousNumbering;
 
     // === LOGIC TIÊU ĐỀ PHẦN ĐỘNG THEO TỰ LUẬN ===
     const hasTuLuanMode = config.hasTuLuan;
 
-    if (examConfig.isCauTruc4213) {
+    if (examConfig.isCauTruc4213 && !isCauTrucKHTNVao10) {
         const diemP1 = getTotalY('nhieuLuaChon') * examConfig.diemMoiCauP1;
-        const diemP2 = (getTotalY('dungSai') / 4) * (4 * examConfig.diemMoiYP2); // Wait, 1 câu = 4 ý, điểm 1 câu = 4 * diemMoiYP2. Total ý = getTotalY('dungSai'), Total câu = totalY/4
+        const diemP2 = (getTotalY('dungSai') / 4) * (4 * examConfig.diemMoiYP2);
         const diemP3 = getTotalY('traLoiNgan') * examConfig.diemMoiYP3;
         const diemTN = diemP1 + diemP2 + diemP3;
         examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `PHẦN A. TRẮC NGHIỆM KHÁCH QUAN (${String(diemTN).replace('.',',')} ĐIỂM)`, bold: true, size: 28, font: "Times New Roman" })], spacing: { before: 300, after: 200 } }));
@@ -1437,7 +1461,12 @@ export const exportToWord = async (options = {}) => {
         ? "DẠNG 1. Câu trắc nghiệm nhiều phương án lựa chọn"
         : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn";
       let d1Desc = "Học sinh khoanh tròn chữ cái đứng trước câu trả lời đúng:";
-      if (examConfig.isCauTruc4213) {
+      if (isCauTrucKHTNVao10) {
+        const diemP1 = sumCount('nhieuLuaChon','biet')*examConfig.diemMoiCauP1 + sumCount('nhieuLuaChon','hieu')*examConfig.diemMoiCauP1 + sumCount('nhieuLuaChon','vanDung')*examConfig.diemMoiCauP1;
+        const diemP1Str = String(diemP1).replace('.', ',');
+        d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${diemP1Str} điểm).`;
+        d1Desc = ` Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
+      } else if (examConfig.isCauTruc4213) {
         const diemP1 = sumCount('nhieuLuaChon','biet')*examConfig.diemMoiCauP1 + sumCount('nhieuLuaChon','hieu')*examConfig.diemMoiCauP1 + sumCount('nhieuLuaChon','vanDung')*examConfig.diemMoiCauP1;
         const diemP1Str = String(diemP1).replace('.', ',');
         d1Title = `I. Trắc nghiệm nhiều lựa chọn (${diemP1Str} điểm).`;
@@ -1447,7 +1476,7 @@ export const exportToWord = async (options = {}) => {
         d1Desc = ` Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
       }
 
-      if (examConfig.isCauTruc4213 || isMinistry) {
+      if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) {
         examParagraphs.push(new Paragraph({
           children: [
             new TextRun({ text: d1Title, bold: true, size: 28, font: "Times New Roman" }),
@@ -1470,17 +1499,17 @@ export const exportToWord = async (options = {}) => {
           const qContent = cleanText(slotData.noiDung) || '';
           const qRuns = [
             new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }),
-            ((examConfig.isCauTruc4213 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP1Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
+            ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP1Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
             ...parseMixedTextToRuns(qContent, 28, "Times New Roman", mathMode)
           ];
           examParagraphs.push(new Paragraph({ children: qRuns, spacing: { after: 80 } }));
-          const optParas = buildOptionParagraphs(slotData.dapAnA, slotData.dapAnB, slotData.dapAnC, slotData.dapAnD, 28, examConfig.isCauTruc4213, slotData.dapAnDung, config.showExamAnswerUnderline !== false, mathMode);
+          const optParas = buildOptionParagraphs(slotData.dapAnA, slotData.dapAnB, slotData.dapAnC, slotData.dapAnD, 28, (examConfig.isCauTruc4213 || isCauTrucKHTNVao10), slotData.dapAnDung, config.showExamAnswerUnderline !== false, mathMode);
           optParas.forEach(p => examParagraphs.push(p));
           if (slotData.hinhAnh) {
             const imgData = await fetchGraphImage(slotData.hinhAnh);
             if (imgData) examParagraphs.push(createGraphParagraph(imgData));
           }
-          if (examConfig.isCauTruc4213 && (config.showExamRedMetadata !== false) && item.dvkt) {
+          if ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10) && (config.showExamRedMetadata !== false) && item.dvkt) {
             examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `* Kiến thức: ${item.dvkt}`, italics: true, color: "FF0000", size: 22, font: "Times New Roman" })], spacing: { after: 40 } }));
             if (item.chiBao) {
                 const chiBaoText = formatChiBaoText(item?.level, item?.chiBao);
@@ -1489,7 +1518,7 @@ export const exportToWord = async (options = {}) => {
           }
         } else {
           const item = mcqFlatItems[i];
-          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP1Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })), new TextRun({ text: item ? `[${item.topic} - Mức độ: ${item.level}]` : '', italics: true, size: 28, font: "Times New Roman" })], spacing: { after: 100 } }));
+          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP1Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })), new TextRun({ text: item ? `[${item.topic} - Mức độ: ${item.level}]` : '', italics: true, size: 28, font: "Times New Roman" })], spacing: { after: 100 } }));
           examParagraphs.push(new Paragraph({ text: "(Ghi nội dung câu hỏi vào đây...)\n", spacing: { after: 200 } }));
         }
       }
@@ -1509,7 +1538,12 @@ export const exportToWord = async (options = {}) => {
       const startQ = isContinuous ? globalQuestionIndex : 1;
       const endQ = startQ + soCauTF - 1;
       
-      if (examConfig.isCauTruc4213) {
+      if (isCauTrucKHTNVao10) {
+        const diemP2 = (sumCount('dungSai','biet') + sumCount('dungSai','hieu') + sumCount('dungSai','vanDung') + sumCount('dungSai','vanDungCao'))/4 * (4*examConfig.diemMoiYP2);
+        const diemP2Str = String(diemP2).replace('.', ',');
+        d2Title = `PHẦN II. Câu trắc nghiệm đúng sai (${diemP2Str} điểm).`;
+        d2Desc = ` Thí sinh trả lời từ câu 1 đến câu ${soCauTF}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
+      } else if (examConfig.isCauTruc4213) {
         const diemP2 = (sumCount('dungSai','biet') + sumCount('dungSai','hieu') + sumCount('dungSai','vanDung') + sumCount('dungSai','vanDungCao'))/4 * (4*examConfig.diemMoiYP2);
         const diemP2Str = String(diemP2).replace('.', ',');
         d2Title = `II. Trắc nghiệm đúng sai (${diemP2Str} điểm).`;
@@ -1518,7 +1552,7 @@ export const exportToWord = async (options = {}) => {
         d2Title = "PHẦN II. Câu trắc nghiệm đúng sai.";
         d2Desc = ` Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
       }
-      if (examConfig.isCauTruc4213 || isMinistry) {
+      if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) {
         examParagraphs.push(new Paragraph({
           children: [
             new TextRun({ text: d2Title, bold: true, size: 28, font: "Times New Roman" }),
@@ -1539,7 +1573,7 @@ export const exportToWord = async (options = {}) => {
           const tfPrompt = cleanText(slotData.noiDung) || '';
           const tfPromptRuns = [
             new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }),
-            ((examConfig.isCauTruc4213 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
+            ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
             ...parseMixedTextToRuns(tfPrompt, 28, "Times New Roman", mathMode)
           ];
           examParagraphs.push(new Paragraph({ children: tfPromptRuns, spacing: { after: 120 } }));
@@ -1547,17 +1581,17 @@ export const exportToWord = async (options = {}) => {
             const imgData = await fetchGraphImage(slotData.hinhAnh);
             if (imgData) examParagraphs.push(createGraphParagraph(imgData));
           }
-          if (isMinistry || examConfig.isCauTruc4213) {
+          if (isMinistry || examConfig.isCauTruc4213 || isCauTrucKHTNVao10) {
             const answers = extractABCD(slotData.dapAnDung);
             const tfYKeys = [['a.', slotData.yA, 'a)', 0], ['b.', slotData.yB, 'b)', 1], ['c.', slotData.yC, 'c)', 2], ['d.', slotData.yD, 'd)', 3]];
             tfYKeys.forEach(([labelMin, content, label4213, idx]) => {
               const flatIdx = i * 4 + idx;
               const subItem = tfFlatItems[flatIdx] || {};
 
-              const label = examConfig.isCauTruc4213 ? label4213 : labelMin;
+              const label = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? label4213 : labelMin;
               let runOptsLabel = { text: `${label} `, size: 28, font: "Times New Roman" };
               const subText = content ? cleanText(content) : '';
-              if (examConfig.isCauTruc4213 && (config.showExamAnswerUnderline !== false)) {
+              if ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10) && (config.showExamAnswerUnderline !== false)) {
                   const ans = String(answers[idx] || '').trim().replace(/[,.;]+$/, '').toUpperCase();
                   if (ans === 'Đ' || ans === 'ĐÚNG' || ans === 'D') {
                       runOptsLabel.bold = true;
@@ -1575,7 +1609,7 @@ export const exportToWord = async (options = {}) => {
                 spacing: { after: 60 }
               }));
 
-              if (examConfig.isCauTruc4213 && (config.showExamRedMetadata !== false) && subItem.dvkt) {
+              if ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10) && (config.showExamRedMetadata !== false) && subItem.dvkt) {
                 examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `* Kiến thức: ${subItem.dvkt}`, italics: true, color: "FF0000", size: 22, font: "Times New Roman" })], spacing: { after: 40 } }));
                 let chiBaoText = formatChiBaoText(subItem?.level, subItem?.chiBao);
                 if (chiBaoText) {
@@ -1610,11 +1644,11 @@ export const exportToWord = async (options = {}) => {
               borders: standardBorders,
             }));
           }
-          if (!examConfig.isCauTruc4213) {
+          if (!examConfig.isCauTruc4213 && !isCauTrucKHTNVao10) {
             examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
           }
         } else {
-          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" }))], spacing: { after: 100 } }));
+          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" }))], spacing: { after: 100 } }));
           const tfPlaceholderRows = [];
           tfPlaceholderRows.push(new TableRow({
             children: [
@@ -1659,7 +1693,12 @@ export const exportToWord = async (options = {}) => {
         const startQ = isContinuous ? globalQuestionIndex : 1;
         const endQ = startQ + totalSA - 1;
 
-        if (examConfig.isCauTruc4213) {
+        if (isCauTrucKHTNVao10) {
+          const diemP3 = sumCount('traLoiNgan','biet')*examConfig.diemMoiYP3 + sumCount('traLoiNgan','hieu')*examConfig.diemMoiYP3 + sumCount('traLoiNgan','vanDung')*examConfig.diemMoiYP3;
+          const diemP3Str = String(diemP3).replace('.', ',');
+          d3Title = `PHẦN III. Câu trắc nghiệm trả lời ngắn (${diemP3Str} điểm).`;
+          d3Desc = ` Thí sinh trả lời từ câu 1 đến câu ${totalSA}.`;
+        } else if (examConfig.isCauTruc4213) {
           const diemP3 = sumCount('traLoiNgan','biet')*examConfig.diemMoiYP3 + sumCount('traLoiNgan','hieu')*examConfig.diemMoiYP3 + sumCount('traLoiNgan','vanDung')*examConfig.diemMoiYP3;
           const diemP3Str = String(diemP3).replace('.', ',');
           d3Title = `III. Trắc nghiệm trả lời ngắn (${diemP3Str} điểm).`;
@@ -1669,7 +1708,7 @@ export const exportToWord = async (options = {}) => {
           d3Desc = ` Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}.`;
         }
         
-        if (examConfig.isCauTruc4213 || isMinistry) {
+        if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) {
           examParagraphs.push(new Paragraph({
             children: [
               new TextRun({ text: d3Title, bold: true, size: 28, font: "Times New Roman" }),
@@ -1690,7 +1729,7 @@ export const exportToWord = async (options = {}) => {
             const saPrompt = cleanText(slotData.noiDung) || '';
             const saRuns = [
               new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }),
-              ((examConfig.isCauTruc4213 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP3Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
+              ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP3Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
               ...parseMixedTextToRuns(saPrompt, 28, "Times New Roman", mathMode)
             ];
             examParagraphs.push(new Paragraph({ children: saRuns, spacing: { after: 80 } }));
@@ -1705,7 +1744,7 @@ export const exportToWord = async (options = {}) => {
               examParagraphs.push(new Paragraph({ text: "", spacing: { after: 120 } }));
             }
             const item = saFlatItems[i] || {};
-            if (examConfig.isCauTruc4213) {
+            if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) {
               if (config.showExamAnswerUnderline !== false && slotData.dapAnDung) {
                 const cleanAnsLocal = String(slotData.dapAnDung || '').replace(/\*/g, '');
                 const ansText = cleanText(cleanAnsLocal);
@@ -1880,11 +1919,11 @@ export const exportToWord = async (options = {}) => {
 
     // BIẾN ĐẾM TOÀN CỤC CHO ĐÁNH SỐ CÂU HỎI LIÊN TỤC (ĐÁP ÁN)
     let globalAnswerIndex = 1;
-    const isContinuousAK = config.isContinuousNumbering;
+    const isContinuousAK = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? false : config.isContinuousNumbering;
     const hasTuLuanModeAK = config.hasTuLuan;
 
     // PHẦN TRẮC NGHIỆM (nếu có Tự luận) — cho đáp án — BỎ QUA khi mẫu Bộ 2025
-    if (examConfig.isCauTruc4213) {
+    if (examConfig.isCauTruc4213 && !isCauTrucKHTNVao10) {
       answerKeyParagraphs.push(new Paragraph({
         children: [new TextRun({ text: "PHẦN A. TRẮC NGHIỆM KHÁCH QUAN", bold: true, size: 28, font: "Times New Roman" })],
         spacing: { before: 200, after: 150 }

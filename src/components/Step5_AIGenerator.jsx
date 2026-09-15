@@ -910,11 +910,16 @@ Giải thích: [Giải thích ngắn gọn]
 `;
 
     const isKHTN = examHeader?.monHoc?.toLowerCase().includes('khoa học tự nhiên') || examHeader?.monHoc?.toLowerCase().includes('khtn');
-    const isCauTruc4213 = examConfig?.isCauTruc4213 || isKHTN;
+    const isCauTrucKHTNVao10 = examConfig?.isCauTrucKHTNVao10 || (!config.hasTuLuan && isKHTN && examConfig?.tongDiemP1 === 5.5);
+    const isCauTruc4213 = !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 || isKHTN);
 
     prompt += `\n[LOẠI 2: TRẮC NGHIỆM ĐÚNG/SAI — CHÙM CÂU HỎI] (Mỗi ý đúng được ${examConfig.diemMoiYP2} điểm)\n`;
     prompt += `⚠️ QUAN TRỌNG: Mỗi câu Đúng/Sai BẮT BUỘC có 1 ĐỀ BÀI CHUNG ở đầu. Sau đó phát triển 4 ý a,b,c,d.\n`;
-    if (isCauTruc4213) {
+    if (isCauTrucKHTNVao10) {
+      prompt += `⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý (BẮT BUỘC THEO QUYẾT ĐỊNH 1038/QĐ-SGDĐT HẢI PHÒNG - KỲ THI TUYỂN SINH VÀO 10 THPT):
+- Mỗi câu Đúng/Sai gồm 4 ý: 2 ý ở mức độ Thông hiểu (ý a, b), 2 ý ở mức độ Vận dụng (ý c, d).
+- TUYỆT ĐỐI KHÔNG CÓ Ý MỨC ĐỘ NHẬN BIẾT HAY VẬN DỤNG CAO Ở CÂU ĐÚNG/SAI.\n`;
+    } else if (isCauTruc4213) {
       prompt += `⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý (BẮT BUỘC THEO CÔNG VĂN 4956/SGDĐT):
 - Ý a) mức Nhận biết
 - Ý b) mức Nhận biết
@@ -928,7 +933,12 @@ Giải thích: [Giải thích ngắn gọn]
       prompt += `⚠️ ĐẶC BIỆT: Chế độ "Gom nhóm theo Chủ đề" đang bật. 4 mệnh đề a, b, c, d của mỗi câu Đúng/Sai nên lấy kiến thức từ CÁC BÀI HỌC KHÁC NHAU trong cùng chủ đề, tạo thành câu hỏi kiểm tra kiến thức tổng hợp của cả chủ đề.\n`;
     }
     prompt += `Câu [Số] (Chủ đề: ...): [Nội dung đề bài chung / Tình huống]\n`;
-    if (isCauTruc4213) {
+    if (isCauTrucKHTNVao10) {
+      prompt += `a) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề a]\n`;
+      prompt += `b) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề b]\n`;
+      prompt += `c) (Mức độ: Vận dụng, Mã năng lực: ...) [Mệnh đề c]\n`;
+      prompt += `d) (Mức độ: Vận dụng, Mã năng lực: ...) [Mệnh đề d]\n`;
+    } else if (isCauTruc4213) {
       prompt += `a) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề a]\n`;
       prompt += `b) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề b]\n`;
       prompt += `c) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề c]\n`;

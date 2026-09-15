@@ -241,7 +241,8 @@ export default function Step4_GenerateExam() {
 
   // 2. Phần Đúng/Sai — Gom 4 ý vào 1 câu (Cấu trúc 4-2-1-3 / KHTN: a,b Biết; c Hiểu; d Vận dụng)
   const isKHTN = examHeader?.monHoc?.toLowerCase().includes('khoa học tự nhiên') || examHeader?.monHoc?.toLowerCase().includes('khtn');
-  const isCauTruc4213 = examConfig?.isCauTruc4213 || isKHTN;
+  const isCauTrucKHTNVao10 = examConfig?.isCauTrucKHTNVao10 || (!config.hasTuLuan && isKHTN && examConfig?.tongDiemP1 === 5.5);
+  const isCauTruc4213 = !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 || isKHTN);
 
   const tfQuestions = (() => {
     const chunks = [];
@@ -249,7 +250,7 @@ export default function Step4_GenerateExam() {
       biet: 'Nhận biết',
       hieu: 'Thông hiểu',
       vanDung: 'Vận dụng',
-      vanDungCao: isCauTruc4213 ? 'Vận dụng' : 'Vận dụng cao'
+      vanDungCao: (isCauTruc4213 || isCauTrucKHTNVao10) ? 'Vận dụng' : 'Vận dụng cao'
     };
 
     const buildChunksFromBuckets = (buckets) => {
@@ -263,7 +264,13 @@ export default function Step4_GenerateExam() {
       for (let i = 0; i < numQuestions; i++) {
         const chunk = [];
 
-        if (isCauTruc4213) {
+        if (isCauTrucKHTNVao10) {
+          // Chuẩn QĐ 1038 Hải Phòng: mỗi câu có 2 ý ở mức Thông hiểu, 2 ý ở mức Vận dụng
+          if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+          if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+          if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+          if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+        } else if (isCauTruc4213) {
           // Chuẩn CV 4956: ý a, b mức Nhận biết, ý c mức Thông hiểu, ý d mức Vận dụng
           if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
           if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
@@ -279,10 +286,17 @@ export default function Step4_GenerateExam() {
 
         // Nếu cấu hình tay không đủ cơ cấu trên, lấy bù từ các bucket còn dư
         while (chunk.length < 4) {
-          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
-          else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
-          else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
-          else break;
+          if (isCauTrucKHTNVao10) {
+            if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+            else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+            else if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+            else break;
+          } else {
+            if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+            else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+            else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+            else break;
+          }
         }
 
         // Sắp xếp lại chunk theo đúng thứ tự mức độ nhận thức (B -> B -> H -> VD)

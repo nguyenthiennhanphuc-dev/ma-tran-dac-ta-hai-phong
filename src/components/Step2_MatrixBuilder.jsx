@@ -85,7 +85,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, setCauTrucKHTNVao10, loadKhtnVao10SampleMatrix, setCauTruc4213, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
   const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
@@ -94,6 +94,7 @@ export default function Step2_MatrixBuilder() {
   const isKHTN = Boolean(
     examConfig.subject === 'khtn' || 
     examConfig.isCauTruc4213 || 
+    examConfig.isCauTrucKHTNVao10 ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(examHeader?.monHoc || '') ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
   );
@@ -541,6 +542,9 @@ export default function Step2_MatrixBuilder() {
   // =======================================================================
   const computedCounts = useMemo(() => {
     const ec = examConfig;
+    if (ec.isCauTrucKHTNVao10) {
+      return { soCauP1: 22, soYP2: 12, soCauP2: 3, soYP3: 6, tongYTuLuan: 0 };
+    }
     const tongDiem = ec.tongDiem || 10.0;
     const tiLe = ec.tiLeNhanThuc;
     const weights = [tiLe.biet, tiLe.hieu, tiLe.vanDung];
@@ -895,14 +899,16 @@ export default function Step2_MatrixBuilder() {
             <select
               className="bg-indigo-50 border-2 border-indigo-200 text-indigo-700 font-bold py-1.5 px-3 rounded-lg outline-none focus:border-indigo-400"
               onChange={(e) => setCauTrucDe(e.target.value)}
-              value={String(examConfig.tongDiemP1 || 3)}
+              value={examConfig.isCauTrucKHTNVao10 ? "5.5" : String(examConfig.tongDiemP1 || 3)}
               title="Chọn cấu trúc phân bổ điểm cho 100% TNKQ"
             >
               <option value="3">Cấu trúc 3-4-3 (Mặc định)</option>
               <option value="3.5">Cấu trúc 3.5-4-2.5</option>
               <option value="4">Cấu trúc 4-6-0 (Toán 100% TN)</option>
               <option value="4.5">Cấu trúc 4.5-4-1.5</option>
-              <option value="5.5">Cấu trúc 5.5-3-1.5</option>
+              <option value="5.5">
+                {isKHTN ? "🎯 KHTN Vào 10: Cấu trúc 5.5-3-1.5 (QĐ 1038 Hải Phòng - 100% TN)" : "Cấu trúc 5.5-3-1.5"}
+              </option>
             </select>
           ) : (
             // Dropdown cho Trắc nghiệm + Tự luận
@@ -915,25 +921,64 @@ export default function Step2_MatrixBuilder() {
               <option value="3">TNKQ: 3-2-2 → Tự luận: 3đ</option>
               <option value="3.5">TNKQ: 3.5-2-1.5 → Tự luận: 3đ</option>
               <option value="4.01">🔬 KHTN THCS: Cấu trúc 4-2-1-3 (TNKQ 4-2-1đ → Tự luận: 3đ - CV 4956)</option>
+              <option value="khtn-vao10">🎯 KHTN Vào 10: Cấu trúc 5.5-3-1.5 (100% TN - QĐ 1038 Hải Phòng)</option>
               <option value="4">Toán: 4-2-0 → Tự luận: 4đ (16 TN + 2 ĐS)</option>
             </select>
           )}
 
-          {/* Badge trang thai Cau truc KHTN 4-2-1-3 */}
+          {/* Badge trạng thái và Nút tiện ích cho Môn KHTN */}
           {isKHTN && (
             <div className="flex items-center gap-2">
-              {examConfig.isCauTruc4213 ? (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-100 text-teal-800 text-xs font-bold border border-teal-300 shadow-sm">
-                  ✅ Đang chọn: KHTN 4-2-1-3
-                </span>
+              {examConfig.isCauTrucKHTNVao10 ? (
+                <>
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-100 text-indigo-900 text-xs font-bold border border-indigo-300 shadow-sm">
+                    🎯 Đang chọn: KHTN Vào 10 (QĐ 1038 HP)
+                  </span>
+                  <button
+                    onClick={() => loadKhtnVao10SampleMatrix()}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow hover:bg-emerald-700 transition-all border border-emerald-500"
+                    title="Bấm để nạp sẵn 13 Chủ đề KHTN 9 chuẩn QĐ 1038 Hải Phòng (16 Biết, 12 Hiểu, 12 VD = 40 ý)"
+                  >
+                    📋 Nạp 13 Chủ đề KHTN 9 HP
+                  </button>
+                  <button
+                    onClick={() => setCauTruc4213()}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-300 transition-all border border-slate-300"
+                    title="Chuyển sang Cấu trúc KHTN 4-2-1-3 định kì THCS (có Tự luận 3đ)"
+                  >
+                    🔄 Đổi sang 4-2-1-3
+                  </button>
+                </>
+              ) : examConfig.isCauTruc4213 ? (
+                <>
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-teal-100 text-teal-800 text-xs font-bold border border-teal-300 shadow-sm">
+                    ✅ Đang chọn: KHTN 4-2-1-3
+                  </span>
+                  <button
+                    onClick={() => setCauTrucKHTNVao10(false)}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow hover:bg-indigo-700 transition-all border border-indigo-500"
+                    title="Chuyển sang Cấu trúc Tuyển sinh Vào 10 KHTN (QĐ 1038 Hải Phòng - 100% Trắc nghiệm)"
+                  >
+                    🎯 Chọn KHTN Vào 10 (QĐ 1038)
+                  </button>
+                </>
               ) : (
-                <button
-                  onClick={() => setCauTrucDe('4.01')}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500 text-white text-xs font-bold shadow hover:bg-amber-600 transition-all border border-amber-400"
-                  title="Bấm để kích hoạt Cấu trúc KHTN 4-2-1-3 chuẩn CV 4956"
-                >
-                  ⚡ Chọn Cấu trúc KHTN 4-2-1-3
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCauTruc4213()}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 text-white text-xs font-bold shadow hover:bg-teal-700 transition-all"
+                    title="Bấm để kích hoạt Cấu trúc KHTN 4-2-1-3 chuẩn CV 4956"
+                  >
+                    📘 Chọn KHTN 4-2-1-3
+                  </button>
+                  <button
+                    onClick={() => setCauTrucKHTNVao10(false)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow hover:bg-indigo-700 transition-all"
+                    title="Bấm để kích hoạt Cấu trúc Tuyển sinh Vào 10 KHTN (QĐ 1038 Hải Phòng)"
+                  >
+                    🎯 Chọn KHTN Vào 10 (QĐ 1038)
+                  </button>
+                </div>
               )}
             </div>
           )}

@@ -8,6 +8,7 @@ import { physicsIndicators } from '../components/data/physicsIndicators';
 import { geographyIndicators } from '../components/data/geographyIndicators';
 import { khtnAllIndicators } from '../components/data/khtnIndicators';
 import { suggestKhtnCode, getRowKhtnCode } from '../data/khtnCompetencyData';
+import { generateKhtnVao10Matrix, KHTN_VAO10_CONFIG, KHTN_VAO10_SAMPLE_TOPICS } from '../data/khtnVao10Data';
 
 // =============================================================================
 // HELPER: Ph├ít hiß╗çn m├┤n hß╗ìc hiß╗çn tß║íi
@@ -196,8 +197,11 @@ export const useExamStore = create(
       },
       updateExamHeader: (field, value) => set((state) => {
         const nextHeader = { ...state.examHeader, [field]: value };
-        // Tự động kích hoạt cấu trúc KHTN 4-2-1-3 nếu người dùng nhập môn KHTN
+        // Tự động kích hoạt cấu trúc KHTN 4-2-1-3 nếu người dùng nhập môn KHTN (và chưa chọn cấu trúc Vào 10)
         if (field === 'monHoc' && isKHTNSubject(value)) {
+          if (state.examConfig?.isCauTrucKHTNVao10) {
+            return { examHeader: nextHeader };
+          }
           return {
             examHeader: nextHeader,
             config: {
@@ -215,6 +219,7 @@ export const useExamStore = create(
               diemMoiYP3: 0.25,
               diemMoiYTuLuan: 1.0,
               isCauTruc4213: true,
+              isCauTrucKHTNVao10: false,
               tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
             }
           };
@@ -302,11 +307,13 @@ export const useExamStore = create(
       // Cß║ñU H├îNH ─ÉIß╗éM LINH HOß║áT CHO 3 PHß║ªN TNKQ
       // =====================================================================
       examConfig: {
-        tongDiem: 10.0,                        // Tß╗òng ─æiß╗âm to├án b├ái
-        tongDiemP1: 3.0, diemMoiCauP1: 0.25,  // Phß║ºn I: TN nhiß╗üu lß╗▒a chß╗ìn
-        tongDiemP2: 2.0, diemMoiYP2: 0.25,    // Phß║ºn II: ─É├║ng/Sai (─æiß╗âm 1 ├╜)
-        tongDiemP3: 2.0, diemMoiYP3: 0.25,    // Phß║ºn III: Trß║ú lß╗¥i ngß║»n (─æiß╗âm 1 ├╜)
-        diemMoiYTuLuan: 0.5,                  // ─Éiß╗âm mß╗ùi ├╜ Tß╗▒ luß║¡n
+        tongDiem: 10.0,                        // Tổng điểm toàn bài
+        tongDiemP1: 3.0, diemMoiCauP1: 0.25,  // Phần I: TN nhiều lựa chọn
+        tongDiemP2: 2.0, diemMoiYP2: 0.25,    // Phần II: Đúng/Sai (điểm 1 ý)
+        tongDiemP3: 2.0, diemMoiYP3: 0.25,    // Phần III: Trả lời ngắn (điểm 1 ý)
+        diemMoiYTuLuan: 0.5,                  // Điểm mỗi ý Tự luận
+        isCauTruc4213: false,
+        isCauTrucKHTNVao10: false,
         tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 }
       },
 
@@ -359,36 +366,91 @@ export const useExamStore = create(
         };
       }),
 
-      // Chuyß╗ân ─æß╗òi cß║Ñu tr├║c ─æß╗ü (khi thay ─æß╗òi dropdown P1)
+      // Chuyển đổi cấu trúc đề (khi thay đổi dropdown P1)
       setCauTrucDe: (tongDiemP1) => set((state) => {
+        const isKHTN = isKHTNSubject(state.examHeader?.monHoc);
+        const isVao10KHTN = String(tongDiemP1) === 'khtn-vao10' || (String(tongDiemP1) === '5.5' && isKHTN);
         const isCauTruc4213 = String(tongDiemP1) === '4.01' || String(tongDiemP1) === 'khtn-thcs';
-        const p1 = isCauTruc4213 ? 4.0 : (Number(tongDiemP1) || 3.0);
-        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213 };
+
+        // 1. Cấu trúc Tuyển sinh Vào 10 KHTN (QĐ 1038 Hải Phòng - 100% TNKQ)
+        if (isVao10KHTN) {
+          return {
+            config: {
+              ...state.config,
+              hasTuLuan: false,
+              hasTraLoiNgan: true,
+            },
+            examHeader: {
+              ...state.examHeader,
+              thoiGian: '60 phút',
+              kyThi: state.examHeader.kyThi && /tuyển sinh|vào 10/i.test(state.examHeader.kyThi)
+                ? state.examHeader.kyThi
+                : 'KỲ THI TUYỂN SINH VÀO LỚP 10 THPT'
+            },
+            examConfig: {
+              ...state.examConfig,
+              tongDiem: 10.0,
+              tongDiemP1: 5.5,
+              diemMoiCauP1: 0.25,
+              tongDiemP2: 3.0,
+              diemMoiYP2: 0.25,
+              tongDiemP3: 1.5,
+              diemMoiYP3: 0.25,
+              isCauTruc4213: false,
+              isCauTrucKHTNVao10: true,
+              tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
+            }
+          };
+        }
+
+        // 2. Cấu trúc KHTN 4-2-1-3 định kì THCS (CV 4956 - Có Tự luận)
+        if (isCauTruc4213) {
+          return {
+            config: {
+              ...state.config,
+              hasTuLuan: true,
+              hasTraLoiNgan: true,
+            },
+            examConfig: {
+              ...state.examConfig,
+              tongDiem: 10.0,
+              tongDiemP1: 4.0,
+              diemMoiCauP1: 0.25,
+              tongDiemP2: 2.0,
+              diemMoiYP2: 0.25,
+              tongDiemP3: 1.0,
+              diemMoiYP3: 0.25,
+              diemMoiYTuLuan: 1.0,
+              isCauTruc4213: true,
+              isCauTrucKHTNVao10: false,
+              tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
+            }
+          };
+        }
+
+        // 3. Các cấu trúc khác (Toán, 100% TN khác...)
+        const p1 = Number(tongDiemP1) || 3.0;
+        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false };
         const hasTLN = state.config.hasTraLoiNgan !== false;
         const hasTL = state.config.hasTuLuan;
 
         if (hasTL) {
-          // === CHß║╛ ─Éß╗ÿ C├ô Tß╗░ LUß║¼N (TL = 3─æ) ===
-          const tnTotal = 10.0 - 3.0; // TNKQ = 7─æ
+          // === CHẾ ĐỘ CÓ TỰ LUẬN (TL = 3đ) ===
+          const tnTotal = 10.0 - 3.0; // TNKQ = 7đ
           if (hasTLN) {
-            // C├│ TLN: P1 + P2 + P3 = 7─æ
-            if (isCauTruc4213) {
-              newExamConfig.tongDiemP2 = 2.0;
-              newExamConfig.tongDiemP3 = 1.0;
-              newExamConfig.diemMoiYTuLuan = 1.0;
-              newExamConfig.tiLeNhanThuc = { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 };
-            } else if (p1 === 3.5) {
+            // Có TLN: P1 + P2 + P3 = 7đ
+            if (p1 === 3.5) {
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 1.5;
             } else {
-              // Mß║╖c ─æß╗ïnh: P1=3, P2=2, P3=2
+              // Mặc định: P1=3, P2=2, P3=2
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 2.0;
             }
           } else {
-            // Kh├┤ng TLN: P1 + P2 = 7─æ, P3=0
+            // Không TLN: P1 + P2 = 7đ, P3=0
             if (p1 === 4.0 || p1 === 4) {
-              // Cß║Ñu tr├║c To├ín 4-2-0 (P1=4─æ, P2=2─æ, P3=0, TL=4─æ)
+              // Cấu trúc Toán 4-2-0 (P1=4đ, P2=2đ, P3=0, TL=4đ)
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 0;
             } else if (p1 === 3.5) {
@@ -400,9 +462,9 @@ export const useExamStore = create(
             }
           }
         } else {
-          // === CHß║╛ ─Éß╗ÿ 100% TRß║«C NGHIß╗åM (TN = 10─æ) ===
+          // === CHẾ ĐỘ 100% TRẮC NGHIỆM (TN = 10đ) ===
           if (hasTLN) {
-            // C├│ TLN: P1 + P2 + P3 = 10─æ
+            // Có TLN: P1 + P2 + P3 = 10đ
             if (p1 === 3 || p1 === 3.0) {
               newExamConfig.tongDiemP2 = 4.0;
               newExamConfig.tongDiemP3 = 3.0;
@@ -410,7 +472,7 @@ export const useExamStore = create(
               newExamConfig.tongDiemP2 = 4.0;
               newExamConfig.tongDiemP3 = 2.5;
             } else if (p1 === 4.0 || p1 === 4) {
-              // Cß║Ñu tr├║c To├ín 4-2-0 ΓåÆ Tß╗▒ luß║¡n 4─æ
+              // Cấu trúc Toán 4-2-0 → Tự luận 4đ
               newExamConfig.tongDiemP2 = 2.0;
               newExamConfig.tongDiemP3 = 0;
             } else if (p1 === 4.5) {
@@ -425,7 +487,7 @@ export const useExamStore = create(
               newExamConfig.tongDiemP3 = Math.round(remaining * 0.4 * 100) / 100;
             }
           } else {
-            // Kh├┤ng TLN: P1 + P2 = 10─æ, P3=0
+            // Không TLN: P1 + P2 = 10đ, P3=0
             if (p1 === 3 || p1 === 3.0) {
               newExamConfig.tongDiemP2 = 7.0;
               newExamConfig.tongDiemP3 = 0;
@@ -449,6 +511,98 @@ export const useExamStore = create(
         }
         return { examConfig: newExamConfig };
       }),
+
+      // Action chuyển nhanh sang Cấu trúc Tuyển sinh Vào 10 KHTN (QĐ 1038 Hải Phòng)
+      setCauTrucKHTNVao10: (loadSample = false) => set((state) => {
+        const nextState = {
+          config: {
+            ...state.config,
+            hasTuLuan: false,
+            hasTraLoiNgan: true,
+          },
+          examHeader: {
+            ...state.examHeader,
+            thoiGian: '60 phút',
+            kyThi: state.examHeader.kyThi && /tuyển sinh|vào 10/i.test(state.examHeader.kyThi)
+              ? state.examHeader.kyThi
+              : 'KỲ THI TUYỂN SINH VÀO LỚP 10 THPT',
+            monHoc: state.examHeader.monHoc && isKHTNSubject(state.examHeader.monHoc)
+              ? state.examHeader.monHoc
+              : 'Khoa học tự nhiên 9'
+          },
+          examConfig: {
+            ...state.examConfig,
+            tongDiem: 10.0,
+            tongDiemP1: 5.5,
+            diemMoiCauP1: 0.25,
+            tongDiemP2: 3.0,
+            diemMoiYP2: 0.25,
+            tongDiemP3: 1.5,
+            diemMoiYP3: 0.25,
+            isCauTruc4213: false,
+            isCauTrucKHTNVao10: true,
+            tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
+          }
+        };
+        if (loadSample) {
+          nextState.matrix = generateKhtnVao10Matrix();
+        }
+        return nextState;
+      }),
+
+      // Action nạp nhanh toàn bộ 13 chủ đề mẫu KHTN 9 chuẩn QĐ 1038 Hải Phòng
+      loadKhtnVao10SampleMatrix: () => set((state) => ({
+        matrix: generateKhtnVao10Matrix(),
+        config: {
+          ...state.config,
+          hasTuLuan: false,
+          hasTraLoiNgan: true,
+        },
+        examHeader: {
+          ...state.examHeader,
+          thoiGian: '60 phút',
+          kyThi: 'KỲ THI TUYỂN SINH VÀO LỚP 10 THPT',
+          monHoc: state.examHeader.monHoc && isKHTNSubject(state.examHeader.monHoc)
+            ? state.examHeader.monHoc
+            : 'Khoa học tự nhiên 9'
+        },
+        examConfig: {
+          ...state.examConfig,
+          tongDiem: 10.0,
+          tongDiemP1: 5.5,
+          diemMoiCauP1: 0.25,
+          tongDiemP2: 3.0,
+          diemMoiYP2: 0.25,
+          tongDiemP3: 1.5,
+          diemMoiYP3: 0.25,
+          isCauTruc4213: false,
+          isCauTrucKHTNVao10: true,
+          tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
+        }
+      })),
+
+      // Action chuyển nhanh sang Cấu trúc KHTN 4-2-1-3 định kì THCS (CV 4956)
+      setCauTruc4213: () => set((state) => ({
+        config: {
+          ...state.config,
+          hasTuLuan: true,
+          hasTraLoiNgan: true,
+        },
+        examConfig: {
+          ...state.examConfig,
+          tongDiem: 10.0,
+          tongDiemP1: 4.0,
+          diemMoiCauP1: 0.25,
+          tongDiemP2: 2.0,
+          diemMoiYP2: 0.25,
+          tongDiemP3: 1.0,
+          diemMoiYP3: 0.25,
+          diemMoiYTuLuan: 1.0,
+          isCauTruc4213: true,
+          isCauTrucKHTNVao10: false,
+          tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
+        }
+      })),
 
       // Toggle Trß║ú lß╗¥i ngß║»n - xß╗¡ l├╜ trong 1 lß║ºn set ─æß╗â tr├ính race condition
       toggleTraLoiNgan: (val) => set((state) => {
@@ -961,6 +1115,165 @@ export const useExamStore = create(
         const isKHTN = isKHTNSubject(state.examHeader?.monHoc);
 
         // =====================================================================
+        // CHUYÊN BIỆT CHO CẤU TRÚC THI TUYỂN SINH VÀO 10 KHTN (QĐ 1038 HẢI PHÒNG)
+        // 100% Trắc nghiệm, 60 phút:
+        // - Phần I (22 câu TN): 16 Biết (4.0đ), 6 Hiểu (1.5đ) = 5.5đ
+        // - Phần II (3 câu Đ/S = 12 ý): 6 Hiểu (1.5đ), 6 Vận dụng (1.5đ) = 3.0đ
+        //   (Quy định: Mỗi câu 4 ý gồm 2 ý Thông hiểu, 2 ý Vận dụng)
+        // - Phần III (6 câu TLN): 6 câu Vận dụng (1.5đ) (tối đa 4 chữ số)
+        // - Phần IV: Tự luận = 0 (100% Trắc nghiệm)
+        // => TỔNG: Biết 4.0đ (40%), Hiểu 3.0đ (30%), Vận dụng 3.0đ (30%) = 10.0đ
+        // =====================================================================
+        if (state.examConfig.isCauTrucKHTNVao10) {
+          const allDvs = [];
+          topics.forEach((t, ti) => {
+            (t.donViKienThuc || []).forEach((dv, di) => {
+              allDvs.push({
+                ti,
+                di,
+                topic: t,
+                dv,
+                soTiet: Math.max(1, Number(dv.soTiet) || 1)
+              });
+            });
+          });
+
+          if (allDvs.length > 0) {
+            const tongSoTiet = allDvs.reduce((s, d) => s + d.soTiet, 0);
+            const flat = allDvs.map(d => ({
+              ...d,
+              target: (d.soTiet / tongSoTiet) * 10.0,
+              current: 0,
+              hasDungSai: false,
+              hasTraLoiNgan: false
+            }));
+
+            // Reset dữ liệu các câu
+            allDvs.forEach(d => {
+              d.dv.nhieuLuaChon = { biet: 0, hieu: 0, vanDung: 0 };
+              d.dv.dungSai = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
+              d.dv.dungSaiSubItems = [];
+              d.dv.traLoiNgan = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
+              d.dv.tuLuan = { biet: 0, hieu: 0, vanDung: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, subItems: [] };
+              d.dv.indicatorMap = {};
+            });
+
+            // 1. Phân bổ 3 câu Đúng/Sai (12 ý = 3.0đ). Mỗi câu 4 ý: 2 Hiểu (0.5đ) + 2 Vận dụng (0.5đ)
+            const topicScores = topics.map((t, ti) => ({
+              ti,
+              soTiet: flat.filter(f => f.ti === ti).reduce((s, f) => s + f.soTiet, 0)
+            })).sort((a, b) => b.soTiet - a.soTiet);
+
+            const chosenTfTopics = topicScores.slice(0, 3).map(ts => ts.ti);
+            chosenTfTopics.forEach((tIndex, idx) => {
+              const qNo = idx + 1;
+              const topicDvs = flat.filter(f => f.ti === tIndex);
+              const chosen = topicDvs.slice().sort((a, b) => {
+                if (b.soTiet !== a.soTiet) return b.soTiet - a.soTiet;
+                return (b.target - b.current) - (a.target - a.current);
+              })[0] || topicDvs[0];
+
+              if (chosen) {
+                chosen.dv.dungSai.hieu += 2;
+                chosen.dv.dungSai.vanDung += 2;
+                chosen.current += 1.0;
+                chosen.hasDungSai = true;
+                if (!chosen.dv.dungSaiSubItems) chosen.dv.dungSaiSubItems = [];
+                chosen.dv.dungSaiSubItems.push(
+                  { qNo, letter: 'a', lvl: 'hieu', label: `II.${qNo}a`, code: 'NT2' },
+                  { qNo, letter: 'b', lvl: 'hieu', label: `II.${qNo}b`, code: 'NT3' },
+                  { qNo, letter: 'c', lvl: 'vanDung', label: `II.${qNo}c`, code: 'VD1' },
+                  { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD2' }
+                );
+              }
+            });
+
+            // 2. Phân bổ 6 câu Trả lời ngắn (6 câu Vận dụng = 1.5đ)
+            for (let i = 0; i < 6; i++) {
+              const notTf = flat.filter(f => !f.hasDungSai && !f.hasTraLoiNgan);
+              const pool1 = notTf.length > 0 ? notTf : flat.filter(f => !f.hasDungSai);
+              const pool = pool1.length > 0 ? pool1 : flat;
+              const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+              if (chosen) {
+                chosen.dv.traLoiNgan.vanDung += 1;
+                chosen.current += 0.25;
+                chosen.hasTraLoiNgan = true;
+              }
+            }
+
+            // 3. Phân bổ Phần I: 22 câu TN nhiều lựa chọn (16 Biết + 6 Hiểu = 5.5đ)
+            // 3.1. 16 câu Biết: Rải đều theo số tiết
+            const weights = flat.map(f => f.soTiet);
+            const bietCounts = distributeLargestRemainder(16, weights);
+            flat.forEach((f, idx) => {
+              const cnt = bietCounts[idx] || 0;
+              f.dv.nhieuLuaChon.biet += cnt;
+              f.current += cnt * 0.25;
+            });
+
+            // 3.2. 6 câu Hiểu: Cấp cho các bài có khoảng cách (target - current) lớn nhất
+            for (let i = 0; i < 6; i++) {
+              const chosen = flat.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+              if (chosen) {
+                chosen.dv.nhieuLuaChon.hieu += 1;
+                chosen.current += 0.25;
+              }
+            }
+
+            // 4. Gán nhãn câu hỏi (Labels) và ánh xạ mã năng lực KHTN chuẩn
+            let p1Counter = 1;
+            let p3Counter = 1;
+
+            allDvs.forEach(d => {
+              const dv = d.dv;
+              dv.indicatorMap = dv.indicatorMap || {};
+
+              const bietCode = suggestKhtnCode('biet', null, dv.noiDung, dv.yeuCauCanDat) || 'NT1';
+              const hieuCode = suggestKhtnCode('hieu', null, dv.noiDung, dv.yeuCauCanDat) || 'NT3';
+              const vdCode = suggestKhtnCode('vanDung', null, dv.noiDung, dv.yeuCauCanDat) || 'VD1';
+
+              // Phần I: I.1 .. I.22
+              for (let i = 0; i < (dv.nhieuLuaChon?.biet || 0); i++) {
+                dv.indicatorMap[`nhieuLuaChon_biet_${i}`] = { code: bietCode, label: `I.${p1Counter++}` };
+              }
+              for (let i = 0; i < (dv.nhieuLuaChon?.hieu || 0); i++) {
+                dv.indicatorMap[`nhieuLuaChon_hieu_${i}`] = { code: hieuCode, label: `I.${p1Counter++}` };
+              }
+
+              // Phần II: II.1a .. II.3d
+              if (dv.dungSaiSubItems && dv.dungSaiSubItems.length > 0) {
+                let dsHieuIdx = 0, dsVdIdx = 0;
+                dv.dungSaiSubItems.forEach(sub => {
+                  if (sub.lvl === 'hieu') {
+                    dv.indicatorMap[`dungSai_hieu_${dsHieuIdx++}`] = { code: sub.code || hieuCode, label: sub.label || '' };
+                  } else if (sub.lvl === 'vanDung') {
+                    dv.indicatorMap[`dungSai_vanDung_${dsVdIdx++}`] = { code: sub.code || vdCode, label: sub.label || '' };
+                  }
+                });
+              } else {
+                let dsHieuIdx = 0, dsVdIdx = 0;
+                for (let i = 0; i < (dv.dungSai?.hieu || 0); i++) {
+                  dv.indicatorMap[`dungSai_hieu_${dsHieuIdx++}`] = { code: hieuCode, label: `II` };
+                }
+                for (let i = 0; i < (dv.dungSai?.vanDung || 0); i++) {
+                  dv.indicatorMap[`dungSai_vanDung_${dsVdIdx++}`] = { code: vdCode, label: `II` };
+                }
+              }
+
+              // Phần III: III.1 .. III.6
+              for (let i = 0; i < (dv.traLoiNgan?.vanDung || 0); i++) {
+                dv.indicatorMap[`traLoiNgan_vanDung_${i}`] = { code: vdCode, label: `III.${p3Counter++}` };
+              }
+            });
+
+            return {
+              matrix: topics,
+              tuLuanConfig: { enabled: false, questions: [] }
+            };
+          }
+        }
+
+        // =====================================================================
         // CHUYÊN BIỆT CHO MÔN KHTN THCS / CẤU TRÚC 4-2-1-3 THEO ĐÚNG CV 4956/SGDĐT
         // Bảng 2 Phụ lục II:
         // - Phần I (16 câu): 12 Biết (3.0đ), 4 Hiểu (1.0đ), 0 VD, 0 VDC
@@ -969,7 +1282,7 @@ export const useExamStore = create(
         // - Phần IV (3 câu TL): 0 Biết, 1 Hiểu (1.0đ), 1 VD (1.0đ), 1 VDC (1.0đ)
         // => TỔNG: Biết 4.0đ (40%), Hiểu 3.0đ (30%), Vận dụng 2.0đ (20%), VD Cao 1.0đ (10%) = 10.0đ
         // =====================================================================
-        if (state.examConfig.isCauTruc4213 || isKHTN) {
+        if (state.examConfig.isCauTruc4213 || (isKHTN && state.config.hasTuLuan)) {
           const allDvs = [];
           topics.forEach((t, ti) => {
             (t.donViKienThuc || []).forEach((dv, di) => {
