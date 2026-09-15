@@ -730,9 +730,28 @@ export default function Step2_MatrixBuilder() {
                         <option value="dau">Nửa đầu</option>
                       </select>
                     )}
-                    {dvCount > 1 && (
-                      <button onClick={() => removeDonVi(topic.id, dv.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity p-0.5" title="Xóa ĐVKT">
-                        <X size={12} />
+                    {dvCount > 1 ? (
+                      <button
+                        type="button"
+                        onClick={() => removeDonVi(topic.id, dv.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors ml-auto flex items-center gap-0.5 text-[10px] font-bold"
+                        title="Xóa đơn vị kiến thức này khỏi chủ đề"
+                      >
+                        <Trash2 size={12} />
+                        <span>Xóa</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Chủ đề này hiện chỉ có 1 bài học. Bạn có muốn xóa toàn bộ "${topic.tenChuDe || 'Chủ đề'}" không?`)) {
+                            removeTopic(topic.id);
+                          }
+                        }}
+                        className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition-colors ml-auto flex items-center gap-0.5 text-[10px]"
+                        title="Xóa chủ đề này"
+                      >
+                        <Trash2 size={12} />
                       </button>
                     )}
                   </div>
@@ -791,8 +810,13 @@ export default function Step2_MatrixBuilder() {
                 </div>
               </div>
               {isLast && (
-                <button onClick={() => addDonVi(topic.id)} className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 font-semibold transition-colors w-full justify-center py-0.5 border border-dashed border-blue-200 rounded hover:border-blue-400 mt-1" title="Thêm ĐVKT">
-                  <PlusCircle size={11} /> Thêm ĐVKT
+                <button
+                  type="button"
+                  onClick={() => addDonVi(topic.id)}
+                  className="flex items-center gap-1.5 text-[11px] text-blue-600 hover:text-blue-800 bg-blue-50/70 hover:bg-blue-100 font-bold transition-all w-full justify-center py-1 border border-dashed border-blue-300 rounded-md hover:border-blue-500 mt-1.5 shadow-xs"
+                  title="Thêm một ĐVKT mới vào chủ đề này"
+                >
+                  <PlusCircle size={13} /> ➕ Thêm ĐVKT vào chủ đề này
                 </button>
               )}
             </td>
@@ -840,23 +864,43 @@ export default function Step2_MatrixBuilder() {
               </div>
             </td>
 
-            {/* CỘT XÓA — rowSpan */}
+            {/* CỘT THAO TÁC / XÓA — rowSpan */}
             {isFirst && (
               <td rowSpan={dvCount} className="border border-slate-300 p-2 text-center align-top">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col items-stretch gap-1.5 min-w-[105px]">
                   <button
+                    type="button"
+                    onClick={() => addDonVi(topic.id)}
+                    className="flex items-center justify-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 rounded font-bold text-[10px] transition-all border border-emerald-300 shadow-xs"
+                    title="Thêm một dòng ĐVKT mới vào đúng chủ đề này"
+                  >
+                    <PlusCircle size={12} />
+                    <span>➕ Thêm ĐVKT</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => {
                       setImportTargetTopicId(topic.id);
                       setShowImportModal(true);
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-bold text-[10px] hover:bg-blue-100 transition-all border border-blue-200"
-                    title="Dán danh sách bài học vào chủ đề này"
+                    className="flex items-center justify-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 rounded font-bold text-[10px] transition-all border border-blue-200"
+                    title="Dán nhanh danh sách bài học từ Excel/Word vào đúng chủ đề này"
                   >
                     <FileSpreadsheet size={12} />
-                    ⚡ Dán nhanh bài học
+                    <span>⚡ Dán bài học</span>
                   </button>
-                  <button onClick={() => removeTopic(topic.id)} className="text-red-400 hover:text-red-600 transition-colors p-1" title="Xóa Chủ đề">
-                    <Trash2 size={18} />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ chủ đề "${topic.tenChuDe || 'này'}" không?`)) {
+                        removeTopic(topic.id);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-1 px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded font-bold text-[10px] transition-all border border-red-200"
+                    title="Xóa toàn bộ chủ đề này"
+                  >
+                    <Trash2 size={12} />
+                    <span>Xóa CĐ</span>
                   </button>
                 </div>
               </td>
@@ -1645,70 +1689,90 @@ export default function Step2_MatrixBuilder() {
         </div>
       )}
       {/* MODAL NHẬP NHANH ĐVKT TỪ EXCEL/WORD */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-w-3xl flex flex-col overflow-hidden max-h-[90vh]">
-            <div className="bg-blue-600 p-4 flex items-center justify-between text-white">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                ⚡ Nhập nhanh Nội dung & Số tiết từ Excel/Word
-              </h2>
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="p-1 hover:bg-white/20 rounded-full transition-colors"
-                title="Đóng"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-6 flex flex-col gap-4 flex-1 overflow-y-auto">
-              <p className="text-sm text-gray-600 italic">
-                💡 Hướng dẫn: Copy 2 cột (Tên Bài học và Số tiết) từ bảng Excel/Word và dán vào ô bên dưới.
-              </p>
-
-              <textarea
-                value={importTextFast}
-                onChange={(e) => setImportTextFast(e.target.value)}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const pastedData = e.clipboardData.getData('text/plain');
-                  setImportTextFast(prev => prev + pastedData);
-                }}
-                rows={10}
-                className="w-full border-2 border-slate-200 rounded-xl p-4 outline-none focus:border-blue-500 font-mono text-sm leading-relaxed resize-none bg-slate-50"
-                placeholder={`Ví dụ dán vào:\nBài 18. Nam châm \t 1\nBài 19. Từ trường \t 4`}
-              />
-
-              <div className="flex justify-end items-center gap-4 mt-2">
+      {showImportModal && (() => {
+        const targetTopic = importTargetTopicId ? matrix.find(t => t.id === importTargetTopicId) : null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-11/12 max-w-3xl flex flex-col overflow-hidden max-h-[90vh]">
+              <div className="bg-blue-600 p-4 flex items-center justify-between text-white">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  ⚡ {targetTopic ? `Dán nhanh bài học vào: "${targetTopic.tenChuDe || 'Chủ đề đã chọn'}"` : 'Nhập nhanh Nội dung & Số tiết từ Excel/Word'}
+                </h2>
                 <button
                   onClick={() => {
                     setShowImportModal(false);
                     setImportTextFast('');
+                    setImportTargetTopicId(null);
                   }}
-                  className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-100 transition-colors"
+                  className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                  title="Đóng"
                 >
-                  Hủy
+                  <X size={24} />
                 </button>
-                <button
-                  onClick={() => {
-                    if (!importTextFast.trim()) {
-                      alert("Vui lòng nhập dữ liệu!");
-                      return;
-                    }
-                    smartImportData(importTextFast);
-                    setShowImportModal(false);
-                    setImportTextFast('');
-                    alert("Đã nhập dữ liệu thành công!");
+              </div>
+
+              <div className="p-6 flex flex-col gap-4 flex-1 overflow-y-auto">
+                {targetTopic ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900 font-medium">
+                    🎯 Đang dán bài học vào: <span className="font-bold text-blue-800">{targetTopic.tenChuDe || 'Chủ đề'}</span>
+                    <p className="text-xs text-blue-700 mt-1">Dữ liệu bài học bạn dán bên dưới sẽ được thêm trực tiếp vào đúng chủ đề này (không bị lẫn sang chủ đề khác).</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">
+                    💡 Hướng dẫn: Copy 2 cột (Tên Bài học và Số tiết) từ bảng Excel/Word và dán vào ô bên dưới.
+                  </p>
+                )}
+
+                <textarea
+                  value={importTextFast}
+                  onChange={(e) => setImportTextFast(e.target.value)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pastedData = e.clipboardData.getData('text/plain');
+                    setImportTextFast(prev => prev + pastedData);
                   }}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:shadow-lg hover:bg-blue-700 transition-all"
-                >
-                  Xác nhận Nhập
-                </button>
+                  rows={10}
+                  className="w-full border-2 border-slate-200 rounded-xl p-4 outline-none focus:border-blue-500 font-mono text-sm leading-relaxed resize-none bg-slate-50"
+                  placeholder={`Ví dụ dán vào:\nBài 18. Nam châm \t 1\nBài 19. Từ trường \t 4`}
+                />
+
+                <div className="flex justify-end items-center gap-4 mt-2">
+                  <button
+                    onClick={() => {
+                      setShowImportModal(false);
+                      setImportTextFast('');
+                      setImportTargetTopicId(null);
+                    }}
+                    className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-100 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!importTextFast.trim()) {
+                        alert("Vui lòng nhập dữ liệu!");
+                        return;
+                      }
+                      if (importTargetTopicId) {
+                        importDonVisToTopic(importTargetTopicId, importTextFast);
+                      } else {
+                        smartImportData(importTextFast);
+                      }
+                      setShowImportModal(false);
+                      setImportTextFast('');
+                      setImportTargetTopicId(null);
+                      alert("Đã nhập dữ liệu thành công!");
+                    }}
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:shadow-lg hover:bg-blue-700 transition-all"
+                  >
+                    Xác nhận Nhập
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ============ MODAL CẤU HÌNH TỰ LUẬN ============ */}
       {showTuLuanModal && (

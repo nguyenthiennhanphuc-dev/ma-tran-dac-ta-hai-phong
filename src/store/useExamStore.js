@@ -2487,7 +2487,7 @@ export const useExamStore = create(
         }
       }),
 
-      // H├ám mß╗¢i: Chß╗ë nhß║¡p ─ÉVKT v├áo mß╗Öt Chß╗º ─æß╗ü nhß║Ñt ─æß╗ïnh
+      // Hàm mới: Chỉ nhập ĐVKT vào một Chủ đề nhất định
       importDonVisToTopic: (topicId, rawText) => set((state) => {
         const text = rawText.trim();
         const rows = text.split('\n').map(r => r.trim()).filter(r => r);
@@ -2497,14 +2497,17 @@ export const useExamStore = create(
             if (topic.id !== topicId) return topic;
             
             const newDvs = [...topic.donViKienThuc];
-            // Nß║┐u ─ÉVKT duy nhß║Ñt ─æang trß╗æng, x├│a n├│ ─æi ─æß╗â thay bß║▒ng list mß╗¢i
-            if (newDvs.length === 1 && !newDvs[0].noiDung) {
+            // Nếu ĐVKT duy nhất đang trống, xóa nó đi để thay bằng list mới
+            if (newDvs.length === 1 && !newDvs[0].noiDung?.trim()) {
               newDvs.pop();
             }
 
             rows.forEach(row => {
               const cols = row.split(/\t|\||;/).map(c => c.trim());
               let name = cols[0], count = 1, yccd = "";
+              if (!name) return;
+              // Bỏ qua dòng tiêu đề nếu người dùng copy cả header
+              if (/^(tên bài|nội dung|đơn vị kiến thức|bài học|stt)$/i.test(name)) return;
               if (cols.length >= 2) count = Number(cols[1]) || 1;
               if (cols.length >= 3) yccd = cols[2];
               
@@ -2516,7 +2519,7 @@ export const useExamStore = create(
               });
             });
 
-            return { ...topic, donViKienThuc: newDvs };
+            return { ...topic, donViKienThuc: newDvs.length > 0 ? newDvs : [createDefaultDonVi()] };
           })
         };
       }),

@@ -174,8 +174,8 @@ export const generateKhtnVao10Matrix = () => {
   let p3Counter = 1;
 
   return KHTN_VAO10_SAMPLE_TOPICS.map((topic, index) => {
-    const topicId = 'khtn-v10-t-' + (index + 1) + '-' + Date.now();
-    const dvId = 'khtn-v10-dv-' + (index + 1) + '-' + Date.now();
+    const topicId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('khtn-v10-t-' + (index + 1) + '-' + Math.random().toString(36).substring(2, 9));
+    const dvId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ('khtn-v10-dv-' + (index + 1) + '-' + Math.random().toString(36).substring(2, 9));
     const indicatorMap = {};
     const dungSaiSubItems = [];
 
