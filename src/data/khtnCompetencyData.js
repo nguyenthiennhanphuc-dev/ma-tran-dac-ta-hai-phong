@@ -2,7 +2,7 @@
 // Module dữ liệu chuẩn: Chỉ báo Năng lực Khoa học Tự nhiên THCS
 // Căn cứ: CTGDPT 2018 + Văn bản Sở GD&ĐT (HÌNH THỨC RA ĐỀ NĂM ĐỔI MỚI CÓ NL)
 // ============================================================================
-import { parseYccdByLevel } from '../utils/specTableHelper';
+import { parseYccdByLevel } from '../utils/specTableHelper.js';
 
 // ============================================================================
 // I. BỘ MÃ CHỈ BÁO CHUẨN — 3 NHÓM THÀNH PHẦN NĂNG LỰC

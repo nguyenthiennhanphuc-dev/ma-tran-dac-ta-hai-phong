@@ -81,8 +81,8 @@ export const KHTN_VAO10_SAMPLE_TOPICS = [
     noiDung: '- Tính chất chung của kim loại.\n- Dãy hoạt động hoá học.\n- Tách kim loại và việc sử dụng hợp kim.',
     yeuCauCanDat: 'Nhận biết [NT1]: Nêu được tính chất vật lí và hoá học chung của kim loại. Nhận biết dãy hoạt động hoá học của kim loại.\nThông hiểu [NT3]: So sánh mức độ hoạt động hoá học của các kim loại dựa vào dãy hoạt động.\nVận dụng [VD1]: Vận dụng dãy hoạt động hoá học để dự đoán phản ứng và tính toán lượng chất.',
     nhieuLuaChon: { biet: 1, hieu: 0, vanDung: 0 },
-    dungSai: { biet: 0, hieu: 1, vanDung: 1, vanDungCao: 0 },
-    traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 }
+    dungSai: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+    traLoiNgan: { biet: 0, hieu: 0, vanDung: 1, vanDungCao: 0 }
   },
   {
     tenChuDe: 'Sự khác nhau cơ bản giữa phi kim và kim loại',
@@ -111,8 +111,8 @@ export const KHTN_VAO10_SAMPLE_TOPICS = [
     noiDung: '- Ethylic alcohol (ancol etylic).\n- Acetic acid (axit axetic).',
     yeuCauCanDat: 'Nhận biết [NT1]: Nêu được công thức phân tử, công thức cấu tạo và tính chất vật lí của ethylic alcohol, acetic acid.\nThông hiểu [NT2]: Trình bày được tính chất hoá học đặc trưng của rượu ethylic và axit axetic (phản ứng este hoá, tác dụng với kim loại, bazo).\nVận dụng [VD1]: Tính toán độ rượu, khối lượng este hoặc hiệu suất phản ứng este hoá.',
     nhieuLuaChon: { biet: 1, hieu: 0, vanDung: 0 },
-    dungSai: { biet: 0, hieu: 1, vanDung: 1, vanDungCao: 0 },
-    traLoiNgan: { biet: 0, hieu: 0, vanDung: 1, vanDungCao: 0 }
+    dungSai: { biet: 0, hieu: 2, vanDung: 2, vanDungCao: 0 },
+    traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 }
   },
   {
     tenChuDe: 'Lipid – carbohydrate – Protein – Polymer',
@@ -169,25 +169,64 @@ export const KHTN_VAO10_SAMPLE_TOPICS = [
 ];
 
 export const generateKhtnVao10Matrix = () => {
+  let tfCounter = 1;
+  let p1Counter = 1;
+  let p3Counter = 1;
+
   return KHTN_VAO10_SAMPLE_TOPICS.map((topic, index) => {
+    const topicId = 'khtn-v10-t-' + (index + 1) + '-' + Date.now();
+    const dvId = 'khtn-v10-dv-' + (index + 1) + '-' + Date.now();
+    const indicatorMap = {};
+    const dungSaiSubItems = [];
+
+    // Nhãn cho Phần I (NLC)
+    for (let b = 0; b < (topic.nhieuLuaChon?.biet || 0); b++) {
+      indicatorMap[`nhieuLuaChon_biet_${b}`] = { code: 'NT1', label: `I.${p1Counter++}` };
+    }
+    for (let h = 0; h < (topic.nhieuLuaChon?.hieu || 0); h++) {
+      indicatorMap[`nhieuLuaChon_hieu_${h}`] = { code: 'NT2', label: `I.${p1Counter++}` };
+    }
+
+    // Nhãn cho Phần II (Đúng/Sai: 4 ý gồm 2 Hiểu, 2 VD)
+    const dsHieu = Number(topic.dungSai?.hieu) || 0;
+    const dsVd = Number(topic.dungSai?.vanDung) || 0;
+    if (dsHieu >= 2 && dsVd >= 2) {
+      const qNo = tfCounter++;
+      dungSaiSubItems.push(
+        { qNo, letter: 'a', lvl: 'hieu', label: `II.${qNo}a`, code: 'NT2' },
+        { qNo, letter: 'b', lvl: 'hieu', label: `II.${qNo}b`, code: 'NT3' },
+        { qNo, letter: 'c', lvl: 'vanDung', label: `II.${qNo}c`, code: 'VD1' },
+        { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD2' }
+      );
+      indicatorMap[`dungSai_hieu_0`] = { code: 'NT2', label: `II.${qNo}a` };
+      indicatorMap[`dungSai_hieu_1`] = { code: 'NT3', label: `II.${qNo}b` };
+      indicatorMap[`dungSai_vanDung_0`] = { code: 'VD1', label: `II.${qNo}c` };
+      indicatorMap[`dungSai_vanDung_1`] = { code: 'VD2', label: `II.${qNo}d` };
+    }
+
+    // Nhãn cho Phần III (Trả lời ngắn: Vận dụng)
+    for (let v = 0; v < (topic.traLoiNgan?.vanDung || 0); v++) {
+      indicatorMap[`traLoiNgan_vanDung_${v}`] = { code: 'VD1', label: `III.${p3Counter++}` };
+    }
+
     return {
-      id: 'khtn-v10-t-' + (index + 1) + '-' + Date.now(),
+      id: topicId,
       tenChuDe: 'Chủ đề ' + (index + 1) + ': ' + topic.tenChuDe,
       yeuCauCanDat: topic.yeuCauCanDat || '',
       donViKienThuc: [
         {
-          id: 'khtn-v10-dv-' + (index + 1) + '-' + Date.now(),
+          id: dvId,
           noiDung: topic.noiDung,
           yeuCauCanDat: topic.yeuCauCanDat,
           soTiet: topic.soTiet,
           isNuaDauKi: false,
           nhieuLuaChon: { ...topic.nhieuLuaChon },
           dungSai: { ...topic.dungSai },
-          dungSaiSubItems: [],
+          dungSaiSubItems,
           traLoiNgan: { ...topic.traLoiNgan },
           tuLuan: { biet: 0, hieu: 0, vanDung: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, subItems: [] },
           selectedIndicators: [],
-          indicatorMap: {}
+          indicatorMap
         }
       ]
     };

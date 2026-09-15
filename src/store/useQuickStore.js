@@ -14,6 +14,7 @@ const isChemistrySubject = (monHoc) => /hóa|hoa học|hóa học/i.test(monHoc 
 const isBiologySubject = (monHoc) => /sinh|sinh học/i.test(monHoc || '');
 const isPhysicsSubject = (monHoc) => /lý|lí|vật lí|vật lý/i.test(monHoc || '');
 const isGeographySubject = (monHoc) => /địa|địa lí|địa lý/i.test(monHoc || '');
+const isKHTNSubject = (monHoc) => /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHoc || '');
 
 // Kiểm tra cấu trúc 4-2-0 (Toán) và có Tự luận để áp dụng bảng đặc tả mẫu mới
 const isNewMathStructure = (examConfig, config) => {
@@ -778,6 +779,12 @@ export const useQuickStore = create(
       })).flat();
 
       // Phân bổ ĐS
+      const isKHTN = isKHTNSubject(state.examHeader?.monHoc);
+      const isVao10 = Boolean(
+        state.examConfig?.isCauTrucKHTNVao10 ||
+        (!state.config.hasTuLuan && isKHTN && (state.examConfig?.tongDiemP1 === 5.5 || state.examConfig?.tongDiemP2 === 3.0))
+      );
+
       for (let i = 0; i < numTfBlocks; i++) {
         let bestIdx = -1, maxGap = -Infinity;
         flatDvList.forEach((item, idx) => {
@@ -788,7 +795,12 @@ export const useQuickStore = create(
         if (bestIdx !== -1) {
           const { ti, di } = flatDvList[bestIdx];
           const dv = topics[ti].donViKienThuc[di];
-          dv.dungSai.biet++; dv.dungSai.hieu++; dv.dungSai.vanDung++; dv.dungSai.vanDungCao++;
+          if (isVao10) {
+            dv.dungSai.hieu += 2;
+            dv.dungSai.vanDung += 2;
+          } else {
+            dv.dungSai.biet++; dv.dungSai.hieu++; dv.dungSai.vanDung++; dv.dungSai.vanDungCao++;
+          }
           flatDvList[bestIdx].current += dP2 * 4;
         }
       }

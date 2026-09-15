@@ -7,7 +7,7 @@ import { biologyIndicators } from '../components/data/biologyIndicators';
 import { physicsIndicators } from '../components/data/physicsIndicators';
 import { geographyIndicators } from '../components/data/geographyIndicators';
 import { khtnAllIndicators } from '../components/data/khtnIndicators';
-import { suggestKhtnCode, getRowKhtnCode } from '../data/khtnCompetencyData';
+import { suggestKhtnCode, getRowKhtnCode, detectPhanMon } from '../data/khtnCompetencyData';
 import { generateKhtnVao10Matrix, KHTN_VAO10_CONFIG, KHTN_VAO10_SAMPLE_TOPICS } from '../data/khtnVao10Data';
 
 // =============================================================================
@@ -1117,14 +1117,25 @@ export const useExamStore = create(
         // =====================================================================
         // CHUYÊN BIỆT CHO CẤU TRÚC THI TUYỂN SINH VÀO 10 KHTN (QĐ 1038 HẢI PHÒNG)
         // 100% Trắc nghiệm, 60 phút:
+        // =====================================================================
+        // [CẤU TRÚC 3] KHTN TUYỂN SINH VÀO 10 (HẢI PHÒNG - QĐ 1038)
+        // - Thời gian: 60 phút, 100% Trắc nghiệm (40 ý hỏi = 10.0đ)
         // - Phần I (22 câu TN): 16 Biết (4.0đ), 6 Hiểu (1.5đ) = 5.5đ
         // - Phần II (3 câu Đ/S = 12 ý): 6 Hiểu (1.5đ), 6 Vận dụng (1.5đ) = 3.0đ
-        //   (Quy định: Mỗi câu 4 ý gồm 2 ý Thông hiểu, 2 ý Vận dụng)
+        //   (Quy định: Đúng 3 câu x 4 ý gồm 2 ý Thông hiểu, 2 ý Vận dụng)
+        //   (Phân bổ chuẩn: 1 câu Vật lí, 1 câu Hóa học, 1 câu Sinh học)
         // - Phần III (6 câu TLN): 6 câu Vận dụng (1.5đ) (tối đa 4 chữ số)
+        //   (Phân bổ chuẩn: 2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học)
         // - Phần IV: Tự luận = 0 (100% Trắc nghiệm)
         // => TỔNG: Biết 4.0đ (40%), Hiểu 3.0đ (30%), Vận dụng 3.0đ (30%) = 10.0đ
         // =====================================================================
-        if (state.examConfig.isCauTrucKHTNVao10) {
+        const isVao10KHTN = Boolean(
+          state.examConfig?.isCauTrucKHTNVao10 ||
+          (!state.config.hasTuLuan && isKHTN && (state.examConfig?.tongDiemP1 === 5.5 || state.examConfig?.tongDiemP2 === 3.0)) ||
+          (state.examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(state.examHeader.kyThi) && isKHTN && !state.config.hasTuLuan)
+        );
+
+        if (isVao10KHTN) {
           const allDvs = [];
           topics.forEach((t, ti) => {
             (t.donViKienThuc || []).forEach((dv, di) => {
@@ -1158,20 +1169,44 @@ export const useExamStore = create(
               d.dv.indicatorMap = {};
             });
 
-            // 1. Phân bổ 3 câu Đúng/Sai (12 ý = 3.0đ). Mỗi câu 4 ý: 2 Hiểu (0.5đ) + 2 Vận dụng (0.5đ)
-            const topicScores = topics.map((t, ti) => ({
-              ti,
-              soTiet: flat.filter(f => f.ti === ti).reduce((s, f) => s + f.soTiet, 0)
-            })).sort((a, b) => b.soTiet - a.soTiet);
+            // 1. Phân bổ CHÍNH XÁC 3 câu Đúng/Sai (12 ý = 3.0đ).
+            // Mỗi câu 4 ý: 2 Hiểu (0.5đ) + 2 Vận dụng (0.5đ).
+            // Theo chuẩn QĐ 1038 Hải Phòng: 1 câu Vật lí, 1 câu Hóa học, 1 câu Sinh học.
+            const lopNum = Number(state.examHeader?.lop) || 9;
+            const isMatchBranch = (target, actual) => {
+              if (!target || !actual) return false;
+              const norm = (s) => String(s).toLowerCase().replace(/[^a-z]/g, '');
+              const t = norm(target);
+              const a = norm(actual);
+              if (t === a) return true;
+              if (t.includes('vatli') && a.includes('vatli')) return true;
+              if (t.includes('hoahoc') && a.includes('hoahoc')) return true;
+              if (t.includes('sinhhoc') && a.includes('sinhhoc')) return true;
+              return false;
+            };
+            const phanMonOrder = ['vatli', 'hoahoc', 'sinhhoc'];
 
-            const chosenTfTopics = topicScores.slice(0, 3).map(ts => ts.ti);
-            chosenTfTopics.forEach((tIndex, idx) => {
-              const qNo = idx + 1;
-              const topicDvs = flat.filter(f => f.ti === tIndex);
-              const chosen = topicDvs.slice().sort((a, b) => {
+            for (let qNo = 1; qNo <= 3; qNo++) {
+              const pmTarget = phanMonOrder[qNo - 1]; // qNo 1: vatli, 2: hoahoc, 3: sinhhoc
+
+              // Ưu tiên 1: Bài chưa có ĐS, khớp đúng phân môn pmTarget
+              let candidatePool = flat.filter(f => !f.hasDungSai && (isMatchBranch(pmTarget, f.dv.phanMon) || isMatchBranch(pmTarget, detectPhanMon(f.dv.noiDung, lopNum))));
+
+              // Ưu tiên 2: Nếu không tìm thấy bài đúng phân môn, lấy bài chưa có ĐS (ưu tiên số tiết lớn)
+              if (candidatePool.length === 0) {
+                candidatePool = flat.filter(f => !f.hasDungSai);
+              }
+
+              // Ưu tiên 3 (fallback nếu số bài < 3): cho phép chọn lại bài có gap lớn nhất
+              if (candidatePool.length === 0) {
+                candidatePool = flat;
+              }
+
+              // Sắp xếp: Ưu tiên số tiết lớn nhất, sau đó đến chênh lệch (target - current)
+              const chosen = candidatePool.slice().sort((a, b) => {
                 if (b.soTiet !== a.soTiet) return b.soTiet - a.soTiet;
                 return (b.target - b.current) - (a.target - a.current);
-              })[0] || topicDvs[0];
+              })[0];
 
               if (chosen) {
                 chosen.dv.dungSai.hieu += 2;
@@ -1186,13 +1221,24 @@ export const useExamStore = create(
                   { qNo, letter: 'd', lvl: 'vanDung', label: `II.${qNo}d`, code: 'VD2' }
                 );
               }
-            });
+            }
 
             // 2. Phân bổ 6 câu Trả lời ngắn (6 câu Vận dụng = 1.5đ)
+            // Theo chuẩn QĐ 1038 Hải Phòng: 2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học
+            const pmP3Targets = ['vatli', 'vatli', 'hoahoc', 'hoahoc', 'sinhhoc', 'sinhhoc'];
             for (let i = 0; i < 6; i++) {
-              const notTf = flat.filter(f => !f.hasDungSai && !f.hasTraLoiNgan);
-              const pool1 = notTf.length > 0 ? notTf : flat.filter(f => !f.hasDungSai);
-              const pool = pool1.length > 0 ? pool1 : flat;
+              const pmTarget = pmP3Targets[i];
+              // Ưu tiên bài thuộc phân môn pmTarget, chưa có ĐS và chưa có TLN
+              let pool = flat.filter(f => !f.hasDungSai && !f.hasTraLoiNgan && (isMatchBranch(pmTarget, f.dv.phanMon) || isMatchBranch(pmTarget, detectPhanMon(f.dv.noiDung, lopNum))));
+              if (pool.length === 0) {
+                pool = flat.filter(f => !f.hasDungSai && !f.hasTraLoiNgan);
+              }
+              if (pool.length === 0) {
+                pool = flat.filter(f => !f.hasDungSai);
+              }
+              if (pool.length === 0) {
+                pool = flat;
+              }
               const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
               if (chosen) {
                 chosen.dv.traLoiNgan.vanDung += 1;

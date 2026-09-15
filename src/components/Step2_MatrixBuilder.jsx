@@ -99,6 +99,12 @@ export default function Step2_MatrixBuilder() {
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
   );
 
+  const isCauTrucKHTNVao10 = Boolean(
+    examConfig?.isCauTrucKHTNVao10 ||
+    (!config.hasTuLuan && isKHTN && (examConfig?.tongDiemP1 === 5.5 || examConfig?.tongDiemP2 === 3.0)) ||
+    (examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(examHeader.kyThi) && isKHTN && !config.hasTuLuan)
+  );
+
   // Chuẩn hóa mã KHTN cũ sang chuẩn CTGDPT 2018 (NT1-NT7, TH1-TH6, VD1-VD2)
   const normalizeKhtnCode = (code) => {
     if (!code) return '';
@@ -1217,85 +1223,191 @@ export default function Step2_MatrixBuilder() {
         </div>
       </div>
 
-      {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY CHUAN CV 4956/SGDDT */}
+      {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY */}
       {isKHTN && (
-        <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-xl shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h3 className="font-extrabold text-teal-900 text-sm flex items-center gap-2">
-              <span className="text-base">📋</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN CÔNG VĂN 4956/SGDĐT
-            </h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={autoFillMatrix}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1.5 rounded-lg shadow font-bold text-xs hover:from-teal-700 hover:to-emerald-700 hover:shadow-md transition-all"
-                title="Tự động chia đúng 100% theo Bảng phân bố ma trận của Sở GD&ĐT"
-              >
-                <span>⚡</span> Tự động điền chuẩn CV 4956
-              </button>
-              <span className="text-xs bg-teal-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
-                Cấu trúc 4 - 2 - 1 - 3
-              </span>
+        isCauTrucKHTNVao10 ? (
+          /* ================= BẢNG CHUẨN TUYỂN SINH VÀO 10 (QĐ 1038 HẢI PHÒNG) ================= */
+          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-300 rounded-xl shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 className="font-extrabold text-indigo-900 text-sm flex items-center gap-2">
+                <span className="text-base">🏆</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN VÀO 10 (QĐ 1038 HẢI PHÒNG)
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={autoFillMatrix}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-3.5 py-1.5 rounded-lg shadow font-bold text-xs hover:from-indigo-700 hover:to-blue-700 hover:shadow-md transition-all"
+                  title="Tự động phân bổ đúng 100% tỉ lệ QĐ 1038 (16B - 12H - 12VD = 10.0đ; 3 câu Đúng/Sai = 12 ý)"
+                >
+                  <span>⚡</span> Auto-Fill chuẩn QĐ 1038 (10.0đ)
+                </button>
+                <span className="text-xs bg-indigo-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+                  100% Trắc nghiệm · 60 phút
+                </span>
+              </div>
+            </div>
+
+            {/* CẢNH BÁO TỈ LỆ ĐÚNG/SAI */}
+            {(() => {
+              const dsHieu = sumAll('dungSai', 'hieu');
+              const dsVd = sumAll('dungSai', 'vanDung') + sumAll('dungSai', 'vanDungCao');
+              const dsTotalY = dsHieu + dsVd;
+              const isDsChuan = dsHieu === 6 && dsVd === 6;
+
+              return isDsChuan ? (
+                <div className="mb-2.5 px-3 py-1.5 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-2">
+                  <span>✓</span>
+                  <span>Phần II Đúng/Sai đã đạt chuẩn 100% QĐ 1038 Hải Phòng: <strong>3 câu = 12 ý (6 Hiểu, 6 Vận dụng = 3.0 điểm)</strong>.</span>
+                </div>
+              ) : (
+                <div className="mb-2.5 px-3 py-1.5 bg-amber-100 border border-amber-400 text-amber-900 rounded-lg text-xs font-semibold flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">⚠️</span>
+                    <span>
+                      Phần II Đúng/Sai chưa đúng tỉ lệ: Hiện có <strong>{dsHieu} ý Hiểu</strong> + <strong>{dsVd} ý Vận dụng</strong> = {dsTotalY} ý ({(dsTotalY * 0.25).toFixed(2).replace('.00', '')}đ).
+                      Chuẩn QĐ 1038 yêu cầu đúng <strong>3 câu = 12 ý (6 Hiểu + 6 Vận dụng = 3.0 điểm)</strong>.
+                    </span>
+                  </div>
+                  <button
+                    onClick={autoFillMatrix}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-[11px] font-bold transition-all shrink-0"
+                  >
+                    ⚡ Tự động sửa chuẩn Đúng/Sai
+                  </button>
+                </div>
+              );
+            })()}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-indigo-200 bg-white rounded-lg shadow-sm text-center">
+                <thead className="bg-indigo-700 text-white font-bold">
+                  <tr>
+                    <th className="p-2 border border-indigo-600 text-left">Phần bài thi</th>
+                    <th className="p-2 border border-indigo-600">Nhận biết (40%)</th>
+                    <th className="p-2 border border-indigo-600">Thông hiểu (30%)</th>
+                    <th className="p-2 border border-indigo-600">Vận dụng (30%)</th>
+                    <th className="p-2 border border-indigo-600">Tổng số câu / ý</th>
+                    <th className="p-2 border border-indigo-600">Tổng điểm</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-indigo-100 text-slate-700 font-medium">
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-indigo-950">Phần I: Trắc nghiệm 4 lựa chọn</td>
+                    <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">16 câu (4.0đ)</td>
+                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">6 câu (1.5đ)</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 font-bold">22 câu</td>
+                    <td className="p-1.5 font-bold text-indigo-900">5.5 điểm</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-indigo-950">Phần II: Trắc nghiệm Đúng/Sai</td>
+                    <td className="p-1.5 text-slate-400">0 ý</td>
+                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">6 ý (1.5đ)</td>
+                    <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">6 ý (1.5đ)</td>
+                    <td className="p-1.5 font-bold text-indigo-800">3 câu (12 ý)</td>
+                    <td className="p-1.5 font-bold text-indigo-900">3.0 điểm</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-indigo-950">Phần III: Trắc nghiệm Trả lời ngắn</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">6 câu (1.5đ)</td>
+                    <td className="p-1.5 font-bold">6 câu</td>
+                    <td className="p-1.5 font-bold text-indigo-900">1.5 điểm</td>
+                  </tr>
+                </tbody>
+                <tfoot className="bg-indigo-100 font-black text-indigo-950">
+                  <tr>
+                    <td className="p-2 text-left uppercase">TỔNG CỘNG TOÀN BÀI</td>
+                    <td className="p-2 text-blue-800">16 ý = 4.0đ (40%)</td>
+                    <td className="p-2 text-emerald-800">12 ý = 3.0đ (30%)</td>
+                    <td className="p-2 text-orange-800">12 ý = 3.0đ (30%)</td>
+                    <td className="p-2 text-indigo-900">40 ý hỏi</td>
+                    <td className="p-2 text-red-600 text-sm">10.0 điểm (100%)</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border border-teal-200 bg-white rounded-lg shadow-sm text-center">
-              <thead className="bg-teal-700 text-white font-bold">
-                <tr>
-                  <th className="p-2 border border-teal-600 text-left">Phần bài thi</th>
-                  <th className="p-2 border border-teal-600">Nhận biết (40%)</th>
-                  <th className="p-2 border border-teal-600">Thông hiểu (30%)</th>
-                  <th className="p-2 border border-teal-600">Vận dụng (20%)</th>
-                  <th className="p-2 border border-teal-600">VD Cao (10%)</th>
-                  <th className="p-2 border border-teal-600">Tổng điểm</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-teal-100 text-slate-700 font-medium">
-                <tr>
-                  <td className="p-1.5 text-left font-bold text-teal-900">Phần I: Trắc nghiệm 4 lựa chọn (16 câu)</td>
-                  <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">12 câu (3.0đ)</td>
-                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">4 câu (1.0đ)</td>
-                  <td className="p-1.5 text-slate-400">0 câu</td>
-                  <td className="p-1.5 text-slate-400">0 câu</td>
-                  <td className="p-1.5 font-bold">16 câu (4.0đ)</td>
-                </tr>
-                <tr>
-                  <td className="p-1.5 text-left font-bold text-teal-900">Phần II: Trắc nghiệm Đúng/Sai (2 câu)</td>
-                  <td className="p-1.5 bg-blue-50/40 font-bold text-blue-800" colSpan="3">
-                    2 câu, mỗi câu gồm 4 lệnh hỏi: (02 Biết; 01 Hiểu; 01 Vận dụng) → Tổng: 4 Biết (1.0đ) + 2 Hiểu (0.5đ) + 2 VD (0.5đ)
-                  </td>
-                  <td className="p-1.5 text-slate-400">0 câu</td>
-                  <td className="p-1.5 font-bold">2 câu (2.0đ)</td>
-                </tr>
-                <tr>
-                  <td className="p-1.5 text-left font-bold text-teal-900">Phần III: Trả lời ngắn (4 câu)</td>
-                  <td className="p-1.5 text-slate-400">0 câu</td>
-                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">2 câu (0.5đ)</td>
-                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">2 câu (0.5đ)</td>
-                  <td className="p-1.5 text-slate-400">0 câu</td>
-                  <td className="p-1.5 font-bold">4 câu (1.0đ)</td>
-                </tr>
-                <tr>
-                  <td className="p-1.5 text-left font-bold text-teal-900">Phần IV: Tự luận (3 câu)</td>
-                  <td className="p-1.5 text-slate-400">0 câu</td>
-                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">1 câu (1.0đ)</td>
-                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">1 câu (1.0đ)</td>
-                  <td className="p-1.5 bg-red-50/70 font-bold text-red-700">1 câu (1.0đ)</td>
-                  <td className="p-1.5 font-bold">3 câu (3.0đ)</td>
-                </tr>
-              </tbody>
-              <tfoot className="bg-teal-100 font-black text-teal-950">
-                <tr>
-                  <td className="p-2 text-left uppercase">TỔNG CỘNG</td>
-                  <td className="p-2 text-blue-800">4.0 điểm (40%)</td>
-                  <td className="p-2 text-emerald-800">3.0 điểm (30%)</td>
-                  <td className="p-2 text-orange-800">2.0 điểm (20%)</td>
-                  <td className="p-2 text-red-800">1.0 điểm (10%)</td>
-                  <td className="p-2 text-teal-900 text-sm">10.0 điểm (100%)</td>
-                </tr>
-              </tfoot>
-            </table>
+        ) : (
+          /* ================= BẢNG CHUẨN ĐỊNH KÌ CV 4956 (CẤU TRÚC 4-2-1-3) ================= */
+          <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-xl shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h3 className="font-extrabold text-teal-900 text-sm flex items-center gap-2">
+                <span className="text-base">📋</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN CÔNG VĂN 4956/SGDĐT
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={autoFillMatrix}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1.5 rounded-lg shadow font-bold text-xs hover:from-teal-700 hover:to-emerald-700 hover:shadow-md transition-all"
+                  title="Tự động chia đúng 100% theo Bảng phân bố ma trận của Sở GD&ĐT"
+                >
+                  <span>⚡</span> Tự động điền chuẩn CV 4956
+                </button>
+                <span className="text-xs bg-teal-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+                  Cấu trúc 4 - 2 - 1 - 3
+                </span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border border-teal-200 bg-white rounded-lg shadow-sm text-center">
+                <thead className="bg-teal-700 text-white font-bold">
+                  <tr>
+                    <th className="p-2 border border-teal-600 text-left">Phần bài thi</th>
+                    <th className="p-2 border border-teal-600">Nhận biết (40%)</th>
+                    <th className="p-2 border border-teal-600">Thông hiểu (30%)</th>
+                    <th className="p-2 border border-teal-600">Vận dụng (20%)</th>
+                    <th className="p-2 border border-teal-600">VD Cao (10%)</th>
+                    <th className="p-2 border border-teal-600">Tổng điểm</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-teal-100 text-slate-700 font-medium">
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-teal-900">Phần I: Trắc nghiệm 4 lựa chọn (16 câu)</td>
+                    <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">12 câu (3.0đ)</td>
+                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">4 câu (1.0đ)</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 font-bold">16 câu (4.0đ)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-teal-900">Phần II: Trắc nghiệm Đúng/Sai (2 câu)</td>
+                    <td className="p-1.5 bg-blue-50/40 font-bold text-blue-800" colSpan="3">
+                      2 câu, mỗi câu gồm 4 lệnh hỏi: (02 Biết; 01 Hiểu; 01 Vận dụng) → Tổng: 4 Biết (1.0đ) + 2 Hiểu (0.5đ) + 2 VD (0.5đ)
+                    </td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 font-bold">2 câu (2.0đ)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-teal-900">Phần III: Trả lời ngắn (4 câu)</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">2 câu (0.5đ)</td>
+                    <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">2 câu (0.5đ)</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 font-bold">4 câu (1.0đ)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-teal-900">Phần IV: Tự luận (3 câu)</td>
+                    <td className="p-1.5 text-slate-400">0 câu</td>
+                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">1 câu (1.0đ)</td>
+                    <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">1 câu (1.0đ)</td>
+                    <td className="p-1.5 bg-red-50/70 font-bold text-red-700">1 câu (1.0đ)</td>
+                    <td className="p-1.5 font-bold">3 câu (3.0đ)</td>
+                  </tr>
+                </tbody>
+                <tfoot className="bg-teal-100 font-black text-teal-950">
+                  <tr>
+                    <td className="p-2 text-left uppercase">TỔNG CỘNG</td>
+                    <td className="p-2 text-blue-800">4.0 điểm (40%)</td>
+                    <td className="p-2 text-emerald-800">3.0 điểm (30%)</td>
+                    <td className="p-2 text-orange-800">2.0 điểm (20%)</td>
+                    <td className="p-2 text-red-800">1.0 điểm (10%)</td>
+                    <td className="p-2 text-teal-900 text-sm">10.0 điểm (100%)</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
-        </div>
+        )
       )}
 
       <table className="w-full border-collapse border border-slate-400 text-sm">
