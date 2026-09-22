@@ -6,7 +6,7 @@ import { mathCompetencyGroups } from './data/mathIndicators';
 import { khtnCompetencyGroupsByLop, khtnCompetencyGroups } from './data/khtnIndicators';
 import { formatGroupedLabels } from '../utils/labelUtils';
 import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel, updateYccdForLevel } from '../utils/specTableHelper';
-import { suggestKhtnCode, formatYccdWithCode, KHTN_COMPETENCY_GROUPS, KHTN_CODE_MAP, getRowKhtnCode } from '../data/khtnCompetencyData';
+import { suggestKhtnCode, formatYccdWithCode, KHTN_COMPETENCY_GROUPS, KHTN_CODE_MAP, getRowKhtnCode, LEVEL_ALLOWED_KHTN_CODES } from '../data/khtnCompetencyData';
 
 export default function Step3_Specification() {
   const {
@@ -681,13 +681,12 @@ export default function Step3_Specification() {
                         }}
                       >
                         <option value="">+ Đổi mã [{rowActiveCode || '...'}]</option>
-                        {KHTN_COMPETENCY_GROUPS.map(group => (
-                          <optgroup key={group.groupKey} label={group.groupShort}>
-                            {group.codes.map(c => (
-                              <option key={c.code} value={c.code}>{c.label}</option>
-                            ))}
-                          </optgroup>
-                        ))}
+                        {(LEVEL_ALLOWED_KHTN_CODES[lvl] || []).map(codeKey => {
+                          const c = KHTN_CODE_MAP[codeKey];
+                          return (
+                            <option key={codeKey} value={codeKey}>{c?.label || `[${codeKey}]`}</option>
+                          );
+                        })}
                       </select>
                       {/* Hiển thị badge mã hiện tại */}
                       {rowActiveCode && (
@@ -1110,13 +1109,13 @@ export default function Step3_Specification() {
                 <th colSpan="3" className={`border border-slate-400 p-1 ${config.hasTraLoiNgan ? 'bg-blue-50/80' : 'bg-slate-200 text-slate-400'}`}>Trả lời ngắn (Ý)</th>
               </tr>
               <tr>
-                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
-                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
-                <th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>H</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
+                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">TH</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
+                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">TH</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
+                <th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>TH</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
                 {config.hasTuLuan && (
                   <>
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th>
-                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">H</th>
+                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">TH</th>
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
                     {isKHTNMon && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700">VDC</th>}
                   </>

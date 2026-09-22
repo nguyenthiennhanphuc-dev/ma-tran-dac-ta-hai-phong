@@ -16,11 +16,11 @@ export const KHTN_COMPETENCY_GROUPS = [
     color: '#1e40af',
     codes: [
       { code: 'NT1', label: 'NT1 – Nhận biết, kể tên, phát biểu, nêu được', fullText: 'Nhận biết, kể tên, phát biểu, nêu được các đối tượng, khái niệm, quy luật, quá trình của tự nhiên.', defaultLevel: 'biet' },
-      { code: 'NT2', label: 'NT2 – Trình bày, mô tả', fullText: 'Trình bày được các sự vật hiện tượng; vai trò của các sự vật, hiện tượng và các quá trình tự nhiên bằng các hình thức biểu đạt như ngôn ngữ nói, viết, công thức, sơ đồ, biểu đồ,...', defaultLevel: 'hieu' },
+      { code: 'NT2', label: 'NT2 – Trình bày, mô tả', fullText: 'Trình bày được các sự vật hiện tượng; vai trò của các sự vật, hiện tượng và các quá trình tự nhiên bằng các hình thức biểu đạt như ngôn ngữ nói, viết, công thức, sơ đồ, biểu đồ,...', defaultLevel: 'biet' },
       { code: 'NT3', label: 'NT3 – So sánh, phân loại, phân biệt', fullText: 'So sánh, phân loại, lựa chọn được các sự vật, hiện tượng, quá trình tự nhiên theo các tiêu chí khác nhau.', defaultLevel: 'hieu' },
       { code: 'NT4', label: 'NT4 – Phân tích theo logic', fullText: 'Phân tích được các đặc điểm của một sự vật, hiện tượng, quá trình của tự nhiên theo logic nhất định.', defaultLevel: 'hieu' },
       { code: 'NT5', label: 'NT5 – Tìm từ khoá, sử dụng thuật ngữ', fullText: 'Tìm được từ khoá, sử dụng được thuật ngữ khoa học, kết nối được thông tin theo logic có ý nghĩa, lập được dàn ý khi đọc và trình bày các văn bản khoa học.', defaultLevel: 'hieu' },
-      { code: 'NT6', label: 'NT6 – Giải thích quan hệ nhân quả, cấu tạo–chức năng', fullText: 'Giải thích được mối quan hệ giữa các sự vật và hiện tượng (quan hệ nguyên nhân - kết quả, cấu tạo - chức năng,...).', defaultLevel: 'vanDung' },
+      { code: 'NT6', label: 'NT6 – Giải thích quan hệ nhân quả, cấu tạo–chức năng', fullText: 'Giải thích được mối quan hệ giữa các sự vật và hiện tượng (quan hệ nguyên nhân - kết quả, cấu tạo - chức năng,...).', defaultLevel: 'hieu' },
       { code: 'NT7', label: 'NT7 – Nhận ra điểm sai, phê phán, thảo luận', fullText: 'Nhận ra điểm sai và chỉnh sửa được; đưa ra được những nhận định phê phán có liên quan đến chủ đề thảo luận.', defaultLevel: 'vanDung' },
     ],
   },
@@ -32,7 +32,7 @@ export const KHTN_COMPETENCY_GROUPS = [
     codes: [
       { code: 'TH1', label: 'TH1 – Đề xuất vấn đề, đặt câu hỏi', fullText: 'Đề xuất vấn đề, đặt câu hỏi cho vấn đề: Nhận ra và đặt được câu hỏi liên quan đến vấn đề; phân tích bối cảnh để đề xuất vấn đề.', defaultLevel: 'hieu' },
       { code: 'TH2', label: 'TH2 – Đưa phán đoán, xây dựng giả thuyết', fullText: 'Đưa ra phán đoán và xây dựng giả thuyết: Phân tích vấn đề để nêu được phán đoán; Xây dựng và phát biểu được giả thuyết cần tìm hiểu.', defaultLevel: 'hieu' },
-      { code: 'TH3', label: 'TH3 – Lập kế hoạch, thiết kế phương án TN', fullText: 'Lập kế hoạch thực hiện: Xây dựng được khung logic nội dung tìm hiểu; Lựa chọn được phương pháp thích hợp; Lập được kế hoạch triển khai tìm hiểu.', defaultLevel: 'hieu' },
+      { code: 'TH3', label: 'TH3 – Lập kế hoạch, thiết kế phương án TN', fullText: 'Lập kế hoạch thực hiện: Xây dựng được khung logic nội dung tìm hiểu; Lựa chọn được phương pháp thích hợp; Lập được kế hoạch triển khai tìm hiểu.', defaultLevel: 'vanDung' },
       { code: 'TH4', label: 'TH4 – Thực hiện TN, thu thập & xử lý dữ liệu', fullText: 'Thực hiện kế hoạch: Thu thập, lưu giữ được dữ liệu từ kết quả tổng quan, thực nghiệm, điều tra; so sánh với giả thuyết, rút ra kết luận.', defaultLevel: 'vanDung' },
       { code: 'TH5', label: 'TH5 – Viết báo cáo, vẽ hình, thiết kế mô hình', fullText: 'Viết, trình bày báo cáo và thảo luận: Sử dụng ngôn ngữ, hình vẽ, sơ đồ, biểu bảng biểu đạt quá trình và kết quả tìm hiểu; bảo vệ kết quả.', defaultLevel: 'vanDung' },
       { code: 'TH6', label: 'TH6 – Ra quyết định, đề xuất giải pháp', fullText: 'Ra quyết định và đề xuất ý kiến xử lí cho vấn đề đã tìm hiểu.', defaultLevel: 'vanDung' },
@@ -59,28 +59,37 @@ export const KHTN_ALL_CODES = KHTN_COMPETENCY_GROUPS.flatMap(g => g.codes.map(c 
 // ============================================================================
 // II. HÀM GỢI Ý MÃ TỰ ĐỘNG
 // ============================================================================
-const TH_KEYWORDS_HIEU = ['thiết kế phương án','lập kế hoạch thí nghiệm','phương án thí nghiệm'];
-const TH_KEYWORDS_VD = ['thực hiện thí nghiệm','tiến hành thí nghiệm','xử lý dữ liệu thí nghiệm'];
-const VD2_KEYWORDS = ['bảo vệ môi trường','phát triển bền vững','biến đổi khí hậu','tiết kiệm năng lượng','tuyên truyền','đề xuất biện pháp','ứng dụng trong đời sống','thực tiễn địa phương'];
-
 export const suggestKhtnCode = (level, loaiCau, noiDungBai = '', yccD = '', isDungSaiY_d = false) => {
   const text = (noiDungBai + ' ' + yccD).toLowerCase();
-  if (isDungSaiY_d) return 'VD2';
+  if (isDungSaiY_d) return 'VD1';
   switch (level) {
-    case 'biet':     return 'NT1';
-    case 'hieu':     return TH_KEYWORDS_HIEU.some(kw => text.includes(kw)) ? 'TH3' : 'NT3';
+    case 'biet':
+      if (['trình bày', 'mô tả'].some(kw => text.includes(kw))) return 'NT2';
+      return 'NT1';
+    case 'hieu':
+      if (['đặt câu hỏi', 'đề xuất vấn đề'].some(kw => text.includes(kw))) return 'TH1';
+      if (['giả thuyết', 'phán đoán'].some(kw => text.includes(kw))) return 'TH2';
+      if (['giải thích', 'mối quan hệ', 'nguyên nhân', 'kết quả', 'cấu tạo - chức năng'].some(kw => text.includes(kw))) return 'NT6';
+      if (['phân tích'].some(kw => text.includes(kw))) return 'NT4';
+      if (['thuật ngữ', 'từ khoá', 'dàn ý', 'sơ đồ'].some(kw => text.includes(kw))) return 'NT5';
+      return 'NT3';
     case 'vanDung':
-      if (VD2_KEYWORDS.some(kw => text.includes(kw))) return 'VD2';
-      return TH_KEYWORDS_VD.some(kw => text.includes(kw)) ? 'TH4' : 'VD1';
-    case 'vanDungCao': return 'VD2';
-    default:         return 'NT1';
+      if (['thực hiện thí nghiệm', 'tiến hành thí nghiệm', 'xử lý dữ liệu', 'xử lí dữ liệu'].some(kw => text.includes(kw))) return 'TH4';
+      if (['lập kế hoạch thí nghiệm', 'thiết kế phương án'].some(kw => text.includes(kw))) return 'TH3';
+      if (['nhận ra điểm sai', 'chỉnh sửa', 'phê phán', 'sửa sai'].some(kw => text.includes(kw))) return 'NT7';
+      return 'VD1'; // Ưu tiên số 1 luôn là VD1 để không bao giờ bị hiểu nhầm sang Thông hiểu
+    case 'vanDungCao':
+      return 'VD2';
+    default:
+      return 'NT1';
   }
 };
 
 export const suggestKhtnCodeDungSai = (yIndex) => {
-  if (yIndex === 0 || yIndex === 1) return 'NT1';
-  if (yIndex === 2) return 'NT3';
-  return 'VD2';
+  if (yIndex === 0) return 'NT1'; // Biết
+  if (yIndex === 1) return 'NT3'; // Hiểu
+  if (yIndex === 2) return 'NT4'; // Hiểu (hoặc NT6)
+  return 'VD1';                   // Vận dụng (Ý d) - Tuyệt đối không có VD2!
 };
 
 export const getKhtnLevelLabel = (code) => {
@@ -114,15 +123,34 @@ export const normalizeKhtnCode = (code) => {
   return s;
 };
 
+// ============================================================================
+// DANH SÁCH MÃ CHỈ BÁO NĂNG LỰC HỢP LỆ THEO TỪNG MỨC ĐỘ NHẬN THỨC
+// Căn cứ chuẩn Chương trình GDPT 2018 và hướng dẫn ra đề của Sở GD&ĐT
+// ============================================================================
+export const LEVEL_ALLOWED_KHTN_CODES = {
+  biet: ['NT1', 'NT2'],
+  hieu: ['NT3', 'NT4', 'NT5', 'NT6', 'TH1', 'TH2'],
+  vanDung: ['VD1', 'TH3', 'TH4', 'TH5', 'TH6', 'NT7'],
+  vanDungCao: ['VD2', 'TH6']
+};
+
+export const isKhtnCodeAllowedForLevel = (code, level) => {
+  if (!code || !level) return false;
+  const allowed = LEVEL_ALLOWED_KHTN_CODES[level];
+  return allowed ? allowed.includes(code.toUpperCase()) : false;
+};
+
 /**
  * Lấy mã năng lực KHTN chuẩn DUY NHẤT cho một dòng (ĐVKT + mức độ nhận thức)
+ * BẮT BUỘC: Mã trả về phải thuộc đúng mức độ nhận thức (level) của cột ma trận!
  * Ưu tiên:
  * 1. Mã có trong chuỗi YCCĐ của level này (do AI sinh hoặc người dùng chọn)
  * 2. Mã đã gán trong dv.indicatorMap của câu hỏi bất kỳ thuộc level này
  * 3. Fallback: suggestKhtnCode
  */
 export const getRowKhtnCode = (dv, level, customYccdText = null) => {
-  if (!dv) return level === 'vanDungCao' ? 'VD2' : (level === 'vanDung' ? 'VD1' : (level === 'hieu' ? 'NT3' : 'NT1'));
+  const defaultFallback = level === 'vanDungCao' ? 'VD2' : (level === 'vanDung' ? 'VD1' : (level === 'hieu' ? 'NT3' : 'NT1'));
+  if (!dv) return defaultFallback;
 
   // 1. Kiểm tra mã trong text YCCĐ của level này (nếu có chuỗi [MÃ])
   let yccdText = customYccdText;
@@ -134,14 +162,19 @@ export const getRowKhtnCode = (dv, level, customYccdText = null) => {
   }
   if (yccdText) {
     const match = yccdText.match(/\[(NT[1-7]|TH[1-6]|VD[12])\]/i);
-    if (match) return match[1].toUpperCase();
+    if (match) {
+      const code = match[1].toUpperCase();
+      if (isKhtnCodeAllowedForLevel(code, level)) {
+        return code;
+      }
+    }
   }
 
   // 2. Kiểm tra mã đã có trong dv.indicatorMap của bất kỳ câu hỏi nào thuộc level này
   if (dv.indicatorMap) {
     if (dv.indicatorMap[`_level_${level}`]?.code) {
       const norm = normalizeKhtnCode(dv.indicatorMap[`_level_${level}`].code);
-      if (norm && /^(NT[1-7]|TH[1-6]|VD[12])$/i.test(norm)) return norm.toUpperCase();
+      if (norm && isKhtnCodeAllowedForLevel(norm, level)) return norm.toUpperCase();
     }
     const types = ['nhieuLuaChon', 'dungSai', 'traLoiNgan', 'tuLuan'];
     for (const t of types) {
@@ -150,19 +183,19 @@ export const getRowKhtnCode = (dv, level, customYccdText = null) => {
         if (item) {
           const rawCode = typeof item === 'object' ? item.code : item;
           const norm = normalizeKhtnCode(rawCode);
-          if (norm && /^(NT[1-7]|TH[1-6]|VD[12])$/i.test(norm)) {
+          if (norm && isKhtnCodeAllowedForLevel(norm, level)) {
             return norm.toUpperCase();
           }
         }
       }
     }
-    if (level === 'vanDungCao' || level === 'vanDung') {
+    if (level === 'vanDungCao') {
       for (let i = 0; i < 4; i++) {
         const item = dv.indicatorMap[`dungSai_vanDungCao_${i}`] || dv.indicatorMap[`tuLuan_vanDungCao_${i}`];
         if (item) {
           const rawCode = typeof item === 'object' ? item.code : item;
           const norm = normalizeKhtnCode(rawCode);
-          if (norm && /^(NT[1-7]|TH[1-6]|VD[12])$/i.test(norm)) {
+          if (norm && isKhtnCodeAllowedForLevel(norm, level)) {
             return norm.toUpperCase();
           }
         }
@@ -170,8 +203,12 @@ export const getRowKhtnCode = (dv, level, customYccdText = null) => {
     }
   }
 
-  // 3. Fallback: dùng hàm suggestKhtnCode
-  return suggestKhtnCode(level, null, dv.noiDung || '', yccdText || '');
+  // 3. Fallback: dùng hàm suggestKhtnCode và bảo đảm hợp lệ với level
+  const suggested = suggestKhtnCode(level, null, dv.noiDung || '', yccdText || '');
+  if (isKhtnCodeAllowedForLevel(suggested, level)) {
+    return suggested;
+  }
+  return defaultFallback;
 };
 
 // ============================================================================

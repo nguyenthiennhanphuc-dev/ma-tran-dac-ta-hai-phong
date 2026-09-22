@@ -10,7 +10,7 @@ import { biologyCompetencyGroups } from './data/biologyIndicators';
 import { physicsCompetencyGroups } from './data/physicsIndicators';
 import { geographyCompetencyGroups } from './data/geographyIndicators';
 import { searchKhtnIndicators, khtnCompetencyGroupsByLop } from './data/khtnIndicators';
-import { suggestKhtnCode, KHTN_COMPETENCY_GROUPS, KHTN_CODE_MAP, detectPhanMon, PHAN_MON_LABELS, getRowKhtnCode, formatYccdWithCode } from '../data/khtnCompetencyData';
+import { suggestKhtnCode, KHTN_COMPETENCY_GROUPS, KHTN_CODE_MAP, detectPhanMon, PHAN_MON_LABELS, getRowKhtnCode, formatYccdWithCode, LEVEL_ALLOWED_KHTN_CODES } from '../data/khtnCompetencyData';
 import { parseYccdByLevel, updateYccdForLevel, formatLevelDisplayName } from '../utils/specTableHelper';
 
 // Component Autocomplete dùng chung cho mọi môn
@@ -160,13 +160,6 @@ export default function Step2_MatrixBuilder() {
     }
   }, [isKHTN, isCauTrucKHTNVao10, examHeader, matrix, khtnConfig?.manualLop]);
 
-  // Tu dong chuyen sang cau truc KHTN 4-2-1-3 khi mon la KHTN ma chua duoc chon
-  useEffect(() => {
-    if (isKHTN && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10) {
-      setCauTrucDe('4.01');
-    }
-  }, [isKHTN, examConfig.isCauTruc4213, examConfig.isCauTrucKHTNVao10]);
-
   // Nguồn dữ liệu nhóm năng lực tùy theo môn
   const compGroups = isKHTN ? (khtnCompetencyGroupsByLop[Number(khtnSelectedLop)] || khtnCompetencyGroupsByLop[8]) : (isMath ? mathCompetencyGroups : (isChemistry ? chemistryCompetencyGroups : (isBiology ? biologyCompetencyGroups : (isPhysics ? physicsCompetencyGroups : (isGeography ? geographyCompetencyGroups : null)))));
 
@@ -303,6 +296,7 @@ export default function Step2_MatrixBuilder() {
                 </div>
                 {isKHTN ? (() => {
                   const activeCode = getRowKhtnCode(dv, level);
+                  const allowedCodes = LEVEL_ALLOWED_KHTN_CODES[level] || [];
                   return (
                     <div className="mt-0.5">
                       <select
@@ -320,12 +314,8 @@ export default function Step2_MatrixBuilder() {
                         className="text-[9px] font-black px-1 py-0.5 rounded border border-green-300 bg-green-50 text-green-800 cursor-pointer focus:outline-none"
                         title={KHTN_CODE_MAP[activeCode]?.fullText || `Mã: ${activeCode}`}
                       >
-                        {KHTN_COMPETENCY_GROUPS.map(g => (
-                          <optgroup key={g.groupKey} label={g.groupShort}>
-                            {g.codes.map(c => (
-                              <option key={c.code} value={c.code}>[{c.code}]</option>
-                            ))}
-                          </optgroup>
+                        {allowedCodes.map(codeKey => (
+                          <option key={codeKey} value={codeKey}>[{codeKey}]</option>
                         ))}
                       </select>
                     </div>
@@ -517,12 +507,8 @@ export default function Step2_MatrixBuilder() {
                       className="text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-300 bg-blue-50 text-blue-800 cursor-pointer focus:outline-none hover:bg-blue-100 transition-colors text-center"
                       title={KHTN_CODE_MAP[activeCode]?.fullText || `Mã: ${activeCode}`}
                     >
-                      {KHTN_COMPETENCY_GROUPS.map(g => (
-                        <optgroup key={g.groupKey} label={g.groupShort}>
-                          {g.codes.map(c => (
-                            <option key={c.code} value={c.code}>[{c.code}]</option>
-                          ))}
-                        </optgroup>
+                      {(LEVEL_ALLOWED_KHTN_CODES[level] || []).map(codeKey => (
+                        <option key={codeKey} value={codeKey}>[{codeKey}]</option>
                       ))}
                     </select>
                   </div>
@@ -1498,9 +1484,9 @@ export default function Step2_MatrixBuilder() {
             <th colSpan="3" className={`border border-slate-400 p-1 ${config.hasTraLoiNgan ? 'bg-blue-50/80' : 'bg-slate-200 text-slate-400'}`}>Trả lời ngắn (Ý)</th>
           </tr>
           <tr>
-            <th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">VD</th>
-            <th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">VD</th>
-            <th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>H</th><th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
+            <th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">TH</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">VD</th>
+            <th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">TH</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30 w-8">VD</th>
+            <th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>TH</th><th className={`border border-slate-400 p-1 font-medium w-8 ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
             {config.hasTuLuan && (
               <>
                 <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Biết</th>
@@ -1510,7 +1496,7 @@ export default function Step2_MatrixBuilder() {
               </>
             )}
             <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">B</th>
-            <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">H</th>
+            <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">TH</th>
             <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">VD</th>
             {isKHTN && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700 w-8 font-bold">VDC</th>}
           </tr>

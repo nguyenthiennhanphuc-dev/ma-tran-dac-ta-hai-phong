@@ -14,7 +14,7 @@ const DEFAULT_HEADER = {
 const isMojibake = (str) => typeof str === 'string' && (/[├┤╖ñ£—ÉÇÈÍ¿»]/.test(str) || /SB╖|TR\s*├|l\s*├ím/i.test(str));
 
 export default function Step1_HeaderInfo() {
-  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213 } = useExamStore();
+  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe } = useExamStore();
 
   // Tự động kiểm tra và dọn dẹp ký tự lỗi font (mojibake) từ localStorage cũ
   useEffect(() => {
@@ -115,10 +115,10 @@ export default function Step1_HeaderInfo() {
                     <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                       <span>🔬</span> Cấu trúc đề thi Môn KHTN:
                     </span>
-                    <span className="text-[10px] text-slate-500 italic">Chọn 1 trong 2 cấu trúc chuẩn</span>
+                    <span className="text-[10px] text-slate-500 italic">Chọn 1 trong các cấu trúc chuẩn</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {/* Nút Cấu trúc 4-2-1-3 */}
                     <button
                       type="button"
@@ -131,12 +131,12 @@ export default function Step1_HeaderInfo() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-bold flex items-center gap-1">
-                          📘 Định kì THCS (4-2-1-3)
+                          📘 Định kì (4-2-1-3)
                         </span>
                         {examConfig.isCauTruc4213 && <span className="text-teal-600 text-[10px] bg-teal-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
                       </div>
                       <span className="text-[10px] font-normal text-slate-500">
-                        Chuẩn CV 4956 • Có Tự luận 3đ (16 TN + 2 Đ/S + 4 TLN + 3 TL)
+                        CV 4956 • Tự luận 3đ (16 TN + 2 Đ/S + 4 TLN + 3 TL)
                       </span>
                     </button>
 
@@ -152,12 +152,33 @@ export default function Step1_HeaderInfo() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-bold flex items-center gap-1">
-                          🎯 Tuyển sinh Vào 10 (QĐ 1038 HP)
+                          🎯 Vào 10 Hải Phòng
                         </span>
                         {examConfig.isCauTrucKHTNVao10 && <span className="text-indigo-600 text-[10px] bg-indigo-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
                       </div>
                       <span className="text-[10px] font-normal text-slate-500">
-                        Chuẩn Sở GD&ĐT Hải Phòng • 100% TN, 60p (22 TN + 3 Đ/S + 6 TLN)
+                        QĐ 1038 HP • 100% TN, 60p (22 TN + 3 Đ/S + 6 TLN)
+                      </span>
+                    </button>
+
+                    {/* Nút Cấu trúc Khác / Tự do */}
+                    <button
+                      type="button"
+                      onClick={() => setCauTrucDe('3')}
+                      className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
+                        !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10
+                          ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-bold'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          ⚙️ Cấu trúc khác / Tự do
+                        </span>
+                        {!examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
+                      </div>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        Cấu trúc 3-2-2-3 (TN 7đ + TL 3đ), 3-4-3 (100% TN), hoặc chỉnh tự do
                       </span>
                     </button>
                   </div>

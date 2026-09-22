@@ -884,12 +884,12 @@ export default function Step3_Specification() {
                 <th colSpan="3" className={`border border-slate-400 p-1 ${config.hasTraLoiNgan ? 'bg-blue-50/80' : 'bg-slate-200 text-slate-400'}`}>Trả lời ngắn (Ý)</th>
               </tr>
               <tr>
-                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
-                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
-                <th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>H</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th>
+                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">TH</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
+                <th className="border border-slate-400 p-1 font-medium bg-blue-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">TH</th><th className="border border-slate-400 p-1 font-medium bg-blue-50/30">VD</th>
+                <th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>B</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>TH</th><th className={`border border-slate-400 p-1 font-medium ${config.hasTraLoiNgan ? 'bg-blue-50/30' : 'bg-slate-100 text-slate-400'}`}>VD</th>
                 {config.hasTuLuan && (
                   <>
-                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-green-50/30">H</th><th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
+                    <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th><th className="border border-slate-400 p-1 font-medium bg-green-50/30">TH</th><th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
                   </>
                 )}
               </tr>

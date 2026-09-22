@@ -1735,7 +1735,7 @@ export const useExamStore = create(
                     dv.indicatorMap[`dungSai_biet_${c * 2}`] = { code: bietCode, label: `II.${cauNo}a` };
                     dv.indicatorMap[`dungSai_biet_${c * 2 + 1}`] = { code: bietCode, label: `II.${cauNo}b` };
                     dv.indicatorMap[`dungSai_hieu_${c}`] = { code: hieuCode, label: `II.${cauNo}c` };
-                    dv.indicatorMap[`dungSai_vanDung_${c}`] = { code: vdcCode, label: `II.${cauNo}d` };
+                    dv.indicatorMap[`dungSai_vanDung_${c}`] = { code: vdCode, label: `II.${cauNo}d` };
                     p2ItemCounter += 4;
                   }
                 }
