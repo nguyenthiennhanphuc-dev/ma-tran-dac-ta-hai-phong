@@ -85,7 +85,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, updateTopicPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, setCauTrucKHTNVao10, loadKhtnVao10SampleMatrix, setCauTruc4213, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, updateTopicPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, setCauTrucKHTNVao10, loadKhtnVao10SampleMatrix, setCauTruc4213, setCauTrucToan3223, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
   const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
@@ -98,6 +98,8 @@ export default function Step2_MatrixBuilder() {
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(examHeader?.monHoc || '') ||
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig?.monHoc || '')
   );
+
+  const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
 
   const isCauTrucKHTNVao10 = Boolean(
     examConfig?.isCauTrucKHTNVao10 ||
@@ -593,6 +595,12 @@ export default function Step2_MatrixBuilder() {
     const ec = examConfig;
     if (ec.isCauTrucKHTNVao10) {
       return { soCauP1: 22, soYP2: 12, soCauP2: 3, soYP3: 6, tongYTuLuan: 0 };
+    }
+    if (ec.isCauTrucToan3223) {
+      // Cấu trúc Toán 3-2-2-3 GDPT 2018: cứng số câu
+      // P.I: 12 câu × 0,25đ = 3đ | P.II: 2 câu × 4ý = 8ý × 0,25đ = 2đ
+      // P.III: 4 câu × 0,50đ = 2đ | P.IV: 3 câu TL × 1đ = 3đ
+      return { soCauP1: 12, soYP2: 8, soCauP2: 2, soYP3: 4, tongYTuLuan: 3 };
     }
     const tongDiem = ec.tongDiem || 10.0;
     const tiLe = ec.tiLeNhanThuc;
@@ -1221,6 +1229,21 @@ export default function Step2_MatrixBuilder() {
             </button>
           )}
 
+          {/* [MOI - CẤU TRÚC TOÁN 3-2-2-3] Nút preset cấu trúc chuẩn GDPT 2018, chỉ hiện với môn Toán (không phải KHTN) */}
+          {isMath && !isKHTN && (
+            <button
+              onClick={() => {
+                if (window.confirm('Áp dụng Cấu trúc Toán 3-2-2-3 (GDPT 2018)?\n\n• Phần I: 12 câu × 0,25đ = 3,0đ (Nhận biết)\n• Phần II: 2 câu ĐS × 4 ý × 0,25đ = 2,0đ\n• Phần III: 4 câu × 0,50đ = 2,0đ (Hiểu + VD)\n• Phần IV: 3 câu Tự luận × 1,0đ = 3,0đ\n\nTỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng')) {
+                  setCauTrucToan3223();
+                }
+              }}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-purple-700 hover:to-violet-700 transition-all font-bold text-sm"
+              title="Áp dụng Cấu trúc Toán GDPT 2018: 3đ-2đ-2đ-3đ, P.III = 0,50đ/câu"
+            >
+              ⚡ Cấu trúc Toán 3-2-2-3
+            </button>
+          )}
+
           {/* [KHTN THCS] Chon khoi lop */}
           {isKHTN && (
             <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-lg">
@@ -1344,6 +1367,86 @@ export default function Step2_MatrixBuilder() {
           )}
         </div>
       </div>
+
+      {/* [TOÁN 3-2-2-3] BẢNG TÓM TẮT CẤU TRÚC — chỉ hiện khi preset Toán 3-2-2-3 được kích hoạt */}
+      {isCauTrucToan3223 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-purple-300 rounded-xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-extrabold text-purple-900 text-sm flex items-center gap-2">
+              <span className="text-base">⚡</span> CẤU TRÚC ĐỀ TOÁN 3-2-2-3 (CHƯƠNG TRÌNH GDPT 2018)
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={autoFillMatrix}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-3.5 py-1.5 rounded-lg shadow font-bold text-xs hover:from-purple-700 hover:to-violet-700 hover:shadow-md transition-all"
+                title="Tự động phân bổ theo Cấu trúc Toán 3-2-2-3: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(P.III) + 3TL(P.IV)"
+              >
+                <span>⚡</span> Auto-Fill chuẩn Toán 3-2-2-3
+              </button>
+              <span className="text-xs bg-purple-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+                40%B – 30%H – 30%VD · 90 phút
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-purple-200 text-purple-900">
+                  <th className="border border-purple-300 px-2 py-1.5 text-left font-extrabold">Phần</th>
+                  <th className="border border-purple-300 px-2 py-1.5 font-extrabold">Hình thức</th>
+                  <th className="border border-purple-300 px-2 py-1.5 font-extrabold">Số câu</th>
+                  <th className="border border-purple-300 px-2 py-1.5 font-extrabold">Điểm/câu</th>
+                  <th className="border border-purple-300 px-2 py-1.5 font-extrabold">Tổng điểm</th>
+                  <th className="border border-purple-300 px-2 py-1.5 font-extrabold">Mức độ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-white hover:bg-purple-50">
+                  <td className="border border-purple-300 px-2 py-1.5 font-bold text-purple-800">P.I</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">Nhiều lựa chọn</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">12 câu</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">0,25đ</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">3,0đ (30%)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-blue-700">100% Nhận biết</td>
+                </tr>
+                <tr className="bg-purple-50 hover:bg-purple-100">
+                  <td className="border border-purple-300 px-2 py-1.5 font-bold text-purple-800">P.II</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">Đúng/Sai (4 ý/câu)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">2 câu (8 ý)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">0,25đ/ý</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">2,0đ (20%)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">4B + 2H + 2VD</td>
+                </tr>
+                <tr className="bg-white hover:bg-purple-50">
+                  <td className="border border-purple-300 px-2 py-1.5 font-bold text-purple-800">P.III ★</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">Trả lời ngắn</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">4 câu</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-red-600">0,50đ ★</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">2,0đ (20%)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">2H + 2VD</td>
+                </tr>
+                <tr className="bg-purple-50 hover:bg-purple-100">
+                  <td className="border border-purple-300 px-2 py-1.5 font-bold text-purple-800">P.IV</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">Tự luận</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">3 câu</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">1,0đ/câu</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">3,0đ (30%)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">1H + 1VD + 1VD</td>
+                </tr>
+                <tr className="bg-purple-200 font-extrabold text-purple-900">
+                  <td colSpan={4} className="border border-purple-300 px-2 py-1.5 text-right">Tổng</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">10,0đ</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">40B – 30H – 30VD</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-purple-600 mt-2 text-[11px] font-semibold">
+            ★ P.III = 0,50đ/câu (khác KHTN 4-2-1-3 là 0,25đ/câu). Tỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng.
+          </p>
+        </div>
+      )}
 
       {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY */}
       {isKHTN && (

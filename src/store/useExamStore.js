@@ -314,6 +314,7 @@ export const useExamStore = create(
         diemMoiYTuLuan: 0.5,                  // Điểm mỗi ý Tự luận
         isCauTruc4213: false,
         isCauTrucKHTNVao10: false,
+        isCauTrucToan3223: false,
         tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 }
       },
 
@@ -403,6 +404,7 @@ export const useExamStore = create(
               diemMoiYP3: 0.25,
               isCauTruc4213: false,
               isCauTrucKHTNVao10: true,
+              isCauTrucToan3223: false,
               tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
             }
           };
@@ -428,6 +430,7 @@ export const useExamStore = create(
               diemMoiYTuLuan: 1.0,
               isCauTruc4213: true,
               isCauTrucKHTNVao10: false,
+              isCauTrucToan3223: false,
               tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
             }
           };
@@ -435,7 +438,7 @@ export const useExamStore = create(
 
         // 3. Các cấu trúc khác (Toán, 100% TN khác...)
         const p1 = Number(tongDiemP1) || 3.0;
-        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false };
+        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false, isCauTrucToan3223: false };
         const hasTLN = state.config.hasTraLoiNgan !== false;
         const hasTL = state.config.hasTuLuan;
 
@@ -551,6 +554,7 @@ export const useExamStore = create(
             diemMoiYP3: 0.25,
             isCauTruc4213: false,
             isCauTrucKHTNVao10: true,
+            isCauTrucToan3223: false,
             tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
           }
         };
@@ -592,6 +596,7 @@ export const useExamStore = create(
           diemMoiYP3: 0.25,
           isCauTruc4213: false,
           isCauTrucKHTNVao10: true,
+          isCauTrucToan3223: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
         }
       })),
@@ -615,8 +620,54 @@ export const useExamStore = create(
           diemMoiYTuLuan: 1.0,
           isCauTruc4213: true,
           isCauTrucKHTNVao10: false,
+          isCauTrucToan3223: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
         }
+      })),
+
+      // Action chuyển nhanh sang Cấu trúc Toán 3-2-2-3 (GDPT 2018)
+      // P.I: 12 câu × 0,25đ = 3đ | P.II: 2 câu × 4ý × 0,25đ = 2đ
+      // P.III: 4 câu × 0,50đ = 2đ | P.IV: 3 câu × 1đ = 3đ
+      // Tỉ lệ nhận thức: 40% Biết – 30% Hiểu – 30% Vận dụng
+      setCauTrucToan3223: () => set(() => ({
+        config: {
+          hasTuLuan: true,
+          hasTraLoiNgan: true,
+          diemNhieuLuaChon: 0.25,
+          diemDungSai: 0.25,
+          diemTraLoiNgan: 0.5,
+          diemTuLuan: 1.0,
+          isCuoiKi: false,
+          isContinuousNumbering: true,
+          exportTemplate: 'ministry',
+          showCompetencySymbol: true,
+          showCompetencyCode: true,
+          showExamRedMetadata: true,
+          showExamAnswerUnderline: true,
+          groupTfByTopic: false,
+        },
+        examConfig: {
+          tongDiem: 10.0,
+          tongDiemP1: 3.0,   diemMoiCauP1: 0.25,  // P.I:  12 câu × 0,25đ = 3,0đ
+          tongDiemP2: 2.0,   diemMoiYP2: 0.25,    // P.II:  8 ý × 0,25đ = 2,0đ
+          tongDiemP3: 2.0,   diemMoiYP3: 0.50,    // P.III: 4 câu × 0,50đ = 2,0đ ← KHÁC KHTN
+          diemMoiYTuLuan: 1.0,                     // P.IV:  3 câu × 1,0đ = 3,0đ
+          isCauTruc4213: false,
+          isCauTrucKHTNVao10: false,
+          isCauTrucToan3223: true,
+          tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 },
+        },
+        tuLuanConfig: {
+          enabled: false,
+          questions: [
+            { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 1.0, level: 'hieu' }] },
+            { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 1.0, level: 'vanDung' }] },
+            { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 1.0, level: 'vanDung' }] },
+          ],
+        },
       })),
 
       // Toggle Trß║ú lß╗¥i ngß║»n - xß╗¡ l├╜ trong 1 lß║ºn set ─æß╗â tr├ính race condition
@@ -1988,6 +2039,90 @@ export const useExamStore = create(
 
             return { matrix: topics, tuLuanConfig: finalTuLuanConfig };
           }
+        }
+
+        // === NHÁNH TOÁN 3-2-2-3 (GDPT 2018) ===
+        // P.I: 12 câu × 0,25đ = 3đ (100% Nhận biết)
+        // P.II: 2 câu × 4ý × 0,25đ = 2đ (4B + 2H + 2VD)
+        // P.III: 4 câu × 0,50đ = 2đ (2H + 2VD)
+        // P.IV: 3 câu × 1đ = 3đ (1H + 1VD + 1VD)
+        if (state.examConfig.isCauTrucToan3223) {
+          console.log('⚡ AutoFill: Cấu trúc Toán 3-2-2-3 (GDPT 2018)');
+          const topics = state.matrix.map(t => ({
+            ...t,
+            donViKienThuc: (t.donViKienThuc || []).map(dv => ({
+              ...dv,
+              nhieuLuaChon: { biet: 0, hieu: 0, vanDung: 0 },
+              dungSai: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              tuLuan: { biet: 0, hieu: 0, vanDung: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, subItems: [] },
+            })),
+          }));
+
+          // Danh sách phẳng tất cả ĐVKT
+          const flatDvs = [];
+          topics.forEach((t, ti) => {
+            (t.donViKienThuc || []).forEach((dv, di) => {
+              flatDvs.push({ t: topics[ti], dv: topics[ti].donViKienThuc[di], soTiet: Number(dv.soTiet) || 1 });
+            });
+          });
+          const totalSoTiet = flatDvs.reduce((s, f) => s + f.soTiet, 0) || 1;
+
+          // ─── P.I: 12 câu Biết (Nhiều lựa chọn) ───
+          const soCauP1 = 12;
+          const p1Counts = distributeLargestRemainder(soCauP1, flatDvs.map(f => f.soTiet));
+          p1Counts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.biet += cnt; });
+
+          // ─── P.II: 2 câu Đúng/Sai (4B + 2H + 2VD) ───
+          // Phân bổ 2 câu DS theo số tiết — mỗi câu DS: 2B + 1H + 1VD
+          const soCauDS = 2;
+          const dsCounts = distributeLargestRemainder(soCauDS, flatDvs.map(f => f.soTiet));
+          dsCounts.forEach((cnt, i) => {
+            flatDvs[i].dv.dungSai.biet += cnt * 2;    // 2 ý Biết / câu
+            flatDvs[i].dv.dungSai.hieu += cnt * 1;    // 1 ý Hiểu / câu
+            flatDvs[i].dv.dungSai.vanDung += cnt * 1; // 1 ý VD / câu
+          });
+
+          // ─── P.III: 4 câu Trả lời ngắn (2H + 2VD) × 0,50đ ───
+          const soCauP3 = 4;
+          // Phân bổ 2 câu Hiểu vào ĐVKT có soTiet lớn nhất
+          const sortedByTiet = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
+          let hieuP3Left = 2, vdP3Left = 2;
+          sortedByTiet.forEach(f => {
+            if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
+            else if (vdP3Left > 0) { f.dv.traLoiNgan.vanDung += 1; vdP3Left--; }
+          });
+          // Nếu vẫn còn thiếu (trường hợp ít ĐVKT): phân bổ tiếp
+          if (hieuP3Left > 0 || vdP3Left > 0) {
+            sortedByTiet.forEach(f => {
+              if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
+              else if (vdP3Left > 0) { f.dv.traLoiNgan.vanDung += 1; vdP3Left--; }
+            });
+          }
+
+          // ─── P.IV: 3 câu Tự luận (1H + 1VD + 1VD) × 1đ ───
+          // Phân tán vào 3 ĐVKT có soTiet lớn nhất (khác nhau)
+          const tlLevels = ['hieu', 'vanDung', 'vanDung'];
+          tlLevels.forEach((lvl, idx) => {
+            const target = sortedByTiet[idx % sortedByTiet.length];
+            target.dv.tuLuan[lvl] += 1;
+          });
+
+          // Tạo finalTuLuanConfig chuẩn 3-2-2-3
+          const finalTuLuanConfig3223 = {
+            enabled: false,
+            questions: [
+              { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 1.0, level: 'hieu' }] },
+              { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 1.0, level: 'vanDung' }] },
+              { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 1.0, level: 'vanDung' }] },
+            ],
+          };
+
+          console.log(`✅ Toán 3-2-2-3: P.I=${soCauP1}B, P.II=${soCauDS}câu DS, P.III=${soCauP3}câu(2H+2VD), P.IV=3TL(1H+2VD)`);
+          return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223 };
         }
 
         const ec = state.examConfig;
