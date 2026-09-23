@@ -668,6 +668,14 @@ export const useExamStore = create(
               subItems: [{ diem: 1.0, level: 'vanDung' }] },
           ],
         },
+        dungSaiConfig: {
+          enabled: false,
+          mode: 'phan_tan_chu_de',
+          questions: [
+            { id: 'ds_q1', label: 'Câu 13', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+            { id: 'ds_q2', label: 'Câu 14', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          ]
+        },
       })),
       setCauTrucToanKhanhHoa: () => get().setCauTrucToan3223(),
 
@@ -2062,11 +2070,11 @@ export const useExamStore = create(
             })),
           }));
 
-          // Danh sách phẳng tất cả ĐVKT
+          // Danh sách phẳng tất cả ĐVKT kèm vị trí ti, di
           const flatDvs = [];
           topics.forEach((t, ti) => {
             (t.donViKienThuc || []).forEach((dv, di) => {
-              flatDvs.push({ t: topics[ti], dv: topics[ti].donViKienThuc[di], soTiet: Number(dv.soTiet) || 1 });
+              flatDvs.push({ t: topics[ti], dv: topics[ti].donViKienThuc[di], soTiet: Number(dv.soTiet) || 1, ti, di });
             });
           });
 
@@ -2082,35 +2090,104 @@ export const useExamStore = create(
             }
           });
 
-          // ─── P.II: 2 câu Đúng/Sai (4B + 2H + 2VD) ───
-          // Phân bổ 2 câu DS theo số tiết — mỗi câu DS: 2B + 1H + 1VD
-          const soCauDS = 2;
-          const dsCounts = distributeLargestRemainder(soCauDS, flatDvs.map(f => f.soTiet));
-          dsCounts.forEach((cnt, i) => {
-            flatDvs[i].dv.dungSai.biet += cnt * 2;    // 2 ý Biết / câu
-            flatDvs[i].dv.dungSai.hieu += cnt * 1;    // 1 ý Hiểu / câu
-            flatDvs[i].dv.dungSai.vanDung += cnt * 1; // 1 ý VD / câu
-          });
+          // ─── P.II: 2 câu Đúng/Sai (2.0đ, mỗi câu 4 ý: 2B + 1H + 1VD) ───
+          const dsCfg = state.dungSaiConfig;
+          const hasCustomDS = Boolean(dsCfg?.enabled) && Array.isArray(dsCfg?.questions) && dsCfg.questions.length > 0;
+          const usedDsTopics = new Set();
 
-          let dsCauNo = 13;
-          flatDvs.forEach(f => {
-            const dv = f.dv;
-            dv.dungSaiSubItems = [];
-            const numDS = Math.floor((dv.dungSai?.biet || 0) / 2);
-            for (let c = 0; c < numDS; c++) {
-              const currentCau = dsCauNo++;
-              dv.dungSaiSubItems.push(
-                { level: 'biet', diem: 0.25, label: `Câu ${currentCau}a` },
-                { level: 'biet', diem: 0.25, label: `Câu ${currentCau}b` },
-                { level: 'hieu', diem: 0.25, label: `Câu ${currentCau}c` },
-                { level: 'vanDung', diem: 0.25, label: `Câu ${currentCau}d` }
-              );
-              dv.indicatorMap[`dungSai_biet_${c * 2}`] = { label: `Câu ${currentCau}a`, code: 'NB' };
-              dv.indicatorMap[`dungSai_biet_${c * 2 + 1}`] = { label: `Câu ${currentCau}b`, code: 'NB' };
-              dv.indicatorMap[`dungSai_hieu_${c}`] = { label: `Câu ${currentCau}c`, code: 'TH' };
-              dv.indicatorMap[`dungSai_vanDung_${c}`] = { label: `Câu ${currentCau}d`, code: 'VD' };
+          for (let q = 0; q < 2; q++) {
+            const qNo = 13 + q;
+            const qCfg = hasCustomDS ? dsCfg.questions[q] : null;
+            const qLabel = qCfg?.label || `Câu ${qNo}`;
+
+            // 1. Xác định Chủ đề cho câu q
+            let chosenTi = -1;
+            if (qCfg && qCfg.topicIndex !== null && qCfg.topicIndex !== undefined && qCfg.topicIndex >= 0 && qCfg.topicIndex < topics.length) {
+              chosenTi = Number(qCfg.topicIndex);
+            } else {
+              // Ưu tiên chọn chủ đề chưa dùng nếu có >= 2 chủ đề
+              const unusedTopics = topics.map((_, ti) => ti).filter(ti => !usedDsTopics.has(ti));
+              const candTopics = (unusedTopics.length > 0 && topics.length >= 2) ? unusedTopics : topics.map((_, ti) => ti);
+              let maxTiet = -1;
+              candTopics.forEach(ti => {
+                const totalT = (topics[ti].donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0);
+                if (totalT > maxTiet) {
+                  maxTiet = totalT;
+                  chosenTi = ti;
+                }
+              });
+              if (chosenTi === -1) chosenTi = 0;
             }
-          });
+            usedDsTopics.add(chosenTi);
+
+            // 2. Phân bổ vào ĐVKT theo phamVi
+            const phamVi = qCfg?.phamVi || 'cung_bai';
+            const topicDvs = topics[chosenTi]?.donViKienThuc || [];
+
+            if (phamVi === 'cung_bai' || topicDvs.length <= 1) {
+              let chosenDv = null;
+              if (qCfg && qCfg.dvktIndex !== null && qCfg.dvktIndex !== undefined && topicDvs[qCfg.dvktIndex]) {
+                chosenDv = topicDvs[qCfg.dvktIndex];
+              } else {
+                // Ưu tiên bài chưa có DS, có số tiết lớn nhất
+                const poolNoDS = topicDvs.filter(dv => (dv.dungSaiSubItems || []).length === 0);
+                const pool = poolNoDS.length > 0 ? poolNoDS : topicDvs;
+                chosenDv = pool.slice().sort((a, b) => (Number(b.soTiet) || 1) - (Number(a.soTiet) || 1))[0] || topicDvs[0];
+              }
+
+              if (chosenDv) {
+                const bStart = chosenDv.dungSai.biet;
+                const hStart = chosenDv.dungSai.hieu;
+                const vdStart = chosenDv.dungSai.vanDung;
+
+                chosenDv.dungSai.biet += 2;
+                chosenDv.dungSai.hieu += 1;
+                chosenDv.dungSai.vanDung += 1;
+                if (!Array.isArray(chosenDv.dungSaiSubItems)) chosenDv.dungSaiSubItems = [];
+                chosenDv.dungSaiSubItems.push(
+                  { level: 'biet', diem: 0.25, label: `${qLabel}a` },
+                  { level: 'biet', diem: 0.25, label: `${qLabel}b` },
+                  { level: 'hieu', diem: 0.25, label: `${qLabel}c` },
+                  { level: 'vanDung', diem: 0.25, label: `${qLabel}d` }
+                );
+                chosenDv.indicatorMap[`dungSai_biet_${bStart}`] = { label: `${qLabel}a`, code: 'NB' };
+                chosenDv.indicatorMap[`dungSai_biet_${bStart + 1}`] = { label: `${qLabel}b`, code: 'NB' };
+                chosenDv.indicatorMap[`dungSai_hieu_${hStart}`] = { label: `${qLabel}c`, code: 'TH' };
+                chosenDv.indicatorMap[`dungSai_vanDung_${vdStart}`] = { label: `${qLabel}d`, code: 'VD' };
+              }
+            } else {
+              // Rải các ý trong cùng chủ đề
+              const tfSubDefs = [
+                { lvl: 'biet', letter: 'a', code: 'NB' },
+                { lvl: 'biet', letter: 'b', code: 'NB' },
+                { lvl: 'hieu', letter: 'c', code: 'TH' },
+                { lvl: 'vanDung', letter: 'd', code: 'VD' }
+              ];
+              const usedInQ = new Set();
+              tfSubDefs.forEach(subDef => {
+                const notUsed = topicDvs.filter((_, di) => !usedInQ.has(di));
+                const poolNoDS = notUsed.filter(dv => (dv.dungSaiSubItems || []).length === 0);
+                const pool = poolNoDS.length > 0 ? poolNoDS : (notUsed.length > 0 ? notUsed : topicDvs);
+                const chosenDv = pool.slice().sort((a, b) => (Number(b.soTiet) || 1) - (Number(a.soTiet) || 1))[0] || topicDvs[0];
+                if (chosenDv) {
+                  const dIdx = topicDvs.indexOf(chosenDv);
+                  if (dIdx >= 0) usedInQ.add(dIdx);
+                  const curCount = chosenDv.dungSai[subDef.lvl];
+                  chosenDv.dungSai[subDef.lvl] += 1;
+                  if (!Array.isArray(chosenDv.dungSaiSubItems)) chosenDv.dungSaiSubItems = [];
+                  chosenDv.dungSaiSubItems.push({
+                    level: subDef.lvl,
+                    diem: 0.25,
+                    label: `${qLabel}${subDef.letter}`
+                  });
+                  chosenDv.indicatorMap[`dungSai_${subDef.lvl}_${curCount}`] = {
+                    label: `${qLabel}${subDef.letter}`,
+                    code: subDef.code
+                  };
+                }
+              });
+            }
+          }
 
           // ─── P.III: 4 câu Trả lời ngắn (2H + 2VD) × 0,50đ ───
           const soCauP3 = 4;
@@ -2137,63 +2214,161 @@ export const useExamStore = create(
             }
           });
 
-          // ─── P.IV: 3 câu Tự luận (1H + 1VD + 1VD) × 1.0đ ───
-          // Phân tán vào 3 ĐVKT có số tiết lớn nhất
-          const tlQuestionDefs = [
-            { id: 'tl_q1', label: 'Câu 19', level: 'hieu', diem: 1.0 },
-            { id: 'tl_q2', label: 'Câu 20', level: 'vanDung', diem: 1.0 },
-            { id: 'tl_q3', label: 'Câu 21', level: 'vanDung', diem: 1.0 },
-          ];
+          // ─── P.IV: Tự luận (3.0đ) ───
+          const tlCfg = state.tuLuanConfig;
+          const hasCustomTL = Boolean(tlCfg?.enabled) && Array.isArray(tlCfg?.questions) && tlCfg.questions.length > 0 && tlCfg.questions.some(q => q.subItems && q.subItems.length > 0);
 
-          tlQuestionDefs.forEach((qDef, idx) => {
-            const target = sortedByTiet[idx % sortedByTiet.length];
-            const targetDv = target.dv;
-            if (!Array.isArray(targetDv.tuLuan.subItems)) {
-              targetDv.tuLuan.subItems = [];
-            }
-            targetDv.tuLuan.subItems.push({
-              id: `tl_${qDef.level}_${Date.now()}_${idx}`,
-              y: '',
-              diem: qDef.diem,
-              level: qDef.level,
-              label: qDef.label,
-              qId: qDef.id,
-              qLabel: qDef.label
-            });
-
-            // Đồng bộ toàn bộ các trường đếm và điểm của tuLuan để hiển thị trên bảng Ma trận
-            targetDv.tuLuan.biet = targetDv.tuLuan.subItems.filter(s => s.level === 'biet').length;
-            targetDv.tuLuan.hieu = targetDv.tuLuan.subItems.filter(s => s.level === 'hieu').length;
-            targetDv.tuLuan.vanDung = targetDv.tuLuan.subItems.filter(s => s.level === 'vanDung').length;
-            targetDv.tuLuan.vanDungCao = targetDv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').length;
-            targetDv.tuLuan.diemBiet = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'biet').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
-            targetDv.tuLuan.diemHieu = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'hieu').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
-            targetDv.tuLuan.diemVanDung = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'vanDung').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
-            targetDv.tuLuan.diemVanDungCao = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
-
-            // Gán indicatorMap cho Tự luận để hiển thị nhãn câu và mã trên ô
-            const subIdx = targetDv.tuLuan.subItems.filter(s => s.level === qDef.level).length - 1;
-            targetDv.indicatorMap[`tuLuan_${qDef.level}_${subIdx}`] = {
-              label: qDef.label,
-              code: qDef.level === 'hieu' ? 'TH' : 'VD'
-            };
-          });
-
-          // Tạo finalTuLuanConfig chuẩn Toán Khánh Hòa (3-2-2-3)
-          const finalTuLuanConfig3223 = {
-            enabled: false,
-            questions: [
+          let tlQuestionsToAssign = [];
+          if (hasCustomTL) {
+            tlQuestionsToAssign = tlCfg.questions;
+          } else {
+            tlQuestionsToAssign = [
               { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'hieu' }] },
               { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'vanDung' }] },
               { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'vanDung' }] },
-            ],
+            ];
+          }
+
+          // Xếp hạng chủ đề theo tổng tiết giảm dần
+          const topicsRankedTL = topics
+            .map((t, ti) => ({
+              ti,
+              t,
+              totalTiet: (t.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0)
+            }))
+            .sort((a, b) => b.totalTiet - a.totalTiet);
+
+          const assignSubItemToTargetDv = (targetDv, subItem, lvl, label, qId, qLabel) => {
+            if (!Array.isArray(targetDv.tuLuan.subItems)) {
+              targetDv.tuLuan.subItems = [];
+            }
+            targetDv.tuLuan.subItems.push({
+              id: `tl_${lvl}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              y: '',
+              diem: Math.round((Number(subItem.diem) || 1.0) * 100) / 100,
+              level: lvl,
+              label,
+              qId,
+              qLabel
+            });
           };
 
-          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=${soCauDS}câu DS, P.III=${soCauP3}câu(2H+2VD), P.IV=3TL(1H+2VD)`);
-          return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223 };
+          tlQuestionsToAssign.forEach((q, qIdx) => {
+            const nY = q.subItems?.length || 1;
+            const curQLabel = q.label || `Câu ${19 + qIdx}`;
+            const kieuYQ = q.kieuY || 'doc_lap';
+            const phamVi = q.phamVi || (kieuYQ === 'doc_lap' ? 'cac_chu_de_khac_nhau' : 'cung_dvkt');
+
+            if (nY === 1 || phamVi === 'cung_dvkt' || phamVi === 'cung_bai') {
+              // Cả câu nằm trong 1 ĐVKT
+              const topicEntry = topicsRankedTL[qIdx % topicsRankedTL.length];
+              const dvsInTopic = flatDvs.filter(f => f.ti === topicEntry.ti);
+              const unassignedInTopic = dvsInTopic.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+              const unassignedInAll = flatDvs.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+              const chosenPool = unassignedInTopic.length > 0
+                ? unassignedInTopic
+                : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : flatDvs));
+              const bestDv = chosenPool.slice().sort((a, b) => b.soTiet - a.soTiet)[0]?.dv || flatDvs[0].dv;
+
+              q.subItems.forEach((sub, sIdx) => {
+                const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
+                const label = nY > 1 ? `${curQLabel}${String.fromCharCode(97 + sIdx)}` : curQLabel;
+                assignSubItemToTargetDv(bestDv, sub, lvl, label, q.id, curQLabel);
+              });
+            } else if (phamVi === 'cac_dvkt_cung_chu_de' || phamVi === 'cac_bai_cung_chu_de') {
+              // Rải các ý trong cùng 1 chủ đề
+              const topicEntry = topicsRankedTL[qIdx % topicsRankedTL.length];
+              const dvsInTopic = flatDvs.filter(f => f.ti === topicEntry.ti);
+              const usedDvKeys = new Set();
+
+              q.subItems.forEach((sub, sIdx) => {
+                const available = dvsInTopic.filter(f => !usedDvKeys.has(f.di) && (f.dv.tuLuan?.subItems || []).length === 0);
+                const fallbackAvail = dvsInTopic.filter(f => !usedDvKeys.has(f.di));
+                const pool = available.length > 0 ? available : (fallbackAvail.length > 0 ? fallbackAvail : dvsInTopic);
+                const bestF = pool.slice().sort((a, b) => b.soTiet - a.soTiet)[0] || flatDvs[0];
+                usedDvKeys.add(bestF.di);
+
+                const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
+                const label = `${curQLabel}${String.fromCharCode(97 + sIdx)}`;
+                assignSubItemToTargetDv(bestF.dv, sub, lvl, label, q.id, curQLabel);
+              });
+            } else {
+              // phamVi === 'cac_chu_de_khac_nhau'
+              q.subItems.forEach((sub, sIdx) => {
+                const topicEntry = topicsRankedTL[(qIdx + sIdx) % topicsRankedTL.length];
+                const dvsInTopic = flatDvs.filter(f => f.ti === topicEntry.ti);
+                const unassignedInTopic = dvsInTopic.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+                const unassignedInAll = flatDvs.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+                const chosenPool = unassignedInTopic.length > 0
+                  ? unassignedInTopic
+                  : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : flatDvs));
+                const bestDv = chosenPool.slice().sort((a, b) => b.soTiet - a.soTiet)[0]?.dv || flatDvs[0].dv;
+
+                const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
+                const label = nY > 1 ? `${curQLabel}${String.fromCharCode(97 + sIdx)}` : curQLabel;
+                assignSubItemToTargetDv(bestDv, sub, lvl, label, q.id, curQLabel);
+              });
+            }
+          });
+
+          // Đồng bộ toàn bộ các trường đếm, điểm và indicatorMap của tuLuan cho tất cả ĐVKT
+          topics.forEach(t => {
+            (t.donViKienThuc || []).forEach(dv => {
+              if (Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+                dv.tuLuan.biet = dv.tuLuan.subItems.filter(s => s.level === 'biet').length;
+                dv.tuLuan.hieu = dv.tuLuan.subItems.filter(s => s.level === 'hieu').length;
+                dv.tuLuan.vanDung = dv.tuLuan.subItems.filter(s => s.level === 'vanDung').length;
+                dv.tuLuan.vanDungCao = dv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').length;
+                dv.tuLuan.diemBiet = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'biet').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemHieu = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'hieu').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemVanDung = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'vanDung').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemVanDungCao = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+
+                const lvlCounters = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
+                dv.tuLuan.subItems.forEach(sub => {
+                  const lvl = sub.level || 'vanDung';
+                  const cIdx = lvlCounters[lvl]++;
+                  const code = lvl === 'biet' ? 'NB' : (lvl === 'hieu' ? 'TH' : (lvl === 'vanDungCao' ? 'VDC' : 'VD'));
+                  dv.indicatorMap[`tuLuan_${lvl}_${cIdx}`] = {
+                    label: sub.label,
+                    code
+                  };
+                });
+              }
+            });
+          });
+
+          // Tạo finalTuLuanConfig chuẩn Toán Khánh Hòa (3-2-2-3): Giữ enabled: true nếu có custom
+          const finalTuLuanConfig3223 = hasCustomTL
+            ? { ...tlCfg, enabled: true }
+            : {
+                enabled: false,
+                questions: [
+                  { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 1.0, level: 'hieu' }] },
+                  { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                  { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                ],
+              };
+
+          const finalDungSaiConfig3223 = hasCustomDS
+            ? { ...dsCfg, enabled: true }
+            : (state.dungSaiConfig || {
+                enabled: false,
+                mode: 'phan_tan_chu_de',
+                questions: [
+                  { id: 'ds_q1', label: 'Câu 13', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+                  { id: 'ds_q2', label: 'Câu 14', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+                ]
+              });
+
+          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=2câu DS (custom=${hasCustomDS}), P.III=${soCauP3}câu(2H+2VD), P.IV=TL (custom=${hasCustomTL})`);
+          return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223, dungSaiConfig: finalDungSaiConfig3223 };
         }
 
         const ec = state.examConfig;

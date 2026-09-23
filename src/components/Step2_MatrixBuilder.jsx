@@ -2186,6 +2186,21 @@ export default function Step2_MatrixBuilder() {
                             <div key={sub.id || subIdx} className="flex items-center gap-1.5">
                               <span className="text-[10px] text-slate-400 font-bold w-4 shrink-0 text-center">{String.fromCharCode(97 + subIdx)}.</span>
                               <span className="text-[9px] text-blue-600 font-semibold bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5">Ý {subIdx + 1}</span>
+                              <select
+                                value={sub.level || (subIdx === 0 ? 'hieu' : 'vanDung')}
+                                onChange={(e) => {
+                                  const updated = [...tuLuanConfig.questions];
+                                  updated[qIdx].subItems[subIdx].level = e.target.value;
+                                  setTuLuanConfig({ questions: updated });
+                                }}
+                                className="text-[10px] font-bold border border-slate-200 rounded px-1 py-0.5 bg-white text-slate-700 outline-none focus:border-green-400"
+                                title="Mức độ nhận thức của ý này"
+                              >
+                                <option value="biet">Biết</option>
+                                <option value="hieu">Hiểu</option>
+                                <option value="vanDung">Vận dụng</option>
+                                <option value="vanDungCao">VD Cao</option>
+                              </select>
                               <input
                                 type="number"
                                 min="0.25"
@@ -2204,7 +2219,7 @@ export default function Step2_MatrixBuilder() {
                                   const updated = [...tuLuanConfig.questions];
                                   updated[qIdx].subItems = updated[qIdx].subItems.filter((_, i) => i !== subIdx);
                                   if (updated[qIdx].subItems.length === 0) {
-                                    updated[qIdx].subItems = [{ diem: 0.5 }];
+                                    updated[qIdx].subItems = [{ diem: 0.5, level: 'hieu' }];
                                   }
                                   setTuLuanConfig({ questions: updated });
                                 }}
@@ -2218,7 +2233,7 @@ export default function Step2_MatrixBuilder() {
                           <button
                             onClick={() => {
                               const updated = [...tuLuanConfig.questions];
-                              updated[qIdx].subItems.push({ diem: 0.5 });
+                              updated[qIdx].subItems.push({ diem: 0.5, level: 'vanDung' });
                               setTuLuanConfig({ questions: updated });
                             }}
                             className="flex items-center justify-center gap-1 text-[10px] text-green-600 hover:text-green-800 font-semibold border border-dashed border-green-200 rounded py-0.5 hover:bg-green-50/50 transition-colors w-full"
@@ -2237,7 +2252,8 @@ export default function Step2_MatrixBuilder() {
                 const totalAllDiem = tuLuanConfig.questions.reduce((s, q) => s + q.subItems.reduce((s2, sub) => s2 + (Number(sub.diem) || 0), 0), 0);
                 const totalAllY = tuLuanConfig.questions.reduce((s, q) => s + q.subItems.length, 0);
                 const isKHTN = examConfig.subject === 'khtn' || examConfig.isCauTruc4213;
-                const targetDiem = isKHTN ? 3.0 : 4.0;
+                const isToan3223 = Boolean(examConfig?.isCauTrucToan3223);
+                const targetDiem = (isKHTN || isToan3223) ? 3.0 : 4.0;
                 const matchDiem = Math.abs(totalAllDiem - targetDiem) < 0.01;
                 return (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
@@ -2246,7 +2262,7 @@ export default function Step2_MatrixBuilder() {
                     </p>
                     <p className="text-[10px] text-amber-600 mt-0.5">
                       {matchDiem
-                        ? '✅ Khớp với cấu trúc 3 câu - 3.0đ Tự luận'
+                        ? `✅ Khớp với cấu trúc ${tuLuanConfig.questions.length} câu - ${targetDiem.toFixed(1).replace('.0', '')}đ Tự luận`
                         : `⚠️ Lệch so với ${targetDiem}đ Tự luận (chênh ${Math.abs(totalAllDiem - targetDiem).toFixed(2)}đ)`}
                     </p>
                   </div>
@@ -2258,14 +2274,25 @@ export default function Step2_MatrixBuilder() {
             <div className="flex justify-end items-center gap-3 p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
               <button
                 onClick={() => {
-                  setTuLuanConfig({
-                    enabled: false,
-                    questions: [
-                      { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
-                      { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
-                      { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
-                    ],
-                  });
+                  if (examConfig?.isCauTrucToan3223) {
+                    setTuLuanConfig({
+                      enabled: false,
+                      questions: [
+                        { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'hieu' }] },
+                        { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                        { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                      ],
+                    });
+                  } else {
+                    setTuLuanConfig({
+                      enabled: false,
+                      questions: [
+                        { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+                        { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
+                        { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+                      ],
+                    });
+                  }
                 }}
                 className="px-5 py-2 border border-slate-300 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
               >
@@ -2293,6 +2320,7 @@ export default function Step2_MatrixBuilder() {
         dungSaiConfig={dungSaiConfig}
         setDungSaiConfig={setDungSaiConfig}
         isKHTN={isKHTN}
+        isCauTrucToan3223={isCauTrucToan3223}
       />
 
       {/* Modal Chọn Năng lực chỉ báo */}

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Settings2, X, CheckCircle2, AlertTriangle, Sparkles, BookOpen, Layers, RotateCcw } from 'lucide-react';
 
-export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSaiConfig = {}, setDungSaiConfig, isKHTN = true }) {
+export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSaiConfig = {}, setDungSaiConfig, isKHTN = true, isCauTrucToan3223 = false }) {
+  const defaultLabel1 = isCauTrucToan3223 ? 'Câu 13' : 'Câu 1';
+  const defaultLabel2 = isCauTrucToan3223 ? 'Câu 14' : 'Câu 2';
+
   const [localConfig, setLocalConfig] = useState({
     enabled: false,
     mode: 'phan_tan_chu_de',
     questions: [
-      { id: 'ds_q1', label: 'Câu 1', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-      { id: 'ds_q2', label: 'Câu 2', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+      { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+      { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
     ]
   });
 
@@ -19,18 +22,18 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
         enabled: false,
         mode: 'phan_tan_chu_de',
         questions: [
-          { id: 'ds_q1', label: 'Câu 1', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-          { id: 'ds_q2', label: 'Câu 2', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
         ]
       });
     }
-  }, [show, dungSaiConfig]);
+  }, [show, dungSaiConfig, isCauTrucToan3223]);
 
   if (!show) return null;
 
   const topics = matrix || [];
-  const q1 = localConfig.questions?.[0] || { id: 'ds_q1', label: 'Câu 1', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' };
-  const q2 = localConfig.questions?.[1] || { id: 'ds_q2', label: 'Câu 2', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' };
+  const q1 = localConfig.questions?.[0] || { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' };
+  const q2 = localConfig.questions?.[1] || { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' };
 
   const updateQuestion = (qIdx, field, value) => {
     const nextQuestions = [...(localConfig.questions || [])];
@@ -68,8 +71,8 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
         enabled: false,
         mode: 'phan_tan_chu_de',
         questions: [
-          { id: 'ds_q1', label: 'Câu 1', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-          { id: 'ds_q2', label: 'Câu 2', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
         ]
       });
     } else if (presetType === 'rai_theo_chu_de') {
@@ -77,8 +80,8 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
         enabled: true,
         mode: 'phan_tan_chu_de',
         questions: [
-          { id: 'ds_q1', label: 'Câu 1', topicIndex: null, dvktIndex: null, phamVi: 'cac_bai_cung_chu_de' },
-          { id: 'ds_q2', label: 'Câu 2', topicIndex: null, dvktIndex: null, phamVi: 'cac_bai_cung_chu_de' },
+          { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cac_bai_cung_chu_de' },
+          { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cac_bai_cung_chu_de' },
         ]
       });
     }
@@ -96,8 +99,8 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
       enabled: false,
       mode: 'phan_tan_chu_de',
       questions: [
-        { id: 'ds_q1', label: 'Câu 1', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-        { id: 'ds_q2', label: 'Câu 2', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+        { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+        { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
       ]
     };
     setLocalConfig(defaultCfg);
@@ -166,7 +169,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
                     {!localConfig.enabled && <span className="text-[10px] bg-indigo-600 text-white px-1.5 py-0.2 rounded font-bold">Đang chọn</span>}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    <strong>Câu 1</strong> ở Chủ đề A, <strong>Câu 2</strong> ở Chủ đề B. Mỗi câu trọn vẹn trong 1 bài (ưu tiên bài ≥ 2 tiết để chung ngữ cảnh).
+                    <strong>{defaultLabel1}</strong> ở Chủ đề A, <strong>{defaultLabel2}</strong> ở Chủ đề B. Mỗi câu trọn vẹn trong 1 bài (ưu tiên bài ≥ 2 tiết để chung ngữ cảnh).
                   </div>
                 </div>
               </button>
@@ -249,7 +252,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
                     {/* Badge trạng thái */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                        {isKHTN ? '2 Biết · 1 Hiểu · 1 VD' : '1 Biết · 1 Hiểu · 2 VD'}
+                        {(isKHTN || isCauTrucToan3223) ? '2 Biết · 1 Hiểu · 1 VD' : '1 Biết · 1 Hiểu · 2 VD'}
                       </span>
                     </div>
                   </div>
@@ -344,7 +347,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
             <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
               <AlertTriangle size={16} className="shrink-0 text-amber-600 mt-0.5" />
               <div>
-                <strong>Lưu ý về phân bổ:</strong> Thầy/Cô đang chỉ định cả <strong>Câu 1</strong> và <strong>Câu 2</strong> vào cùng một Chủ đề. Khuyến nghị nên phân tán 2 câu vào 2 Chủ đề khác nhau để đề thi có độ bao quát tốt nhất.
+                <strong>Lưu ý về phân bổ:</strong> Thầy/Cô đang chỉ định cả <strong>{q1.label || defaultLabel1}</strong> và <strong>{q2.label || defaultLabel2}</strong> vào cùng một Chủ đề. Khuyến nghị nên phân tán 2 câu vào 2 Chủ đề khác nhau để đề thi có độ bao quát tốt nhất.
               </div>
             </div>
           ) : (
