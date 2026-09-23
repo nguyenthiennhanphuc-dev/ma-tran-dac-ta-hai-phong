@@ -76,7 +76,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, updateDonViPhase, updateTopicPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, tuLuanConfig, setTuLuanConfig, updateDvIndicators } = useExamStore();
   const isChemistry = /hóa|hoá/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const [showSmartImport, setShowSmartImport] = useState(false);
@@ -488,6 +488,26 @@ export default function Step2_MatrixBuilder() {
             {isFirst && (
               <td rowSpan={dvCount} className="border border-slate-300 p-1 align-top min-w-[120px]">
                 <textarea className="w-full bg-transparent outline-none resize-vertical p-1 text-sm font-semibold text-slate-800 leading-snug" rows="3" placeholder="Chủ đề / Chương..." value={topic.tenChuDe} onChange={(e) => updateTopicText(topic.id, 'tenChuDe', e.target.value)} />
+                {config.isCuoiKi && (
+                  <div className="mt-1 flex items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => updateTopicPhase(topic.id, true)}
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-all cursor-pointer"
+                      title="Gán tất cả bài trong chủ đề này là Nửa đầu kì (trước giữa kì)"
+                    >
+                      CĐ: Nửa đầu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateTopicPhase(topic.id, false)}
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all cursor-pointer"
+                      title="Gán tất cả bài trong chủ đề này là Nửa sau kì (sau giữa kì)"
+                    >
+                      CĐ: Nửa sau
+                    </button>
+                  </div>
+                )}
               </td>
             )}
 
@@ -778,8 +798,8 @@ export default function Step2_MatrixBuilder() {
               title="Chọn chế độ phân bổ điểm cho đề Cuối Kì"
             >
               <option value="">Tắt (bình thường)</option>
+              <option value="25-75">Cuối Kì 25% - 75% (Hải Phòng - 2,5đ / 7,5đ)</option>
               <option value="30-70">Cuối Kì 30% - 70%</option>
-              <option value="25-75">Cuối Kì 25% - 75%</option>
               <option value="20-80">Cuối Kì 20% - 80%</option>
               <option value="2.25-7.75">Cuối Kì 2,25đ - 7,75đ (22,5%-77,5%)</option>
             </select>

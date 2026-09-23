@@ -779,6 +779,16 @@ export const useExamStore = create(
         })
       })),
 
+      updateTopicPhase: (topicId, isDau) => set((state) => ({
+        matrix: state.matrix.map(topic => {
+          if (topic.id !== topicId) return topic;
+          return {
+            ...topic,
+            donViKienThuc: (topic.donViKienThuc || []).map(dv => ({ ...dv, isNuaDauKi: isDau }))
+          };
+        })
+      })),
+
       // =======================================================================
       // ACTIONS CHO ─É╞áN Vß╗è KIß║╛N THß╗¿C (─ÉVKT)
       // =======================================================================
@@ -1360,18 +1370,42 @@ export const useExamStore = create(
           if (allDvs.length > 0) {
             const tongSoTiet_KHTN = allDvs.reduce((s, d) => s + d.soTiet, 0);
 
+            // Xác định chế độ Cuối Kì (25-75, 30-70, 20-80, 2.25-7.75)
+            const isCuoiKiMode = Boolean(state.config.isCuoiKi);
+            let budgetDau = 2.5, budgetSau = 7.5;
+            if (state.config.isCuoiKi === '20-80') { budgetDau = 2.0; budgetSau = 8.0; }
+            else if (state.config.isCuoiKi === '30-70') { budgetDau = 3.0; budgetSau = 7.0; }
+            else if (state.config.isCuoiKi === '2.25-7.75') { budgetDau = 2.25; budgetSau = 7.75; }
+
+            const hasDau = allDvs.some(d => d.dv.isNuaDauKi);
+            const hasSau = allDvs.some(d => !d.dv.isNuaDauKi);
+            const hasBothPhases = isCuoiKiMode && hasDau && hasSau;
+
+            const sumTietDau = allDvs.filter(d => d.dv.isNuaDauKi).reduce((s, d) => s + d.soTiet, 0);
+            const sumTietSau = allDvs.filter(d => !d.dv.isNuaDauKi).reduce((s, d) => s + d.soTiet, 0);
+
             // Xây dựng flatKHTN theo dõi target, current và hasTuLuan
-            const flatKHTN = allDvs.map(d => ({
-              d,
-              dv: d.dv,
-              ti: d.ti,
-              di: d.di,
-              soTiet: d.soTiet,
-              target: (d.soTiet / tongSoTiet_KHTN) * 10.0, // Điểm mục tiêu lý tưởng theo số tiết
-              current: 0, // Điểm thực tế tích lũy
-              hasTuLuan: false, // Đánh dấu bài đã nhận câu Tự luận
-              hasDungSai: false // Đánh dấu bài đã nhận câu Đúng/Sai
-            }));
+            const flatKHTN = allDvs.map(d => {
+              let target = (d.soTiet / tongSoTiet_KHTN) * 10.0;
+              if (hasBothPhases) {
+                if (d.dv.isNuaDauKi && sumTietDau > 0) {
+                  target = (d.soTiet / sumTietDau) * budgetDau;
+                } else if (!d.dv.isNuaDauKi && sumTietSau > 0) {
+                  target = (d.soTiet / sumTietSau) * budgetSau;
+                }
+              }
+              return {
+                d,
+                dv: d.dv,
+                ti: d.ti,
+                di: d.di,
+                soTiet: d.soTiet,
+                target,
+                current: 0, // Điểm thực tế tích lũy
+                hasTuLuan: false, // Đánh dấu bài đã nhận câu Tự luận
+                hasDungSai: false // Đánh dấu bài đã nhận câu Đúng/Sai
+              };
+            });
 
             // Reset tất cả các trường
             allDvs.forEach(d => {
@@ -1517,20 +1551,40 @@ export const useExamStore = create(
                 }
               });
             } else {
-              // Mặc định CV 4956: 3 câu TL (1 Hiểu 1đ, 1 VD 1đ, 1 VDC 1đ) vào 3 chủ đề lớn nhất
-              [
-                { level: 'hieu',       label: 'Câu 1' },
-                { level: 'vanDung',    label: 'Câu 2' },
-                { level: 'vanDungCao', label: 'Câu 3' }
-              ].forEach(({ level, label }, qIdx) => {
-                const topicEntry = topicsByTotalTiet[qIdx] ?? topicsByTotalTiet[topicsByTotalTiet.length - 1];
-                if (!topicEntry) return;
-                const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti);
-                const bestDv = findBestDvForTuLuan(dvsInTopic) || findBestDvForTuLuan(flatKHTN);
-                if (bestDv) {
-                  assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
-                }
-              });
+              // Mặc định CV 4956: 3 câu TL (1 Hiểu 1đ, 1 VD 1đ, 1 VDC 1đ)
+              if (hasBothPhases) {
+                // CHẾ ĐỘ CUỐI KÌ 25-75: Toàn bộ 3 câu Tự luận dồn vào Nửa sau kì (kiến thức trọng tâm mới học)
+                const sauTopics = topicsByTotalTiet.filter(t => flatKHTN.some(d => d.ti === t.ti && !d.dv.isNuaDauKi));
+                const topicsToUse = sauTopics.length > 0 ? sauTopics : topicsByTotalTiet;
+                [
+                  { level: 'hieu',       label: 'Câu 1' },
+                  { level: 'vanDung',    label: 'Câu 2' },
+                  { level: 'vanDungCao', label: 'Câu 3' }
+                ].forEach(({ level, label }, qIdx) => {
+                  const topicEntry = topicsToUse[qIdx] ?? topicsToUse[topicsToUse.length - 1];
+                  if (!topicEntry) return;
+                  const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti && !d.dv.isNuaDauKi);
+                  const pool = dvsInTopic.length > 0 ? dvsInTopic : flatKHTN.filter(d => !d.dv.isNuaDauKi);
+                  const bestDv = findBestDvForTuLuan(pool.length > 0 ? pool : flatKHTN);
+                  if (bestDv) {
+                    assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
+                  }
+                });
+              } else {
+                [
+                  { level: 'hieu',       label: 'Câu 1' },
+                  { level: 'vanDung',    label: 'Câu 2' },
+                  { level: 'vanDungCao', label: 'Câu 3' }
+                ].forEach(({ level, label }, qIdx) => {
+                  const topicEntry = topicsByTotalTiet[qIdx] ?? topicsByTotalTiet[topicsByTotalTiet.length - 1];
+                  if (!topicEntry) return;
+                  const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti);
+                  const bestDv = findBestDvForTuLuan(dvsInTopic) || findBestDvForTuLuan(flatKHTN);
+                  if (bestDv) {
+                    assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
+                  }
+                });
+              }
             }
 
             // =====================================================================
@@ -1559,8 +1613,13 @@ export const useExamStore = create(
               } else {
                 // Tự động phân tán: nếu có >= 2 chủ đề, ưu tiên chọn chủ đề CHƯA DÙNG cho câu kia
                 const allTopicIndices = topics.map((_, ti) => ti);
-                const unusedTopics = allTopicIndices.filter(ti => !usedTfTopics.has(ti));
-                const candidateTopics = (unusedTopics.length > 0 && topics.length >= 2) ? unusedTopics : allTopicIndices;
+                const phaseCandidateTopics = hasBothPhases
+                  ? allTopicIndices.filter(ti => flatKHTN.some(f => f.ti === ti && !f.dv.isNuaDauKi))
+                  : allTopicIndices;
+                const poolTopics = phaseCandidateTopics.length > 0 ? phaseCandidateTopics : allTopicIndices;
+
+                const unusedTopics = poolTopics.filter(ti => !usedTfTopics.has(ti));
+                const candidateTopics = (unusedTopics.length > 0 && poolTopics.length >= 2) ? unusedTopics : poolTopics;
 
                 let maxTopicGapVal = -Infinity;
                 candidateTopics.forEach(ti => {
@@ -1570,13 +1629,16 @@ export const useExamStore = create(
                     chosenTopicTi = ti;
                   }
                 });
-                if (chosenTopicTi === -1) chosenTopicTi = 0;
+                if (chosenTopicTi === -1) chosenTopicTi = candidateTopics[0] ?? 0;
               }
               usedTfTopics.add(chosenTopicTi);
 
               // 2. Xác định phạm vi kiến thức của câu q
               const phamVi = qCfg?.phamVi || (state.config.groupTfByTopic ? 'cac_bai_cung_chu_de' : 'cung_bai');
-              const topicDvsKHTN = flatKHTN.filter(f => f.ti === chosenTopicTi);
+              let topicDvsKHTN = flatKHTN.filter(f => f.ti === chosenTopicTi);
+              if (hasBothPhases && topicDvsKHTN.some(f => !f.dv.isNuaDauKi)) {
+                topicDvsKHTN = topicDvsKHTN.filter(f => !f.dv.isNuaDauKi);
+              }
 
               if (phamVi === 'cung_bai' || phamVi === 'cung_dvkt') {
                 // CẢ 4 Ý TRỌN VẸN TRONG 1 BÀI HỌC (Chuẩn ngữ cảnh GDPT 2018)
@@ -1640,55 +1702,163 @@ export const useExamStore = create(
               }
             }
 
-            // Phần III: 4 câu Trả lời ngắn (2 Hiểu, 2 VD, mỗi câu 0.25đ)
-            ['hieu', 'hieu', 'vanDung', 'vanDung'].forEach(lvl => {
-              const notTL = flatKHTN.filter(f => !f.hasTuLuan);
-              const pool = notTL.length > 0 ? notTL : flatKHTN;
-              const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
-              if (chosen) {
-                chosen.dv.traLoiNgan[lvl]++;
-                chosen.current += 0.25;
-              }
-            });
+            // =====================================================================
+            // BƯỚC 3: PHÂN BỔ TRẢ LỜI NGẮN (1.0đ = 4 CÂU: 2 HIỂU, 2 VẬN DỤNG)
+            // =====================================================================
+            if (hasBothPhases) {
+              // CHẾ ĐỘ CUỐI KÌ 25-75: Phân chia đều TLN:
+              // Nửa đầu: 1 Hiểu (0.25đ) + 1 VD (0.25đ) = 0.50đ
+              // Nửa sau: 1 Hiểu (0.25đ) + 1 VD (0.25đ) = 0.50đ
+              const pickTln = (poolList, lvl) => {
+                const notTL = poolList.filter(f => !f.hasTuLuan);
+                const p = notTL.length > 0 ? notTL : poolList;
+                const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (chosen) {
+                  chosen.dv.traLoiNgan[lvl]++;
+                  chosen.current += 0.25;
+                }
+              };
+
+              const poolDau = flatKHTN.filter(f => f.dv.isNuaDauKi);
+              const poolSau = flatKHTN.filter(f => !f.dv.isNuaDauKi);
+
+              // 1 Hiểu + 1 VD cho Nửa đầu
+              pickTln(poolDau.length > 0 ? poolDau : flatKHTN, 'hieu');
+              pickTln(poolDau.length > 0 ? poolDau : flatKHTN, 'vanDung');
+
+              // 1 Hiểu + 1 VD cho Nửa sau
+              pickTln(poolSau.length > 0 ? poolSau : flatKHTN, 'hieu');
+              pickTln(poolSau.length > 0 ? poolSau : flatKHTN, 'vanDung');
+            } else {
+              // Mặc định: 4 câu Trả lời ngắn (2 Hiểu, 2 VD, mỗi câu 0.25đ)
+              ['hieu', 'hieu', 'vanDung', 'vanDung'].forEach(lvl => {
+                const notTL = flatKHTN.filter(f => !f.hasTuLuan);
+                const pool = notTL.length > 0 ? notTL : flatKHTN;
+                const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (chosen) {
+                  chosen.dv.traLoiNgan[lvl]++;
+                  chosen.current += 0.25;
+                }
+              });
+            }
 
             // =====================================================================
-            // [CƠ CHẾ 1] BƯỚC 3: PHÂN BỔ NHIỀU LỰA CHỌN (4.0đ = 16 CÂU) ĐỂ "LẤP HỔNG"
+            // [CƠ CHẾ 1] BƯỚC 4: PHÂN BỔ NHIỀU LỰA CHỌN (4.0đ = 16 CÂU) ĐỂ "LẤP HỔNG"
             // 1. BẢO ĐẢM ĐỘ PHỦ 100%: Bài nào current === 0 (như Bài 1 - 1 tiết)
             //    BẮT BUỘC NHẬN NGAY 1 CÂU BIẾT (0.25đ)!
             // 2. Số câu Biết và Hiểu còn lại chia cho các bài thiếu điểm theo gap!
             // =====================================================================
-            let remainingBiet = 12;
+            if (hasBothPhases) {
+              // CHẾ ĐỘ CUỐI KÌ 25-75: CÂN BẰNG CHÍNH XÁC NỬA ĐẦU = 2.5đ (25%) & NỬA SAU = 7.5đ (75%)
+              const curPtsDau = flatKHTN.filter(f => f.dv.isNuaDauKi).reduce((s, f) => s + f.current, 0);
+              const remPtsDau = Math.max(0, Math.round((budgetDau - curPtsDau) * 100) / 100);
+              const numNlcDau = Math.min(16, Math.max(0, Math.round(remPtsDau / 0.25)));
+              const numNlcSau = Math.max(0, 16 - numNlcDau);
 
-            // 1. Quét bảo đảm: Bài nào chưa có điểm nào (current === 0) nhận ngay 1 câu Biết
-            flatKHTN.forEach(f => {
-              if (f.current === 0 && remainingBiet > 0) {
-                f.dv.nhieuLuaChon.biet = 1;
-                f.current += 0.25;
-                remainingBiet--;
+              // Chia tỉ lệ Biết và Hiểu giữa 2 giai đoạn (chuẩn toàn bài: 12 Biết, 4 Hiểu)
+              let bietDau = Math.min(12, Math.max(0, Math.round(numNlcDau * 0.75)));
+              let hieuDau = numNlcDau - bietDau;
+              if (hieuDau > 4) { hieuDau = 4; bietDau = numNlcDau - 4; }
+              if (bietDau > 12) { bietDau = 12; hieuDau = numNlcDau - 12; }
+              let bietSau = 12 - bietDau;
+              let hieuSau = 4 - hieuDau;
+
+              const poolDau = flatKHTN.filter(f => f.dv.isNuaDauKi);
+              const poolSau = flatKHTN.filter(f => !f.dv.isNuaDauKi);
+
+              // 1. Phân bổ cho Nửa đầu kì:
+              // 1a. Bảo đảm độ phủ 100% trong Nửa đầu: bài nào current === 0 nhận 1 câu Biết
+              poolDau.forEach(f => {
+                if (f.current === 0 && bietDau > 0) {
+                  f.dv.nhieuLuaChon.biet++;
+                  f.current += 0.25;
+                  bietDau--;
+                }
+              });
+              // 1b. Số câu Biết còn lại cho Nửa đầu
+              while (bietDau > 0) {
+                const notTL = poolDau.filter(f => !f.hasTuLuan);
+                const p = notTL.length > 0 ? notTL : poolDau;
+                const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (!chosen) break;
+                chosen.dv.nhieuLuaChon.biet++;
+                chosen.current += 0.25;
+                bietDau--;
               }
-            });
-
-            // 2. Phân phối số câu Biết còn lại cho các bài đang đói điểm nhất (gap > 0)
-            while (remainingBiet > 0) {
-              // Ưu tiên các bài chưa có Tự luận và đang có gap lớn nhất
-              const notTL = flatKHTN.filter(f => !f.hasTuLuan);
-              const pool = notTL.length > 0 ? notTL : flatKHTN;
-              const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
-              if (!chosen) break;
-              chosen.dv.nhieuLuaChon.biet++;
-              chosen.current += 0.25;
-              remainingBiet--;
-            }
-
-            // 3. Phân phối 4 câu Hiểu (1.0đ = 4 × 0.25đ):
-            for (let i = 0; i < 4; i++) {
-              // Ưu tiên các bài có số tiết >= 2, chưa có Tự luận và đang có gap lớn nhất
-              const candidates = flatKHTN.filter(f => !f.hasTuLuan && f.soTiet >= 2);
-              const pool = candidates.length > 0 ? candidates : flatKHTN;
-              const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
-              if (chosen) {
+              // 1c. Số câu Hiểu cho Nửa đầu
+              while (hieuDau > 0) {
+                const candidates = poolDau.filter(f => !f.hasTuLuan && f.soTiet >= 2);
+                const p = candidates.length > 0 ? candidates : poolDau;
+                const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (!chosen) break;
                 chosen.dv.nhieuLuaChon.hieu++;
                 chosen.current += 0.25;
+                hieuDau--;
+              }
+
+              // 2. Phân bổ cho Nửa sau kì:
+              // 2a. Bảo đảm độ phủ 100% trong Nửa sau: bài nào current === 0 nhận 1 câu Biết
+              poolSau.forEach(f => {
+                if (f.current === 0 && bietSau > 0) {
+                  f.dv.nhieuLuaChon.biet++;
+                  f.current += 0.25;
+                  bietSau--;
+                }
+              });
+              // 2b. Số câu Biết còn lại cho Nửa sau
+              while (bietSau > 0) {
+                const notTL = poolSau.filter(f => !f.hasTuLuan);
+                const p = notTL.length > 0 ? notTL : poolSau;
+                const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (!chosen) break;
+                chosen.dv.nhieuLuaChon.biet++;
+                chosen.current += 0.25;
+                bietSau--;
+              }
+              // 2c. Số câu Hiểu cho Nửa sau
+              while (hieuSau > 0) {
+                const candidates = poolSau.filter(f => !f.hasTuLuan && f.soTiet >= 2);
+                const p = candidates.length > 0 ? candidates : poolSau;
+                const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (!chosen) break;
+                chosen.dv.nhieuLuaChon.hieu++;
+                chosen.current += 0.25;
+                hieuSau--;
+              }
+            } else {
+              let remainingBiet = 12;
+
+              // 1. Quét bảo đảm: Bài nào chưa có điểm nào (current === 0) nhận ngay 1 câu Biết
+              flatKHTN.forEach(f => {
+                if (f.current === 0 && remainingBiet > 0) {
+                  f.dv.nhieuLuaChon.biet = 1;
+                  f.current += 0.25;
+                  remainingBiet--;
+                }
+              });
+
+              // 2. Phân phối số câu Biết còn lại cho các bài đang đói điểm nhất (gap > 0)
+              while (remainingBiet > 0) {
+                // Ưu tiên các bài chưa có Tự luận và đang có gap lớn nhất
+                const notTL = flatKHTN.filter(f => !f.hasTuLuan);
+                const pool = notTL.length > 0 ? notTL : flatKHTN;
+                const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (!chosen) break;
+                chosen.dv.nhieuLuaChon.biet++;
+                chosen.current += 0.25;
+                remainingBiet--;
+              }
+
+              // 3. Phân phối 4 câu Hiểu (1.0đ = 4 × 0.25đ):
+              for (let i = 0; i < 4; i++) {
+                // Ưu tiên các bài có số tiết >= 2, chưa có Tự luận và đang có gap lớn nhất
+                const candidates = flatKHTN.filter(f => !f.hasTuLuan && f.soTiet >= 2);
+                const pool = candidates.length > 0 ? candidates : flatKHTN;
+                const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+                if (chosen) {
+                  chosen.dv.nhieuLuaChon.hieu++;
+                  chosen.current += 0.25;
+                }
               }
             }
 

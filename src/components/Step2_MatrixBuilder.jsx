@@ -85,7 +85,7 @@ const SubjectAutocomplete = ({ value, onChange, placeholder, isMath, isChemistry
 const ChemistryAutocomplete = SubjectAutocomplete;
 
 export default function Step2_MatrixBuilder() {
-  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, setCauTrucKHTNVao10, loadKhtnVao10SampleMatrix, setCauTruc4213, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
+  const { matrix, config, examConfig, examHeader, addTopic, removeTopic, updateTopicText, updateConfig, updateExamConfig, autoFillMatrix, applyCtToan2018, ct2018LastResult, clearCt2018Result, updateDonViPhase, updateTopicPhase, addDonVi, removeDonVi, updateDonVi, updateDvQuestionCount, updateDvTuLuanPoint, addTuLuanSubItem, removeTuLuanSubItem, updateTuLuanSubItem, smartImportData, importDonVisToTopic, toggleTuLuan, toggleTraLoiNgan, setCauTrucDe, setCauTrucKHTNVao10, loadKhtnVao10SampleMatrix, setCauTruc4213, tuLuanConfig, setTuLuanConfig, dungSaiConfig, setDungSaiConfig, updateDvIndicators, updateCellIndicatorCode, updateLevelIndicatorCode, updateDvYccd, khtnConfig, updateKhtnConfig } = useExamStore();
   const isChemistry = /hóa|hoa học|hóa học/i.test(examHeader?.monHoc || '');
   const isMath = /toán|toan|đại số|hình học|giải tích/i.test(examHeader?.monHoc || '');
   const isBiology = /sinh|sinh học/i.test(examHeader?.monHoc || '');
@@ -354,6 +354,49 @@ export default function Step2_MatrixBuilder() {
              + (Number(dv.tuLuan?.diemVanDung) || 0) + (Number(dv.tuLuan?.diemVanDungCao) || 0);
     return Math.round((nlc + ds + tln + tl) * 100) / 100;
   };
+
+  // Thống kê tiến độ phân bổ điểm cho Đề Cuối Kì (Nửa đầu kì vs Nửa sau kì)
+  const cuoiKiStats = useMemo(() => {
+    if (!config.isCuoiKi) return null;
+    let sumDauPts = 0;
+    let sumSauPts = 0;
+    let countDauDvs = 0;
+    let countSauDvs = 0;
+
+    matrix.forEach(t => {
+      (t.donViKienThuc || []).forEach(dv => {
+        const pts = getDvTotalPoints(dv);
+        if (dv.isNuaDauKi) {
+          sumDauPts += pts;
+          countDauDvs++;
+        } else {
+          sumSauPts += pts;
+          countSauDvs++;
+        }
+      });
+    });
+
+    sumDauPts = Math.round(sumDauPts * 100) / 100;
+    sumSauPts = Math.round(sumSauPts * 100) / 100;
+
+    const targetDau = config.isCuoiKi === '20-80' ? 2.0
+                    : config.isCuoiKi === '30-70' ? 3.0
+                    : config.isCuoiKi === '2.25-7.75' ? 2.25
+                    : 2.5;
+    const targetSau = Math.round((10.0 - targetDau) * 100) / 100;
+
+    const isBalanced = Math.abs(sumDauPts - targetDau) < 0.05 && Math.abs(sumSauPts - targetSau) < 0.05;
+
+    return {
+      sumDauPts,
+      sumSauPts,
+      targetDau,
+      targetSau,
+      countDauDvs,
+      countSauDvs,
+      isBalanced
+    };
+  }, [config.isCuoiKi, matrix, examConfig]);
 
   // Format tổng ĐS cho dòng "Tổng số câu": "1,5 (6 ý)"
   const fmtDsCau = (level) => {
@@ -652,6 +695,26 @@ export default function Step2_MatrixBuilder() {
             {isFirst && (
               <td rowSpan={dvCount} className="border border-slate-300 p-1 align-top min-w-[120px]">
                 <textarea className="w-full bg-transparent outline-none resize-vertical p-1 text-sm font-semibold text-slate-800 leading-snug" rows="3" placeholder="Chủ đề / Chương..." value={topic.tenChuDe} onChange={(e) => updateTopicText(topic.id, 'tenChuDe', e.target.value)} />
+                {config.isCuoiKi && (
+                  <div className="mt-1 flex items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => updateTopicPhase(topic.id, true)}
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-all cursor-pointer"
+                      title="Gán tất cả bài trong chủ đề này là Nửa đầu kì (trước giữa kì)"
+                    >
+                      CĐ: Nửa đầu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateTopicPhase(topic.id, false)}
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all cursor-pointer"
+                      title="Gán tất cả bài trong chủ đề này là Nửa sau kì (sau giữa kì)"
+                    >
+                      CĐ: Nửa sau
+                    </button>
+                  </div>
+                )}
               </td>
             )}
 
@@ -1069,11 +1132,18 @@ export default function Step2_MatrixBuilder() {
               title="Chọn chế độ phân bổ điểm cho đề Cuối Kì"
             >
               <option value="">Tắt (bình thường)</option>
+              <option value="25-75">Cuối Kì 25% - 75% (Hải Phòng - 2,5đ / 7,5đ)</option>
               <option value="30-70">Cuối Kì 30% - 70%</option>
-              <option value="25-75">Cuối Kì 25% - 75%</option>
               <option value="20-80">Cuối Kì 20% - 80%</option>
               <option value="2.25-7.75">Cuối Kì 2,25đ - 7,75đ (22,5%-77,5%)</option>
             </select>
+            {config.isCuoiKi && cuoiKiStats && (
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                cuoiKiStats.isBalanced ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'
+              }`}>
+                {cuoiKiStats.isBalanced ? '✓ Chuẩn 2,5đ / 7,5đ' : `Đầu: ${cuoiKiStats.sumDauPts}đ | Sau: ${cuoiKiStats.sumSauPts}đ`}
+              </span>
+            )}
           </div>
 
           <div className="w-px h-6 bg-slate-300 mx-1"></div>
@@ -1458,6 +1528,53 @@ export default function Step2_MatrixBuilder() {
                 </tfoot>
               </table>
             </div>
+
+            {/* THÔNG BÁO TIẾN ĐỘ CHẾ ĐỘ CUỐI KÌ 25-75 */}
+            {config.isCuoiKi && cuoiKiStats && (
+              <div className="mt-3 p-3 bg-white/95 border-2 border-purple-200 rounded-xl shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-purple-900">
+                    <span className="text-sm">📅</span>
+                    <span>Phân bổ Đề Cuối Kì ({config.isCuoiKi === '25-75' ? '25% Trước Giữa Kì — 75% Sau Giữa Kì' : config.isCuoiKi}):</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={`px-2.5 py-1 rounded-full font-bold border ${Math.abs(cuoiKiStats.sumDauPts - cuoiKiStats.targetDau) < 0.05 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'}`}>
+                      📘 Nửa đầu: {cuoiKiStats.sumDauPts.toFixed(2).replace('.00', '')} / {cuoiKiStats.targetDau}đ ({(cuoiKiStats.sumDauPts * 10).toFixed(0)}%)
+                    </span>
+                    <span className="text-slate-400 font-bold">+</span>
+                    <span className={`px-2.5 py-1 rounded-full font-bold border ${Math.abs(cuoiKiStats.sumSauPts - cuoiKiStats.targetSau) < 0.05 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'}`}>
+                      📙 Nửa sau: {cuoiKiStats.sumSauPts.toFixed(2).replace('.00', '')} / {cuoiKiStats.targetSau}đ ({(cuoiKiStats.sumSauPts * 10).toFixed(0)}%)
+                    </span>
+                  </div>
+                  {cuoiKiStats.countDauDvs === 0 ? (
+                    <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                      💡 Chưa có bài nào chọn "Nửa đầu" (bấm nút "CĐ: Nửa đầu" ở cột Chủ đề để gán nhanh)
+                    </span>
+                  ) : cuoiKiStats.isBalanced ? (
+                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Đã chuẩn 100% tỉ lệ
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300 flex items-center gap-1">
+                      ⚠️ Nửa đầu đang lệch {Math.abs(cuoiKiStats.sumDauPts - cuoiKiStats.targetDau).toFixed(2).replace('.00', '')}đ
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {!cuoiKiStats.isBalanced && cuoiKiStats.countDauDvs > 0 && (
+                    <button
+                      type="button"
+                      onClick={autoFillMatrix}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                      title="Tự động cân bằng chuẩn 2,5đ Nửa đầu và 7,5đ Nửa sau"
+                    >
+                      <span>⚡</span> Cân bằng 25% - 75%
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )
       )}
