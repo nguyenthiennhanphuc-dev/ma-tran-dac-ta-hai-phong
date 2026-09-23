@@ -1448,6 +1448,10 @@ export const useExamStore = create(
             };
 
             const assignSubItemToKhtnDv = (targetFlat, subItem, lvl, label, qId = '', qLabel = '') => {
+              if (hasBothPhases && targetFlat.dv.isNuaDauKi) {
+                console.warn('Blocked Tự luận assignment to Nửa đầu kì in Cuối Kì mode:', targetFlat.dv.noiDung);
+                return;
+              }
               const targetDv = targetFlat.dv;
               if (!targetDv.tuLuan.subItems) targetDv.tuLuan.subItems = [];
               const diemVal = Math.round((Number(subItem.diem) || 1.0) * 100) / 100;
@@ -1472,10 +1476,7 @@ export const useExamStore = create(
             };
 
             const existingTLConfig = state.tuLuanConfig;
-            const hasCustomTuLuan = existingTLConfig?.questions?.length > 0 && (
-              existingTLConfig.enabled || 
-              existingTLConfig.questions.some(q => q.subItems?.length > 1 || q.kieuY === 'doc_lap' || (q.subItems?.[0]?.diem && q.subItems[0].diem !== 1.0))
-            );
+            const hasCustomTuLuan = Boolean(existingTLConfig?.enabled) && (existingTLConfig?.questions?.length > 0);
 
             if (hasCustomTuLuan) {
               // Quota điểm nhận thức cho Tự luận KHTN (Chuẩn CV 4956: Hiểu 1.0đ, VD 1.0đ, VDC 1.0đ)
@@ -1500,6 +1501,17 @@ export const useExamStore = create(
                 return 'vanDungCao';
               };
 
+              // Trong chế độ Cuối kì: Tuyệt đối chỉ phân bổ Tự luận vào các bài thuộc Nửa sau kì
+              const candidateFlatTL = hasBothPhases ? flatKHTN.filter(d => !d.dv.isNuaDauKi) : flatKHTN;
+              const candidateTopicsTL = topics
+                .map((t, ti) => ({
+                  ti,
+                  totalTiet: candidateFlatTL.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0)
+                }))
+                .filter(t => t.totalTiet > 0)
+                .sort((a, b) => b.totalTiet - a.totalTiet);
+              const topicsForTL = candidateTopicsTL.length > 0 ? candidateTopicsTL : topicsByTotalTiet;
+
               existingTLConfig.questions.forEach((q, qIdx) => {
                 const nY = q.subItems?.length || 1;
                 const kieuYQ = q.kieuY || 'chung';
@@ -1507,9 +1519,14 @@ export const useExamStore = create(
                 const curQLabel = q.label || `Câu ${qIdx + 1}`;
 
                 if (nY === 1 || phamVi === 'cung_dvkt' || phamVi === 'cung_bai') {
-                  const topicEntry = topicsByTotalTiet[qIdx % topicsByTotalTiet.length];
-                  const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti);
-                  const bestDv = findBestDvForTuLuan(dvsInTopic) || findBestDvForTuLuan(flatKHTN);
+                  const topicEntry = topicsForTL[qIdx % topicsForTL.length];
+                  const dvsInTopic = candidateFlatTL.filter(d => d.ti === topicEntry.ti);
+                  const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
+                  const unassignedInAll = candidateFlatTL.filter(d => !d.hasTuLuan);
+                  const chosenPool = unassignedInTopic.length > 0 
+                    ? unassignedInTopic 
+                    : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : candidateFlatTL));
+                  const bestDv = findBestDvForTuLuan(chosenPool);
                   if (bestDv) {
                     q.subItems.forEach((sub, sIdx) => {
                       const lvl = getKhtnLvl(sub);
@@ -1518,20 +1535,21 @@ export const useExamStore = create(
                   }
                 } else if (phamVi === 'cac_dvkt_cung_chu_de' || phamVi === 'cac_bai_cung_chu_de') {
                   const topicGapMap = {};
-                  flatKHTN.forEach(f => {
+                  candidateFlatTL.forEach(f => {
                     if (topicGapMap[f.ti] === undefined) topicGapMap[f.ti] = 0;
                     topicGapMap[f.ti] += (f.target - f.current);
                   });
-                  let bestTi = topicsByTotalTiet[0]?.ti ?? 0;
+                  let bestTi = topicsForTL[0]?.ti ?? 0;
                   let maxTGap = -Infinity;
                   Object.entries(topicGapMap).forEach(([ti, g]) => {
                     if (g > maxTGap) { maxTGap = g; bestTi = Number(ti); }
                   });
-                  const dvsInTopic = flatKHTN.filter(d => d.ti === bestTi);
+                  const dvsInTopic = candidateFlatTL.filter(d => d.ti === bestTi);
                   const usedDvIds = new Set();
                   q.subItems.forEach((sub, sIdx) => {
-                    const available = dvsInTopic.filter(d => !usedDvIds.has(d.di));
-                    const chosenDv = findBestDvForTuLuan(available.length > 0 ? available : dvsInTopic);
+                    const available = dvsInTopic.filter(d => !usedDvIds.has(d.di) && !d.hasTuLuan);
+                    const fallbackAvail = dvsInTopic.filter(d => !usedDvIds.has(d.di));
+                    const chosenDv = findBestDvForTuLuan(available.length > 0 ? available : (fallbackAvail.length > 0 ? fallbackAvail : dvsInTopic)) || findBestDvForTuLuan(candidateFlatTL);
                     if (chosenDv) {
                       usedDvIds.add(chosenDv.di);
                       const lvl = getKhtnLvl(sub);
@@ -1540,9 +1558,14 @@ export const useExamStore = create(
                   });
                 } else if (phamVi === 'cac_chu_de_khac_nhau') {
                   q.subItems.forEach((sub, sIdx) => {
-                    const topicEntry = topicsByTotalTiet[sIdx % topicsByTotalTiet.length];
-                    const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti);
-                    const chosenDv = findBestDvForTuLuan(dvsInTopic) || findBestDvForTuLuan(flatKHTN);
+                    const topicEntry = topicsForTL[sIdx % topicsForTL.length];
+                    const dvsInTopic = candidateFlatTL.filter(d => d.ti === topicEntry.ti);
+                    const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
+                    const unassignedInAll = candidateFlatTL.filter(d => !d.hasTuLuan);
+                    const chosenPool = unassignedInTopic.length > 0 
+                      ? unassignedInTopic 
+                      : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : candidateFlatTL));
+                    const chosenDv = findBestDvForTuLuan(chosenPool);
                     if (chosenDv) {
                       const lvl = getKhtnLvl(sub);
                       assignSubItemToKhtnDv(chosenDv, sub, lvl, `${curQLabel}${String.fromCharCode(97 + sIdx)}`, q.id, curQLabel);
@@ -1554,18 +1577,29 @@ export const useExamStore = create(
               // Mặc định CV 4956: 3 câu TL (1 Hiểu 1đ, 1 VD 1đ, 1 VDC 1đ)
               if (hasBothPhases) {
                 // CHẾ ĐỘ CUỐI KÌ 25-75: Toàn bộ 3 câu Tự luận dồn vào Nửa sau kì (kiến thức trọng tâm mới học)
-                const sauTopics = topicsByTotalTiet.filter(t => flatKHTN.some(d => d.ti === t.ti && !d.dv.isNuaDauKi));
+                const poolSau = flatKHTN.filter(d => !d.dv.isNuaDauKi);
+                const sauTopics = topics
+                  .map((t, ti) => ({
+                    ti,
+                    totalTiet: poolSau.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0)
+                  }))
+                  .filter(t => t.totalTiet > 0)
+                  .sort((a, b) => b.totalTiet - a.totalTiet);
                 const topicsToUse = sauTopics.length > 0 ? sauTopics : topicsByTotalTiet;
+
                 [
                   { level: 'hieu',       label: 'Câu 1' },
                   { level: 'vanDung',    label: 'Câu 2' },
                   { level: 'vanDungCao', label: 'Câu 3' }
                 ].forEach(({ level, label }, qIdx) => {
-                  const topicEntry = topicsToUse[qIdx] ?? topicsToUse[topicsToUse.length - 1];
-                  if (!topicEntry) return;
-                  const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti && !d.dv.isNuaDauKi);
-                  const pool = dvsInTopic.length > 0 ? dvsInTopic : flatKHTN.filter(d => !d.dv.isNuaDauKi);
-                  const bestDv = findBestDvForTuLuan(pool.length > 0 ? pool : flatKHTN);
+                  const topicEntry = topicsToUse[qIdx % topicsToUse.length];
+                  const dvsInTopic = topicEntry ? poolSau.filter(d => d.ti === topicEntry.ti) : [];
+                  const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
+                  const unassignedInSau = poolSau.filter(d => !d.hasTuLuan);
+                  const chosenPool = unassignedInTopic.length > 0
+                    ? unassignedInTopic
+                    : (unassignedInSau.length > 0 ? unassignedInSau : (dvsInTopic.length > 0 ? dvsInTopic : poolSau));
+                  const bestDv = findBestDvForTuLuan(chosenPool);
                   if (bestDv) {
                     assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
                   }
@@ -1576,10 +1610,15 @@ export const useExamStore = create(
                   { level: 'vanDung',    label: 'Câu 2' },
                   { level: 'vanDungCao', label: 'Câu 3' }
                 ].forEach(({ level, label }, qIdx) => {
-                  const topicEntry = topicsByTotalTiet[qIdx] ?? topicsByTotalTiet[topicsByTotalTiet.length - 1];
+                  const topicEntry = topicsByTotalTiet[qIdx % topicsByTotalTiet.length];
                   if (!topicEntry) return;
                   const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti);
-                  const bestDv = findBestDvForTuLuan(dvsInTopic) || findBestDvForTuLuan(flatKHTN);
+                  const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
+                  const unassignedAll = flatKHTN.filter(d => !d.hasTuLuan);
+                  const chosenPool = unassignedInTopic.length > 0
+                    ? unassignedInTopic
+                    : (unassignedAll.length > 0 ? unassignedAll : (dvsInTopic.length > 0 ? dvsInTopic : flatKHTN));
+                  const bestDv = findBestDvForTuLuan(chosenPool);
                   if (bestDv) {
                     assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
                   }
@@ -1939,11 +1978,11 @@ export const useExamStore = create(
             const finalTuLuanConfig = hasCustomTuLuan
               ? { ...existingTLConfig, enabled: true }
               : {
-                  enabled: true,
+                  enabled: false,
                   questions: [
-                    { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
-                    { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_bai_cung_chu_de',  subItems: [{ diem: 0.5 }, { diem: 0.5 }] },
-                    { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0 }] },
+                    { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'hieu' }] },
+                    { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                    { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'vanDungCao' }] },
                   ]
                 };
 
