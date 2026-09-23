@@ -1229,18 +1229,18 @@ export default function Step2_MatrixBuilder() {
             </button>
           )}
 
-          {/* [MOI - CẤU TRÚC TOÁN 3-2-2-3] Nút preset cấu trúc chuẩn GDPT 2018, chỉ hiện với môn Toán (không phải KHTN) */}
+          {/* [MOI - CẤU TRÚC TOÁN KHÁNH HÒA 3-2-2-3] Nút preset cấu trúc chuẩn GDPT 2018, chỉ hiện với môn Toán (không phải KHTN) */}
           {isMath && !isKHTN && (
             <button
               onClick={() => {
-                if (window.confirm('Áp dụng Cấu trúc Toán 3-2-2-3 (GDPT 2018)?\n\n• Phần I: 12 câu × 0,25đ = 3,0đ (Nhận biết)\n• Phần II: 2 câu ĐS × 4 ý × 0,25đ = 2,0đ\n• Phần III: 4 câu × 0,50đ = 2,0đ (Hiểu + VD)\n• Phần IV: 3 câu Tự luận × 1,0đ = 3,0đ\n\nTỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng')) {
+                if (window.confirm('Áp dụng Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)?\n\n• Phần I: 12 câu × 0,25đ = 3,0đ (Nhận biết)\n• Phần II: 2 câu ĐS × 4 ý × 0,25đ = 2,0đ\n• Phần III: 4 câu × 0,50đ = 2,0đ (Hiểu + VD)\n• Phần IV: 3 câu Tự luận × 1,0đ = 3,0đ\n\nTỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng')) {
                   setCauTrucToan3223();
                 }
               }}
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-5 py-2.5 rounded-lg shadow-md hover:shadow-lg hover:from-purple-700 hover:to-violet-700 transition-all font-bold text-sm"
-              title="Áp dụng Cấu trúc Toán GDPT 2018: 3đ-2đ-2đ-3đ, P.III = 0,50đ/câu"
+              title="Áp dụng Cấu trúc Toán Khánh Hòa (GDPT 2018): 3đ-2đ-2đ-3đ, P.III = 0,50đ/câu"
             >
-              ⚡ Cấu trúc Toán 3-2-2-3
+              ⚡ Toán Khánh Hòa (3-2-2-3)
             </button>
           )}
 
@@ -1368,20 +1368,20 @@ export default function Step2_MatrixBuilder() {
         </div>
       </div>
 
-      {/* [TOÁN 3-2-2-3] BẢNG TÓM TẮT CẤU TRÚC — chỉ hiện khi preset Toán 3-2-2-3 được kích hoạt */}
+      {/* [TOÁN KHÁNH HÒA 3-2-2-3] BẢNG TÓM TẮT CẤU TRÚC — chỉ hiện khi preset Toán Khánh Hòa được kích hoạt */}
       {isCauTrucToan3223 && (
         <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-violet-50 border-2 border-purple-300 rounded-xl shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h3 className="font-extrabold text-purple-900 text-sm flex items-center gap-2">
-              <span className="text-base">⚡</span> CẤU TRÚC ĐỀ TOÁN 3-2-2-3 (CHƯƠNG TRÌNH GDPT 2018)
+              <span className="text-base">⚡</span> CẤU TRÚC ĐỀ TOÁN KHÁNH HÒA (3-2-2-3 — CHƯƠNG TRÌNH GDPT 2018)
             </h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={autoFillMatrix}
                 className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-3.5 py-1.5 rounded-lg shadow font-bold text-xs hover:from-purple-700 hover:to-violet-700 hover:shadow-md transition-all"
-                title="Tự động phân bổ theo Cấu trúc Toán 3-2-2-3: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(P.III) + 3TL(P.IV)"
+                title="Tự động phân bổ theo Cấu trúc Toán Khánh Hòa: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(P.III) + 3TL(P.IV)"
               >
-                <span>⚡</span> Auto-Fill chuẩn Toán 3-2-2-3
+                <span>⚡</span> Auto-Fill chuẩn Toán Khánh Hòa
               </button>
               <span className="text-xs bg-purple-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
                 40%B – 30%H – 30%VD · 90 phút

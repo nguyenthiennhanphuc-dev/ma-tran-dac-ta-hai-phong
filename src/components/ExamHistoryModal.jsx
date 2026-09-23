@@ -73,8 +73,8 @@ export default function ExamHistoryModal({ isOpen, onClose, onRestoreSuccess }) 
 
   // Màu sắc cho huy hiệu cấu trúc
   const getStructureBadge = (type) => {
-    if (type === 'Toán 3-2-2-3') {
-      return <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300">📐 Toán 3-2-2-3</span>;
+    if (type === 'Toán Khánh Hòa (3-2-2-3)' || type === 'Toán 3-2-2-3') {
+      return <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-300">📐 Toán Khánh Hòa (3-2-2-3)</span>;
     }
     if (type === 'KHTN 4-2-1-3') {
       return <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-100 text-teal-800 border border-teal-300">🔬 KHTN 4-2-1-3</span>;

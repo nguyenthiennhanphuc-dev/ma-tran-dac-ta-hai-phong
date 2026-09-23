@@ -16,7 +16,7 @@ export const detectStructureType = (state) => {
 
   if (ec.isCauTruc4213) return 'KHTN 4-2-1-3';
   if (ec.isCauTrucKHTNVao10) return 'KHTN Vào 10';
-  if (ec.isCauTrucToan3223) return 'Toán 3-2-2-3';
+  if (ec.isCauTrucToan3223) return 'Toán Khánh Hòa (3-2-2-3)';
   
   if (/toán|toan|đại số|hình học/i.test(monHoc)) return 'Toán';
   if (/khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(monHoc)) return 'KHTN';

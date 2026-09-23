@@ -625,7 +625,7 @@ export const useExamStore = create(
         }
       })),
 
-      // Action chuyển nhanh sang Cấu trúc Toán 3-2-2-3 (GDPT 2018)
+      // Action chuyển nhanh sang Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)
       // P.I: 12 câu × 0,25đ = 3đ | P.II: 2 câu × 4ý × 0,25đ = 2đ
       // P.III: 4 câu × 0,50đ = 2đ | P.IV: 3 câu × 1đ = 3đ
       // Tỉ lệ nhận thức: 40% Biết – 30% Hiểu – 30% Vận dụng
@@ -660,15 +660,16 @@ export const useExamStore = create(
         tuLuanConfig: {
           enabled: false,
           questions: [
-            { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+            { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
               subItems: [{ diem: 1.0, level: 'hieu' }] },
-            { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+            { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
               subItems: [{ diem: 1.0, level: 'vanDung' }] },
-            { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+            { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
               subItems: [{ diem: 1.0, level: 'vanDung' }] },
           ],
         },
       })),
+      setCauTrucToanKhanhHoa: () => get().setCauTrucToan3223(),
 
       // Toggle Trß║ú lß╗¥i ngß║»n - xß╗¡ l├╜ trong 1 lß║ºn set ─æß╗â tr├ính race condition
       toggleTraLoiNgan: (val) => set((state) => {
@@ -2041,21 +2042,23 @@ export const useExamStore = create(
           }
         }
 
-        // === NHÁNH TOÁN 3-2-2-3 (GDPT 2018) ===
+        // === NHÁNH TOÁN KHÁNH HÒA 3-2-2-3 (GDPT 2018) ===
         // P.I: 12 câu × 0,25đ = 3đ (100% Nhận biết)
         // P.II: 2 câu × 4ý × 0,25đ = 2đ (4B + 2H + 2VD)
         // P.III: 4 câu × 0,50đ = 2đ (2H + 2VD)
         // P.IV: 3 câu × 1đ = 3đ (1H + 1VD + 1VD)
         if (state.examConfig.isCauTrucToan3223) {
-          console.log('⚡ AutoFill: Cấu trúc Toán 3-2-2-3 (GDPT 2018)');
+          console.log('⚡ AutoFill: Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)');
           const topics = state.matrix.map(t => ({
             ...t,
             donViKienThuc: (t.donViKienThuc || []).map(dv => ({
               ...dv,
               nhieuLuaChon: { biet: 0, hieu: 0, vanDung: 0 },
               dungSai: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              dungSaiSubItems: [],
               traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
               tuLuan: { biet: 0, hieu: 0, vanDung: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, subItems: [] },
+              indicatorMap: {},
             })),
           }));
 
@@ -2066,12 +2069,18 @@ export const useExamStore = create(
               flatDvs.push({ t: topics[ti], dv: topics[ti].donViKienThuc[di], soTiet: Number(dv.soTiet) || 1 });
             });
           });
-          const totalSoTiet = flatDvs.reduce((s, f) => s + f.soTiet, 0) || 1;
 
           // ─── P.I: 12 câu Biết (Nhiều lựa chọn) ───
           const soCauP1 = 12;
           const p1Counts = distributeLargestRemainder(soCauP1, flatDvs.map(f => f.soTiet));
           p1Counts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.biet += cnt; });
+
+          let p1Counter = 1;
+          flatDvs.forEach(f => {
+            for (let i = 0; i < (f.dv.nhieuLuaChon?.biet || 0); i++) {
+              f.dv.indicatorMap[`nhieuLuaChon_biet_${i}`] = { label: `Câu ${p1Counter++}`, code: 'NB' };
+            }
+          });
 
           // ─── P.II: 2 câu Đúng/Sai (4B + 2H + 2VD) ───
           // Phân bổ 2 câu DS theo số tiết — mỗi câu DS: 2B + 1H + 1VD
@@ -2083,16 +2092,34 @@ export const useExamStore = create(
             flatDvs[i].dv.dungSai.vanDung += cnt * 1; // 1 ý VD / câu
           });
 
+          let dsCauNo = 13;
+          flatDvs.forEach(f => {
+            const dv = f.dv;
+            dv.dungSaiSubItems = [];
+            const numDS = Math.floor((dv.dungSai?.biet || 0) / 2);
+            for (let c = 0; c < numDS; c++) {
+              const currentCau = dsCauNo++;
+              dv.dungSaiSubItems.push(
+                { level: 'biet', diem: 0.25, label: `Câu ${currentCau}a` },
+                { level: 'biet', diem: 0.25, label: `Câu ${currentCau}b` },
+                { level: 'hieu', diem: 0.25, label: `Câu ${currentCau}c` },
+                { level: 'vanDung', diem: 0.25, label: `Câu ${currentCau}d` }
+              );
+              dv.indicatorMap[`dungSai_biet_${c * 2}`] = { label: `Câu ${currentCau}a`, code: 'NB' };
+              dv.indicatorMap[`dungSai_biet_${c * 2 + 1}`] = { label: `Câu ${currentCau}b`, code: 'NB' };
+              dv.indicatorMap[`dungSai_hieu_${c}`] = { label: `Câu ${currentCau}c`, code: 'TH' };
+              dv.indicatorMap[`dungSai_vanDung_${c}`] = { label: `Câu ${currentCau}d`, code: 'VD' };
+            }
+          });
+
           // ─── P.III: 4 câu Trả lời ngắn (2H + 2VD) × 0,50đ ───
           const soCauP3 = 4;
-          // Phân bổ 2 câu Hiểu vào ĐVKT có soTiet lớn nhất
           const sortedByTiet = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
           let hieuP3Left = 2, vdP3Left = 2;
           sortedByTiet.forEach(f => {
             if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
             else if (vdP3Left > 0) { f.dv.traLoiNgan.vanDung += 1; vdP3Left--; }
           });
-          // Nếu vẫn còn thiếu (trường hợp ít ĐVKT): phân bổ tiếp
           if (hieuP3Left > 0 || vdP3Left > 0) {
             sortedByTiet.forEach(f => {
               if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
@@ -2100,28 +2127,72 @@ export const useExamStore = create(
             });
           }
 
-          // ─── P.IV: 3 câu Tự luận (1H + 1VD + 1VD) × 1đ ───
-          // Phân tán vào 3 ĐVKT có soTiet lớn nhất (khác nhau)
-          const tlLevels = ['hieu', 'vanDung', 'vanDung'];
-          tlLevels.forEach((lvl, idx) => {
-            const target = sortedByTiet[idx % sortedByTiet.length];
-            target.dv.tuLuan[lvl] += 1;
+          let p3Counter = 15;
+          flatDvs.forEach(f => {
+            for (let i = 0; i < (f.dv.traLoiNgan?.hieu || 0); i++) {
+              f.dv.indicatorMap[`traLoiNgan_hieu_${i}`] = { label: `Câu ${p3Counter++}`, code: 'TH' };
+            }
+            for (let i = 0; i < (f.dv.traLoiNgan?.vanDung || 0); i++) {
+              f.dv.indicatorMap[`traLoiNgan_vanDung_${i}`] = { label: `Câu ${p3Counter++}`, code: 'VD' };
+            }
           });
 
-          // Tạo finalTuLuanConfig chuẩn 3-2-2-3
+          // ─── P.IV: 3 câu Tự luận (1H + 1VD + 1VD) × 1.0đ ───
+          // Phân tán vào 3 ĐVKT có số tiết lớn nhất
+          const tlQuestionDefs = [
+            { id: 'tl_q1', label: 'Câu 19', level: 'hieu', diem: 1.0 },
+            { id: 'tl_q2', label: 'Câu 20', level: 'vanDung', diem: 1.0 },
+            { id: 'tl_q3', label: 'Câu 21', level: 'vanDung', diem: 1.0 },
+          ];
+
+          tlQuestionDefs.forEach((qDef, idx) => {
+            const target = sortedByTiet[idx % sortedByTiet.length];
+            const targetDv = target.dv;
+            if (!Array.isArray(targetDv.tuLuan.subItems)) {
+              targetDv.tuLuan.subItems = [];
+            }
+            targetDv.tuLuan.subItems.push({
+              id: `tl_${qDef.level}_${Date.now()}_${idx}`,
+              y: '',
+              diem: qDef.diem,
+              level: qDef.level,
+              label: qDef.label,
+              qId: qDef.id,
+              qLabel: qDef.label
+            });
+
+            // Đồng bộ toàn bộ các trường đếm và điểm của tuLuan để hiển thị trên bảng Ma trận
+            targetDv.tuLuan.biet = targetDv.tuLuan.subItems.filter(s => s.level === 'biet').length;
+            targetDv.tuLuan.hieu = targetDv.tuLuan.subItems.filter(s => s.level === 'hieu').length;
+            targetDv.tuLuan.vanDung = targetDv.tuLuan.subItems.filter(s => s.level === 'vanDung').length;
+            targetDv.tuLuan.vanDungCao = targetDv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').length;
+            targetDv.tuLuan.diemBiet = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'biet').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+            targetDv.tuLuan.diemHieu = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'hieu').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+            targetDv.tuLuan.diemVanDung = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'vanDung').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+            targetDv.tuLuan.diemVanDungCao = Math.round(targetDv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+
+            // Gán indicatorMap cho Tự luận để hiển thị nhãn câu và mã trên ô
+            const subIdx = targetDv.tuLuan.subItems.filter(s => s.level === qDef.level).length - 1;
+            targetDv.indicatorMap[`tuLuan_${qDef.level}_${subIdx}`] = {
+              label: qDef.label,
+              code: qDef.level === 'hieu' ? 'TH' : 'VD'
+            };
+          });
+
+          // Tạo finalTuLuanConfig chuẩn Toán Khánh Hòa (3-2-2-3)
           const finalTuLuanConfig3223 = {
             enabled: false,
             questions: [
-              { id: 'tl_q1', label: 'Câu 1', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'hieu' }] },
-              { id: 'tl_q2', label: 'Câu 2', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'vanDung' }] },
-              { id: 'tl_q3', label: 'Câu 3', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'vanDung' }] },
             ],
           };
 
-          console.log(`✅ Toán 3-2-2-3: P.I=${soCauP1}B, P.II=${soCauDS}câu DS, P.III=${soCauP3}câu(2H+2VD), P.IV=3TL(1H+2VD)`);
+          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=${soCauDS}câu DS, P.III=${soCauP3}câu(2H+2VD), P.IV=3TL(1H+2VD)`);
           return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223 };
         }
 
