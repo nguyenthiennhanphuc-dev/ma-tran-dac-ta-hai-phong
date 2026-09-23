@@ -12,8 +12,10 @@ import { exportToWord, exportToWordOMML, exportToWordLatexDocx } from './utils/e
 import { exportToWordMathType } from './utils/exportWordMathType';
 import { exportToWordMath, exportToWordMathLatex } from './utils/exportWordMath';
 import { useExamStore } from './store/useExamStore';
-import { FileDown, BookOpenCheck, Save, FolderOpen, Crown, Gift, X, KeyRound, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Check, Settings, TableProperties, FileText, Bot, Eye, Mail, ArrowRight, Loader2, Sparkles, Cpu } from 'lucide-react';
+import { FileDown, BookOpenCheck, Save, FolderOpen, Crown, Gift, X, KeyRound, CreditCard, RefreshCw, ChevronLeft, ChevronRight, Check, Settings, TableProperties, FileText, Bot, Eye, Mail, ArrowRight, Loader2, Sparkles, Cpu, History } from 'lucide-react';
 import UserGuideModal from './components/UserGuideModal';
+import ExamHistoryModal from './components/ExamHistoryModal';
+import { saveCurrentToHistory, getHistoryList } from './utils/historyStorage';
 import { useToast } from './components/Toast';
 
 const STEPS = [
@@ -61,6 +63,8 @@ export default function App() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showSimilarModal, setShowSimilarModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyCount, setHistoryCount] = useState(() => getHistoryList().length);
   const [currentStep, setCurrentStep] = useState(0);
   const [activeFlow, setActiveFlow] = useState('standard'); // 'standard' | 'quick'
   const [quickActiveStep, setQuickActiveStep] = useState(0);
@@ -99,6 +103,17 @@ export default function App() {
   // ============================================================
   const [showNumberingModal, setShowNumberingModal] = useState(false);
   const [pendingExportType, setPendingExportType] = useState(null);
+
+  // ============================================================
+  // ĐỒNG BỘ SỐ LƯỢNG BẢN LƯU LỊCH SỬ LÀM BÀI
+  // ============================================================
+  useEffect(() => {
+    const handleHistUpdate = (e) => {
+      setHistoryCount(e?.detail?.count ?? getHistoryList().length);
+    };
+    window.addEventListener('proexam_history_updated', handleHistUpdate);
+    return () => window.removeEventListener('proexam_history_updated', handleHistUpdate);
+  }, []);
 
   // ============================================================
   // KHỞI TẠO FINGERPRINTJS + ĐỒNG BỘ VỚI GOOGLE SHEETS
@@ -205,10 +220,16 @@ export default function App() {
   // HÀM ĐẾM LƯỢT VÀ CHẶN XUẤT WORD (FINGERPRINT + GOOGLE SHEETS)
   // ============================================================
   const handleExportWrapper = async (exportFunc) => {
+    // Hàm thực thi xuất file kèm tự động lưu lịch sử làm bài
+    const runExportWithHistory = async () => {
+      await exportFunc();
+      saveCurrentToHistory('', 'Đã xuất Word');
+    };
+
     const isPremium = localStorage.getItem('isPremium');
 
     if (isPremium === 'true') {
-      await exportFunc();
+      await runExportWithHistory();
       return;
     }
 
@@ -224,7 +245,7 @@ export default function App() {
         if (checkData.isPremium) {
           localStorage.setItem('isPremium', 'true');
           setIsCheckingTrial(false);
-          await exportFunc();
+          await runExportWithHistory();
           return;
         }
 
@@ -259,7 +280,7 @@ export default function App() {
           toast.warning(`Bạn vừa dùng lượt xuất file cuối cùng. Hãy nâng cấp Premium để tiếp tục sử dụng.`);
         }
 
-        await exportFunc();
+        await runExportWithHistory();
       } catch (err) {
         // Lỗi mạng → fallback về localStorage
         setIsCheckingTrial(false);
@@ -289,6 +310,7 @@ export default function App() {
       }
 
       await exportFunc();
+      saveCurrentToHistory('', 'Đã xuất Word');
     } else {
       setShowPaywall(true);
     }
@@ -468,6 +490,9 @@ export default function App() {
       matrix: state.matrix,
       config: state.config,
       examConfig: state.examConfig, // Lưu cấu hình điểm
+      tuLuanConfig: state.tuLuanConfig,
+      dungSaiConfig: state.dungSaiConfig,
+      khtnConfig: state.khtnConfig,
       examSlots: state.examSlots,   // LƯU TOÀN BỘ CÂU HỎI TRÊN KHUNG ĐỀ
       draftQuestions: state.draftQuestions, // Lưu cả nháp (nếu cần)
       generatedExam: state.generatedExam
@@ -482,6 +507,10 @@ export default function App() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Đồng thời ghi nhớ vào Lịch sử làm bài trên web
+    saveCurrentToHistory('', 'Lưu dự án');
+    toast.success('Đã xuất file JSON và lưu vào Lịch sử làm bài trên web!');
   };
 
   // ============================================================
@@ -502,6 +531,9 @@ export default function App() {
           matrix: data.matrix || useExamStore.getState().matrix,
           config: data.config || useExamStore.getState().config,
           examConfig: data.examConfig || useExamStore.getState().examConfig,
+          tuLuanConfig: data.tuLuanConfig || useExamStore.getState().tuLuanConfig,
+          dungSaiConfig: data.dungSaiConfig || useExamStore.getState().dungSaiConfig,
+          khtnConfig: data.khtnConfig || useExamStore.getState().khtnConfig,
           examSlots: data.examSlots || {}, // KHÔI PHỤC CÂU HỎI
           draftQuestions: data.draftQuestions || [],
           generatedExam: data.generatedExam || ''
@@ -612,6 +644,17 @@ export default function App() {
               <Sparkles size={16} />
               <span className="hidden lg:inline">Ra đề tương tự</span>
             </button>
+            <button onClick={() => setShowHistoryModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 transition-all shadow-sm"
+              title="Lịch sử làm bài trên web">
+              <History size={16} />
+              <span className="hidden lg:inline">Lịch sử</span>
+              {historyCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-purple-200 text-purple-800">
+                  {historyCount}
+                </span>
+              )}
+            </button>
             <button onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
               title="Mở Dự án (.json)">
@@ -620,7 +663,7 @@ export default function App() {
             </button>
             <button onClick={handleExportProject}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm bg-slate-800 text-white hover:bg-slate-900 transition-all shadow-sm"
-              title="Lưu Dự án">
+              title="Lưu Dự án (Tải .json & Ghi nhớ vào Lịch sử web)">
               <Save size={16} />
               <span className="hidden lg:inline">Lưu</span>
             </button>
@@ -1248,6 +1291,13 @@ export default function App() {
 
       {showSimilarModal && (
         <Step6_SimilarExam onClose={() => setShowSimilarModal(false)} />
+      )}
+
+      {showHistoryModal && (
+        <ExamHistoryModal 
+          isOpen={showHistoryModal} 
+          onClose={() => setShowHistoryModal(false)} 
+        />
       )}
 
       {/* FOOTER ĐƯỢC CHÈN VÀO ĐÂY */}
