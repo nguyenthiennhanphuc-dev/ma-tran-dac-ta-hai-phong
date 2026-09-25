@@ -82,6 +82,8 @@ export default function SimilarQuestionModal({
   const [yeuCauThem, setYeuCauThem]     = useState('');
   const [isCopied, setIsCopied]         = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  // [FEATURE: Hình ảnh] Checkbox yêu cầu câu mới có hình ảnh
+  const [requireImage, setRequireImage] = useState(false);
 
   // Paste + preview + save
   const [pastedContent, setPastedContent] = useState('');
@@ -95,10 +97,14 @@ export default function SimilarQuestionModal({
   const handleGenerateAndCopy = async () => {
     if (!slotData || !metaInfo) return;
     try {
+      // [FEATURE: Hình ảnh] Gộp requireImage vào yeuCauThem khi tích checkbox
+      const yeuCauThemFinal = requireImage
+        ? (yeuCauThem ? yeuCauThem + '\nBẮT BUỘC câu mới phải có hình minh họa phù hợp (đồ thị/hình học/biểu đồ).' : 'BẮT BUỘC câu mới phải có hình minh họa phù hợp (đồ thị/hình học/biểu đồ).')
+        : yeuCauThem;
       const options = {
         phongCach,
         soLuong,
-        yeuCauThem,
+        yeuCauThem: yeuCauThemFinal,
         cauKhacList: otherQuestions || [],
       };
       const enrichedMeta = {
@@ -181,6 +187,7 @@ export default function SimilarQuestionModal({
     setStatus('');
     setErrorMsg('');
     setPreview(null);
+    setRequireImage(false); // [FEATURE: Hình ảnh] Reset khi đóng
     onClose();
   };
 
@@ -276,6 +283,19 @@ export default function SimilarQuestionModal({
                 <span className="text-amber-600">Tránh trùng {otherQuestions.length} câu đã có trong đề</span>
               )}
             </div>
+
+            {/* [FEATURE: Hình ảnh] Checkbox yêu cầu hình ảnh */}
+            <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={requireImage}
+                onChange={(e) => setRequireImage(e.target.checked)}
+                className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-amber-800">
+                🖼️ Yêu cầu câu mới có hình minh họa (đồ thị / hình học / biểu đồ)
+              </span>
+            </label>
 
             {/* Nút sinh */}
             <button

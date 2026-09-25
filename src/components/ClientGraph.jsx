@@ -2,8 +2,11 @@
  * ClientGraph.jsx — Vẽ đồ thị trực tiếp trên trình duyệt bằng HTML5 Canvas
  * Fallback khi backend Matplotlib không khả dụng.
  * Hỗ trợ: bieu_do_cot, bieu_do_duong, bieu_do_tron, do_thi_ham_so, do_thi_vat_ly
+ * [FEATURE: Hình ảnh] Thêm hỗ trợ loai:'tikz' → TikZCodeBlock
  */
 import React, { useRef, useEffect } from 'react';
+// [FEATURE: Hình ảnh] Import TikZCodeBlock cho loai:'tikz'
+import TikZCodeBlock from './TikZCodeBlock';
 
 // Bảng màu đẹp
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
@@ -449,6 +452,11 @@ export default function ClientGraph({ hinhAnh, maxHeight = 280 }) {
   }, [hinhAnh, maxHeight]);
 
   if (!hinhAnh || !hinhAnh.loai) return null;
+
+  // [FEATURE: Hình ảnh] Xử lý loai:'tikz' — hiển thị TikZCodeBlock thay vì vẽ Canvas
+  if (hinhAnh.loai === 'tikz') {
+    return <TikZCodeBlock code={hinhAnh.code} tieuDe={hinhAnh.tieuDe} />;
+  }
 
   return (
     <div className="my-2">

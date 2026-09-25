@@ -1199,21 +1199,20 @@ export const useExamStore = create(
 
         const isKHTN = isKHTNSubject(state.examHeader?.monHoc);
 
-        // =====================================================================
-        // CHUYÊN BIỆT CHO CẤU TRÚC THI TUYỂN SINH VÀO 10 KHTN (QĐ 1038 HẢI PHÒNG)
-        // 100% Trắc nghiệm, 60 phút:
-        // =====================================================================
-        // [CẤU TRÚC 3] KHTN TUYỂN SINH VÀO 10 (HẢI PHÒNG - QĐ 1038)
-        // - Thời gian: 60 phút, 100% Trắc nghiệm (40 ý hỏi = 10.0đ)
-        // - Phần I (22 câu TN): 16 Biết (4.0đ), 6 Hiểu (1.5đ) = 5.5đ
-        // - Phần II (3 câu Đ/S = 12 ý): 6 Hiểu (1.5đ), 6 Vận dụng (1.5đ) = 3.0đ
-        //   (Quy định: Đúng 3 câu x 4 ý gồm 2 ý Thông hiểu, 2 ý Vận dụng)
-        //   (Phân bổ chuẩn: 1 câu Vật lí, 1 câu Hóa học, 1 câu Sinh học)
-        // - Phần III (6 câu TLN): 6 câu Vận dụng (1.5đ) (tối đa 4 chữ số)
-        //   (Phân bổ chuẩn: 2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học)
-        // - Phần IV: Tự luận = 0 (100% Trắc nghiệm)
-        // => TỔNG: Biết 4.0đ (40%), Hiểu 3.0đ (30%), Vận dụng 3.0đ (30%) = 10.0đ
-        // =====================================================================
+        // ╔══════════════════════════════════════════════════════════════════════╗
+        // ║  🔒 LOCKED — KHTN TUYỂN SINH VÀO 10 (HẢI PHÒNG - QĐ 1038)        ║
+        // ║  KHÔNG SỬA LOGIC NÀY nếu chưa chạy test: npm run test:autoFill    ║
+        // ╠══════════════════════════════════════════════════════════════════════╣
+        // ║  Cấu trúc chuẩn: 100% Trắc nghiệm, 60 phút                        ║
+        // ║  Phần I  (22 câu TN): 16 Biết (4.0đ), 6 Hiểu (1.5đ) = 5.5đ       ║
+        // ║  Phần II (3 câu Đ/S = 12 ý): 6H (1.5đ) + 6VD (1.5đ) = 3.0đ      ║
+        // ║    Mỗi câu: 2 ý Thông hiểu + 2 ý Vận dụng                          ║
+        // ║    Phân bổ: 1 câu Vật lí, 1 Hóa học, 1 Sinh học                   ║
+        // ║  Phần III (6 câu TLN): 6 Vận dụng (1.5đ)                          ║
+        // ║    Phân bổ: 2 Vật lí, 2 Hóa học, 2 Sinh học                       ║
+        // ║  Phần IV : Không có tự luận = 0đ                                   ║
+        // ║  TỔNG: 4.0đ Biết (40%) + 3.0đ Hiểu (30%) + 3.0đ VD (30%) = 10đ  ║
+        // ╚══════════════════════════════════════════════════════════════════════╝
         const isVao10KHTN = Boolean(
           state.examConfig?.isCauTrucKHTNVao10 ||
           (!state.config.hasTuLuan && isKHTN && (state.examConfig?.tongDiemP1 === 5.5 || state.examConfig?.tongDiemP2 === 3.0)) ||
@@ -1404,15 +1403,17 @@ export const useExamStore = create(
           }
         }
 
-        // =====================================================================
-        // CHUYÊN BIỆT CHO MÔN KHTN THCS / CẤU TRÚC 4-2-1-3 THEO ĐÚNG CV 4956/SGDĐT
-        // Bảng 2 Phụ lục II:
-        // - Phần I (16 câu): 12 Biết (3.0đ), 4 Hiểu (1.0đ), 0 VD, 0 VDC
-        // - Phần II (2 câu Đ/S): mỗi câu 2 Biết, 1 Hiểu, 1 VD (Tổng: 4 Biết, 2 Hiểu, 2 VD, 0 VDC)
-        // - Phần III (4 câu TLN): 0 Biết, 2 Hiểu (0.5đ), 2 VD (0.5đ), 0 VDC
-        // - Phần IV (3 câu TL): 0 Biết, 1 Hiểu (1.0đ), 1 VD (1.0đ), 1 VDC (1.0đ)
-        // => TỔNG: Biết 4.0đ (40%), Hiểu 3.0đ (30%), Vận dụng 2.0đ (20%), VD Cao 1.0đ (10%) = 10.0đ
-        // =====================================================================
+        // ╔══════════════════════════════════════════════════════════════════════╗
+        // ║  🔒 LOCKED — KHTN THCS ĐỊNH KÌ (CV 4956/SGDĐT - CẤU TRÚC 4-2-1-3) ║
+        // ║  KHÔNG SỬA LOGIC NÀY nếu chưa chạy test: npm run test:autoFill    ║
+        // ╠══════════════════════════════════════════════════════════════════════╣
+        // ║  Phần I  (16 câu TN): 12 Biết (3.0đ), 4 Hiểu (1.0đ) = 4.0đ       ║
+        // ║  Phần II (2 câu Đ/S = 8 ý): 4B (1.0đ) + 2H (0.5đ) + 2VD (0.5đ)  ║
+        // ║    Mỗi câu: ý a,b Nhận biết; ý c Thông hiểu; ý d Vận dụng         ║
+        // ║  Phần III (4 câu TLN): 2 Hiểu (0.5đ) + 2 VD (0.5đ) = 1.0đ        ║
+        // ║  Phần IV  (3 câu TL): 1H (1.0đ) + 1VD (1.0đ) + 1VDC (1.0đ) = 3đ ║
+        // ║  TỔNG: Biết 4.0đ (40%) + Hiểu 3.0đ (30%) + VD 2.0đ + VDC 1.0đ   ║
+        // ╚══════════════════════════════════════════════════════════════════════╝
         if (state.examConfig.isCauTruc4213 || (isKHTN && state.config.hasTuLuan)) {
           const allDvs = [];
           topics.forEach((t, ti) => {
@@ -2050,11 +2051,20 @@ export const useExamStore = create(
           }
         }
 
-        // === NHÁNH TOÁN KHÁNH HÒA 3-2-2-3 (GDPT 2018) ===
-        // P.I: 12 câu × 0,25đ = 3đ (100% Nhận biết)
-        // P.II: 2 câu × 4ý × 0,25đ = 2đ (4B + 2H + 2VD)
-        // P.III: 4 câu × 0,50đ = 2đ (2H + 2VD)
-        // P.IV: 3 câu × 1đ = 3đ (1H + 1VD + 1VD)
+        // ╔══════════════════════════════════════════════════════════════════════╗
+        // ║  🔒 LOCKED — TOÁN KHÁNH HÒA (3-2-2-3 - GDPT 2018)                ║
+        // ║  KHÔNG SỬA LOGIC NÀY nếu chưa chạy test: npm run test:autoFill   ║
+        // ╠══════════════════════════════════════════════════════════════════════╣
+        // ║  Phần I  (12 câu TN × 0.25đ = 3.0đ): 100% Nhận biết              ║
+        // ║  Phần II (2 câu Đ/S × 4ý × 0.25đ = 2.0đ):                        ║
+        // ║    Mỗi câu: 2B + 1H + 1VD (Tổng: 4B + 2H + 2VD)                  ║
+        // ║    Câu 13 + Câu 14 (config qua DungSaiConfigModal)                 ║
+        // ║  Phần III (4 câu TLN × 0.50đ = 2.0đ): 2H + 2VD                   ║
+        // ║  Phần IV  (3 câu TL × 1.0đ = 3.0đ):                               ║
+        // ║    Câu 19: 1H (1.0đ), Câu 20: 1VD (1.0đ), Câu 21: 1VD (1.0đ)    ║
+        // ║    Config qua TuLuanConfigModal (tuLuanConfig.questions)           ║
+        // ║  TỔNG: 10.0đ                                                       ║
+        // ╚══════════════════════════════════════════════════════════════════════╝
         if (state.examConfig.isCauTrucToan3223) {
           console.log('⚡ AutoFill: Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)');
           const topics = state.matrix.map(t => ({

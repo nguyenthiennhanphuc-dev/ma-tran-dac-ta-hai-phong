@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:autoFill": "npx vite-node src/tests/autoFill.test.js"
   },
   "dependencies": {
     "@fingerprintjs/fingerprintjs": "^5.2.0",

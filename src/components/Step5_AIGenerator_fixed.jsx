@@ -849,6 +849,8 @@ export default function Step5_AIGenerator() {
   const [isCopied, setIsCopied] = useState(false);
   const [parseError, setParseError] = useState('');
   const [selectedDrafts, setSelectedDrafts] = useState([]);
+  // [FEATURE: Hình ảnh] Checkbox ưu tiên hình ảnh khi sinh đề
+  const [uuTienHinhAnh, setUuTienHinhAnh] = useState(false);
 
   const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
 
@@ -874,6 +876,11 @@ export default function Step5_AIGenerator() {
     prompt += `📍 Ví dụ biểu đồ cột: Hình ảnh: {"loai":"bieu_do_cot","tieuDe":"Dân số ĐNÁ","nhanX":"Quốc gia","nhanY":"Triệu người","nhan":["VN","Thái Lan","Indonesia"],"giaTri":[100,72,275]}\\n`;
     prompt += `📍 Ví dụ đồ thị hàm số: Hình ảnh: {"loai":"do_thi_ham_so","hamSo":"x**2 - 4*x + 3","xRange":[-2,6],"tieuDe":"y = x² - 4x + 3"}\\n`;
     prompt += `📍 Ví dụ biểu đồ tròn: Hình ảnh: {"loai":"bieu_do_tron","tieuDe":"Cơ cấu kinh tế","nhan":["Nông nghiệp","Công nghiệp","Dịch vụ"],"giaTri":[12,38,50]}\\n`;
+    // [FEATURE: Hình ảnh] TikZ fallback cho hình học phức tạp
+    prompt += `📐 HÌNH PHỨC TẠP (đường tròn nội/ngoại tiếp, hình chóp, góc lượng giác, sơ đồ Venn...): Dùng code TikZ chuẩn:\\n`;
+    prompt += `Hình ảnh: {"loai":"tikz","tieuDe":"Mô tả hình","code":"\\begin{tikzpicture}...\\end{tikzpicture}"}\\n`;
+    prompt += `⚠️ QUY TẮC TIKZ: KHÔNG dùng \\usepackage{} bên trong; dùng tikz cơ bản + calc + angles; tọa độ đơn vị cm; nhãn: \\node[above] at (x,y) {\$A\$}; escape newline thành \\\\n trong JSON.\\n`;
+    prompt += `⚠️ CHỈ dùng loại "tikz" khi KHÔNG THỂ dùng các loại JSON đơn giản hơn.\\n`;
     prompt += `⚠️ NẾU BẠN KHÔNG THÊM ÍT NHẤT 1 CÂU CÓ "Hình ảnh:", ĐỀ THI SẼ BỊ TRẢ LẠI.\\n\\n`;
 
     prompt += `⚠️ YÊU CẦU TỐI QUAN TRỌNG VỀ ĐỊNH DẠNG (FORMAT):
@@ -1029,6 +1036,16 @@ Giải thích: [Ngắn gọn]
     prompt += `7️⃣ ĐỊA LÝ / SINH / HÓA — Biểu đồ tròn (cơ cấu, tỉ lệ %):\n`;
     prompt += `Hình ảnh: {"loai":"bieu_do_tron","tieuDe":"Cơ cấu kinh tế VN","nhan":["Nông nghiệp","Công nghiệp","Dịch vụ"],"giaTri":[12,38,50]}\n`;
     prompt += `⚠️ QUY TẮC QUAN TRỌNG: Trường "hamSo" dùng cú pháp Python (x**2, np.sin(x), np.sqrt(x)). NHẮC LẠI: BẮT BUỘC phải có TỐI THIỂU 1-2 câu trong đề có dòng "Hình ảnh:" kèm JSON — đây là YÊU CẦU BẮT BUỘC, không phải tùy chọn.\n`;
+    // [FEATURE: Hình ảnh] TikZ fallback cho hình học phức tạp (loại thứ 8)
+    prompt += `8️⃣ HÌNH HỌC PHỨC TẠP (đường tròn nội/ngoại tiếp, hình chóp, góc lượng giác, sơ đồ Venn...): Dùng code TikZ chuẩn:\n`;
+    prompt += `Hình ảnh: {"loai":"tikz","tieuDe":"Tam giác ABC nội tiếp (O;R)","code":"\\begin{tikzpicture}[scale=1.2]\\n\\draw (0,0) circle [radius=2cm];\\n\\coordinate (A) at (-1.73,1);\\n\\coordinate (B) at (1.73,1);\\n\\coordinate (C) at (0,-2);\\n\\draw (A)--(B)--(C)--cycle;\\n\\node[above left] at (A) {$A$};\\n\\node[above right] at (B) {$B$};\\n\\node[below] at (C) {$C$};\\n\\fill (0,0) circle [radius=1.5pt] node[right] {$O$};\\n\\end{tikzpicture}"}\n`;
+    prompt += `⚠️ QUY TẮC TIKZ BẮT BUỘC:\n`;
+    prompt += `   - KHÔNG dùng \\usepackage{} bên trong code\n`;
+    prompt += `   - Gói được phép: tikz cơ bản, calc, angles, quotes\n`;
+    prompt += `   - KHÔNG dùng pgfplots (thay bằng loại do_thi_ham_so)\n`;
+    prompt += `   - Tọa độ đơn vị cm. Nhãn: \\node[above] at (x,y) {$A$};\n`;
+    prompt += `   - Escape newline thành \\\\n trong JSON string\n`;
+    prompt += `   - CHỈ dùng loại "tikz" khi KHÔNG THỂ dùng các loại 1-7\n`;
 
     if (config.hasTuLuan) {
       prompt += `\n📌 QUY TẮC ĐỊNH DẠNG ĐÁP ÁN TỰ LUẬN VÀ BIỂU ĐIỂM (BẮT BUỘC TUÂN THỦ 100%):\n`;
@@ -1785,6 +1802,20 @@ Giải thích: [Ngắn gọn]
             <li>Copy kết quả AI sinh ra và dán vào khung Soạn thảo bên dưới rồi bấm <strong>"Bóc tách câu hỏi"</strong>.</li>
           </ul>
 
+          {/* [FEATURE: Hình ảnh] Checkbox ưu tiên hình ảnh */}
+          <div className="flex items-center justify-center mb-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={uuTienHinhAnh}
+                onChange={(e) => setUuTienHinhAnh(e.target.checked)}
+                className="w-4 h-4 rounded accent-amber-500 cursor-pointer"
+              />
+              <span className="text-sm font-semibold text-amber-800">
+                🖼️ Ưu tiên hình ảnh cho câu hình học / đồ thị (sinh 3-4 hình thay vì 1-2)
+              </span>
+            </label>
+          </div>
           <div className="flex justify-center">
             <button
               onClick={handleCopyExamPrompt}
