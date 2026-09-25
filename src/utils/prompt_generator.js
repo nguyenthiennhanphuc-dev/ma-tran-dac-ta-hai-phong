@@ -26,7 +26,9 @@ Hình ảnh: {"loai":"bieu_do_cot","tieuDe":"Dân số ĐNÁ 2023","nhanX":"Qu�
 Hình ảnh: {"loai":"bieu_do_duong","tieuDe":"GDP 2018-2023","nhanX":"Năm","nhanY":"Tỷ USD","nhan":["2018","2019","2020","2021","2022","2023"],"chuoiDuLieu":[{"ten":"VN","giaTri":[245,262,271,366,409,430]}]}
 7️⃣ ĐỊA LÝ / SINH / HÓA — Biểu đồ tròn (cơ cấu, tỉ lệ %):
 Hình ảnh: {"loai":"bieu_do_tron","tieuDe":"Cơ cấu kinh tế VN","nhan":["Nông nghiệp","Công nghiệp","Dịch vụ"],"giaTri":[12,38,50]}
-⚠️ QUY TẮC QUAN TRỌNG: Trường "hamSo" dùng cú pháp Python (x**2, np.sin(x), np.sqrt(x)).
+8️⃣ HÌNH HỌC PHỨC TẠP (đường tròn nội/ngoại tiếp, hình chóp, góc lượng giác, sơ đồ Venn...):
+Hình ảnh: {"loai":"tikz","tieuDe":"Mô tả hình","code":"\\begin{tikzpicture}[scale=1.2]\\n\\draw (0,0) circle [radius=2cm];\\n...\\n\\end{tikzpicture}"}
+⚠️ QUY TẮC QUAN TRỌNG: Trường "hamSo" dùng cú pháp Python (x**2, np.sin(x), np.sqrt(x)). CHỈ dùng "tikz" khi KHÔNG THỂ biểu diễn bằng các loại 1-7. Code TikZ bắt đầu bằng \\begin{tikzpicture} và kết thúc bằng \\end{tikzpicture}, không dùng \\usepackage{}.
 `;
 
 /**

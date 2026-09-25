@@ -1371,6 +1371,16 @@ Giải thích: [Ngắn gọn]
     prompt += `7️⃣ ĐỊA LÝ / SINH / HÓA — Biểu đồ tròn (cơ cấu, tỉ lệ %):\n`;
     prompt += `Hình ảnh: {"loai":"bieu_do_tron","tieuDe":"Cơ cấu kinh tế VN","nhan":["Nông nghiệp","Công nghiệp","Dịch vụ"],"giaTri":[12,38,50]}\n`;
     prompt += `⚠️ QUY TẮC QUAN TRỌNG: Trường "hamSo" dùng cú pháp Python (x**2, np.sin(x), np.sqrt(x)). NHẮC LẠI: BẮT BUỘC phải có TỐI THIỂU 1-2 câu trong đề có dòng "Hình ảnh:" kèm JSON — đây là YÊU CẦU BẮT BUỘC, không phải tùy chọn.\n`;
+    // [FEATURE: Hình ảnh] TikZ fallback cho hình học phức tạp (loại thứ 8)
+    prompt += `8️⃣ HÌNH HỌC PHỨC TẠP (đường tròn nội/ngoại tiếp, hình chóp, góc lượng giác, sơ đồ Venn...): Dùng code TikZ chuẩn:\n`;
+    prompt += `Hình ảnh: {"loai":"tikz","tieuDe":"Tam giác ABC nội tiếp (O;R)","code":"\\begin{tikzpicture}[scale=1.2]\\n\\draw (0,0) circle [radius=2cm];\\n\\coordinate (A) at (-1.73,1);\\n\\coordinate (B) at (1.73,1);\\n\\coordinate (C) at (0,-2);\\n\\draw (A)--(B)--(C)--cycle;\\n\\node[above left] at (A) {$A$};\\n\\node[above right] at (B) {$B$};\\n\\node[below] at (C) {$C$};\\n\\fill (0,0) circle [radius=1.5pt] node[right] {$O$};\\n\\end{tikzpicture}"}\n`;
+    prompt += `⚠️ QUY TẮC TIKZ BẮT BUỘC:\n`;
+    prompt += `   - KHÔNG dùng \\usepackage{} bên trong code\n`;
+    prompt += `   - Gói được phép: tikz cơ bản, calc, angles, quotes\n`;
+    prompt += `   - KHÔNG dùng pgfplots (thay bằng loại do_thi_ham_so)\n`;
+    prompt += `   - Tọa độ đơn vị cm. Nhãn: \\node[above] at (x,y) {$A$};\n`;
+    prompt += `   - Escape newline thành \\n trong JSON string\n`;
+    prompt += `   - CHỈ dùng loại "tikz" khi KHÔNG THỂ dùng các loại 1-7\n`;
 
     if (config.hasTuLuan) {
       prompt += `\n📌 QUY TẮC ĐỊNH DẠNG ĐÁP ÁN TỰ LUẬN VÀ BIỂU ĐIỂM (BẮT BUỘC TUÂN THỦ 100%):\n`;
