@@ -644,6 +644,101 @@ export default function Step2_MatrixBuilder() {
   }, [examConfig, config.hasTraLoiNgan]);
 
   // =======================================================================
+  // [FEATURE: KHTN 4-2-1-3] THỐNG KÊ THỜI GIAN THỰC (REAL-TIME LIVE TRACKER)
+  // Tự động nhảy số khi giáo viên điều chỉnh bất kỳ ô nào trên ma trận
+  // =======================================================================
+  const khtn4213LiveStats = useMemo(() => {
+    if (!examConfig.isCauTruc4213 && !(isKHTN && config.hasTuLuan && !examConfig.isCauTrucKHTNVao10)) {
+      return null;
+    }
+
+    // 1. Phần I: TNKQ 4 lựa chọn (Chuẩn CV 4956: 12 Biết - 4 Hiểu = 16 câu = 4.0đ)
+    const p1Biet = sumAll('nhieuLuaChon', 'biet');
+    const p1Hieu = sumAll('nhieuLuaChon', 'hieu');
+    const p1VD = sumAll('nhieuLuaChon', 'vanDung');
+    const p1Total = p1Biet + p1Hieu + p1VD;
+    const p1Pts = Math.round(p1Total * (examConfig.diemMoiCauP1 || 0.25) * 100) / 100;
+
+    // 2. Phần II: Đúng/Sai (Chuẩn CV 4956: 2 câu = 8 ý: 4 Biết - 2 Hiểu - 2 VD = 2.0đ)
+    const p2Biet = sumAll('dungSai', 'biet');
+    const p2Hieu = sumAll('dungSai', 'hieu');
+    const p2VD = sumAll('dungSai', 'vanDung') + sumAll('dungSai', 'vanDungCao');
+    const p2TotalY = p2Biet + p2Hieu + p2VD;
+    const p2Pts = Math.round(p2TotalY * (examConfig.diemMoiYP2 || 0.25) * 100) / 100;
+    const p2Cau = (p2TotalY / 4).toFixed(1).replace('.0', '');
+
+    // 3. Phần III: Trả lời ngắn (Chuẩn CV 4956: 4 câu: 2 Hiểu - 2 VD = 1.0đ)
+    const p3Biet = sumAll('traLoiNgan', 'biet');
+    const p3Hieu = sumAll('traLoiNgan', 'hieu');
+    const p3VD = sumAll('traLoiNgan', 'vanDung') + sumAll('traLoiNgan', 'vanDungCao');
+    const p3Total = p3Biet + p3Hieu + p3VD;
+    const p3Pts = Math.round(p3Total * (examConfig.diemMoiYP3 || 0.25) * 100) / 100;
+
+    // 4. Phần IV: Tự luận (Chuẩn CV 4956: 3 câu: 1 Hiểu - 1 VD - 1 VDC = 3.0đ)
+    const tlKeyBiet = 'diemBiet';
+    const tlKeyHieu = 'diemHieu';
+    const tlKeyVD = 'diemVanDung';
+    const tlKeyVDC = 'diemVanDungCao';
+    const tlBietPts = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKeyBiet), 0) * 100) / 100;
+    const tlHieuPts = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKeyHieu), 0) * 100) / 100;
+    const tlVDPts = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKeyVD), 0) * 100) / 100;
+    const tlVDCPts = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKeyVDC), 0) * 100) / 100;
+    const tlPts = Math.round((tlBietPts + tlHieuPts + tlVDPts + tlVDCPts) * 100) / 100;
+
+    const tlCauHieu = getTuLuanCauCount(matrix, 'hieu', tuLuanConfig);
+    const tlCauVD = getTuLuanCauCount(matrix, 'vanDung', tuLuanConfig);
+    const tlCauVDC = getTuLuanCauCount(matrix, 'vanDungCao', tuLuanConfig);
+    const tlTotalCau = tlCauHieu + tlCauVD + tlCauVDC;
+
+    // 5. Tổng điểm theo 4 mức nhận thức toàn bài
+    const grandBietPts = getLevelTotalPoints('biet');
+    const grandHieuPts = getLevelTotalPoints('hieu');
+    const grandVDPts = getLevelTotalPoints('vanDung');
+    const grandVDCPts = getLevelTotalPoints('vanDungCao');
+    const grandTotalPts = getGrandTotalPoints();
+
+    // 6. Danh sách tư vấn điều chỉnh cân bằng (Smart Balance Advice)
+    const adviceList = [];
+    if (p1Biet > 12) adviceList.push({ type: 'warning', text: `Phần I đang thừa ${p1Biet - 12} câu Nhận biết (${p1Biet}/12 câu) → Cần giảm bớt ${p1Biet - 12} câu Nhận biết ở một bài khác.` });
+    if (p1Biet < 12) adviceList.push({ type: 'warning', text: `Phần I đang thiếu ${12 - p1Biet} câu Nhận biết (${p1Biet}/12 câu) → Cần thêm ${12 - p1Biet} câu Nhận biết ở bài khác để đủ 12 câu (3.0đ).` });
+    if (p1Hieu > 4) adviceList.push({ type: 'warning', text: `Phần I đang thừa ${p1Hieu - 4} câu Thông hiểu (${p1Hieu}/4 câu) → Cần giảm bớt ${p1Hieu - 4} câu Thông hiểu.` });
+    if (p1Hieu < 4) adviceList.push({ type: 'warning', text: `Phần I đang thiếu ${4 - p1Hieu} câu Thông hiểu (${p1Hieu}/4 câu) → Cần thêm ${4 - p1Hieu} câu Thông hiểu để đủ 4 câu (1.0đ).` });
+    if (p1VD > 0) adviceList.push({ type: 'error', text: `Phần I đang có ${p1VD} câu Vận dụng → CV 4956 quy định Phần I chỉ có Nhận biết và Thông hiểu, không có Vận dụng.` });
+
+    if (p2Biet !== 4) adviceList.push({ type: 'warning', text: `Phần II Đúng/Sai: Ý Nhận biết đang là ${p2Biet}/4 ý (${p2Biet > 4 ? `thừa ${p2Biet - 4}` : `thiếu ${4 - p2Biet}`} ý) → Cần đúng 4 ý Nhận biết (1.0đ) cho 2 câu Đúng/Sai.` });
+    if (p2Hieu !== 2) adviceList.push({ type: 'warning', text: `Phần II Đúng/Sai: Ý Thông hiểu đang là ${p2Hieu}/2 ý (${p2Hieu > 2 ? `thừa ${p2Hieu - 2}` : `thiếu ${2 - p2Hieu}`} ý) → Cần đúng 2 ý Thông hiểu (0.5đ).` });
+    if (p2VD !== 2) adviceList.push({ type: 'warning', text: `Phần II Đúng/Sai: Ý Vận dụng đang là ${p2VD}/2 ý (${p2VD > 2 ? `thừa ${p2VD - 2}` : `thiếu ${2 - p2VD}`} ý) → Cần đúng 2 ý Vận dụng (0.5đ).` });
+
+    if (p3Hieu !== 2) adviceList.push({ type: 'warning', text: `Phần III Trả lời ngắn: Câu Thông hiểu đang là ${p3Hieu}/2 câu (${p3Hieu > 2 ? `thừa ${p3Hieu - 2}` : `thiếu ${2 - p3Hieu}`} câu) → Cần đúng 2 câu Thông hiểu (0.5đ).` });
+    if (p3VD !== 2) adviceList.push({ type: 'warning', text: `Phần III Trả lời ngắn: Câu Vận dụng đang là ${p3VD}/2 câu (${p3VD > 2 ? `thừa ${p3VD - 2}` : `thiếu ${2 - p3VD}`} câu) → Cần đúng 2 câu Vận dụng (0.5đ).` });
+    if (p3Biet > 0) adviceList.push({ type: 'error', text: `Phần III đang có ${p3Biet} câu Nhận biết → CV 4956 quy định Phần III chỉ gồm 2 câu Thông hiểu và 2 câu Vận dụng.` });
+
+    if (Math.abs(tlHieuPts - 1.0) >= 0.05) adviceList.push({ type: 'warning', text: `Phần IV Tự luận: Điểm Thông hiểu đang là ${tlHieuPts}đ (chuẩn 1.0đ) → Cần điều chỉnh để đạt 1 câu Thông hiểu 1.0đ.` });
+    if (Math.abs(tlVDPts - 1.0) >= 0.05) adviceList.push({ type: 'warning', text: `Phần IV Tự luận: Điểm Vận dụng đang là ${tlVDPts}đ (chuẩn 1.0đ) → Cần điều chỉnh để đạt 1 câu Vận dụng 1.0đ.` });
+    if (Math.abs(tlVDCPts - 1.0) >= 0.05) adviceList.push({ type: 'warning', text: `Phần IV Tự luận: Điểm Vận dụng cao đang là ${tlVDCPts}đ (chuẩn 1.0đ) → Cần điều chỉnh để đạt 1 câu Vận dụng cao 1.0đ.` });
+    if (tlBietPts > 0) adviceList.push({ type: 'error', text: `Phần IV Tự luận đang có ${tlBietPts}đ Nhận biết → Tự luận không nên có câu Nhận biết.` });
+
+    if (Math.abs(grandTotalPts - 10.0) >= 0.05) {
+      adviceList.push({
+        type: 'error',
+        text: `Tổng điểm toàn bài đang là ${grandTotalPts}đ (${grandTotalPts > 10.0 ? `thừa +${(grandTotalPts - 10.0).toFixed(2)}` : `thiếu ${(grandTotalPts - 10.0).toFixed(2)}`}đ so với 10.0đ) → Cần cân đối lại số câu để tổng điểm bằng đúng 10.0 điểm.`
+      });
+    }
+
+    const isPerfectMatch = adviceList.length === 0;
+
+    return {
+      p1: { biet: p1Biet, hieu: p1Hieu, vd: p1VD, total: p1Total, pts: p1Pts },
+      p2: { biet: p2Biet, hieu: p2Hieu, vd: p2VD, totalY: p2TotalY, pts: p2Pts, cau: p2Cau },
+      p3: { biet: p3Biet, hieu: p3Hieu, vd: p3VD, total: p3Total, pts: p3Pts },
+      tl: { bietPts: tlBietPts, hieuPts: tlHieuPts, vdPts: tlVDPts, vdcPts: tlVDCPts, pts: tlPts, cau: tlTotalCau },
+      grand: { bietPts: grandBietPts, hieuPts: grandHieuPts, vdPts: grandVDPts, vdcPts: grandVDCPts, pts: grandTotalPts },
+      adviceList,
+      isPerfectMatch
+    };
+  }, [matrix, examConfig, config.hasTuLuan, config.hasTraLoiNgan, isKHTN]);
+
+  // =======================================================================
   // BUILD ROWS: Double-loop — topic → ĐVKT
   // =======================================================================
   const buildBodyRows = () => {
@@ -1554,21 +1649,32 @@ export default function Step2_MatrixBuilder() {
             </div>
           </div>
         ) : (
-          /* ================= BẢNG CHUẨN ĐỊNH KÌ CV 4956 (CẤU TRÚC 4-2-1-3) ================= */
-          <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-xl shadow-sm">
+          /* ================= BẢNG CHUẨN ĐỊNH KÌ CV 4956 (CẤU TRÚC 4-2-1-3 - LIVE TRACKER) ================= */
+          <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-400 rounded-xl shadow-md">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h3 className="font-extrabold text-teal-900 text-sm flex items-center gap-2">
-                <span className="text-base">📋</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN CÔNG VĂN 4956/SGDĐT
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-teal-900 text-sm flex items-center gap-2">
+                  <span className="text-base">📋</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY — CHUẨN CÔNG VĂN 4956/SGDĐT
+                </h3>
+                {khtn4213LiveStats && (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shadow-xs ${
+                    khtn4213LiveStats.isPerfectMatch 
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                      : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+                  }`}>
+                    {khtn4213LiveStats.isPerfectMatch ? '✓ Đang khớp chuẩn 100%' : '⚠️ Đang có điều chỉnh (Xem hướng dẫn)'}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={autoFillMatrix}
-                  className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1.5 rounded-lg shadow font-bold text-xs hover:from-teal-700 hover:to-emerald-700 hover:shadow-md transition-all"
-                  title="Tự động chia đúng 100% theo Bảng phân bố ma trận của Sở GD&ĐT"
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-3 py-1.5 rounded-lg shadow font-bold text-xs hover:from-teal-700 hover:to-emerald-700 hover:shadow-md transition-all active:scale-95"
+                  title="Tự động chia lại đúng 100% theo Bảng phân bố ma trận của Sở GD&ĐT"
                 >
                   <span>⚡</span> Tự động điền chuẩn CV 4956
                 </button>
-                <span className="text-xs bg-teal-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+                <span className="text-xs bg-teal-700 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
                   Cấu trúc 4 - 2 - 1 - 3
                 </span>
               </div>
@@ -1582,55 +1688,406 @@ export default function Step2_MatrixBuilder() {
                     <th className="p-2 border border-teal-600">Thông hiểu (30%)</th>
                     <th className="p-2 border border-teal-600">Vận dụng (20%)</th>
                     <th className="p-2 border border-teal-600">VD Cao (10%)</th>
-                    <th className="p-2 border border-teal-600">Tổng điểm</th>
+                    <th className="p-2 border border-teal-600">Tổng điểm phần</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-teal-100 text-slate-700 font-medium">
+                  {/* HÀNG 1: PHẦN I (TNKQ) */}
                   <tr>
-                    <td className="p-1.5 text-left font-bold text-teal-900">Phần I: Trắc nghiệm 4 lựa chọn (16 câu)</td>
-                    <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">12 câu (3.0đ)</td>
-                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">4 câu (1.0đ)</td>
-                    <td className="p-1.5 text-slate-400">0 câu</td>
-                    <td className="p-1.5 text-slate-400">0 câu</td>
-                    <td className="p-1.5 font-bold">16 câu (4.0đ)</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1.5 text-left font-bold text-teal-900">Phần II: Trắc nghiệm Đúng/Sai (2 câu)</td>
-                    <td className="p-1.5 bg-blue-50/40 font-bold text-blue-800" colSpan="3">
-                      2 câu, mỗi câu gồm 4 lệnh hỏi: (02 Biết; 01 Hiểu; 01 Vận dụng) → Tổng: 4 Biết (1.0đ) + 2 Hiểu (0.5đ) + 2 VD (0.5đ)
+                    <td className="p-1.5 text-left font-bold text-teal-900">
+                      Phần I: Trắc nghiệm 4 lựa chọn (16 câu)
                     </td>
-                    <td className="p-1.5 text-slate-400">0 câu</td>
-                    <td className="p-1.5 font-bold">2 câu (2.0đ)</td>
+                    {/* Nhận biết: Chuẩn 12 câu */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p1.biet === 12
+                            ? 'bg-blue-50 text-blue-700'
+                            : khtn4213LiveStats.p1.biet > 12
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p1.biet} / 12 câu ({(khtn4213LiveStats.p1.biet * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className={`text-[9px] font-semibold ${
+                            khtn4213LiveStats.p1.biet === 12 ? 'text-emerald-700' : 'text-amber-800'
+                          }`}>
+                            {khtn4213LiveStats.p1.biet === 12 ? '✓ Đủ chuẩn' : khtn4213LiveStats.p1.biet > 12 ? `⚠️ Thừa +${khtn4213LiveStats.p1.biet - 12} câu` : `⚠️ Thiếu -${12 - khtn4213LiveStats.p1.biet} câu`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-blue-700">12 câu (3.0đ)</span>
+                      )}
+                    </td>
+                    {/* Thông hiểu: Chuẩn 4 câu */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p1.hieu === 4
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : khtn4213LiveStats.p1.hieu > 4
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p1.hieu} / 4 câu ({(khtn4213LiveStats.p1.hieu * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className={`text-[9px] font-semibold ${
+                            khtn4213LiveStats.p1.hieu === 4 ? 'text-emerald-700' : 'text-amber-800'
+                          }`}>
+                            {khtn4213LiveStats.p1.hieu === 4 ? '✓ Đủ chuẩn' : khtn4213LiveStats.p1.hieu > 4 ? `⚠️ Thừa +${khtn4213LiveStats.p1.hieu - 4} câu` : `⚠️ Thiếu -${4 - khtn4213LiveStats.p1.hieu} câu`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-emerald-700">4 câu (1.0đ)</span>
+                      )}
+                    </td>
+                    {/* Vận dụng: Chuẩn 0 */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats?.p1.vd > 0 ? (
+                        <span className="text-rose-700 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">
+                          ⚠️ {khtn4213LiveStats.p1.vd} câu (CV 4956 không có VD ở P.I)
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">0 câu</span>
+                      )}
+                    </td>
+                    {/* VDC: Chuẩn 0 */}
+                    <td className="p-1.5 border border-teal-100 text-slate-400">0 câu</td>
+                    {/* Tổng P.I: Chuẩn 16 câu = 4.0đ */}
+                    <td className="p-1.5 border border-teal-100 font-bold">
+                      {khtn4213LiveStats ? (
+                        <span className={khtn4213LiveStats.p1.total === 16 ? 'text-teal-900' : 'text-amber-800 font-black'}>
+                          {khtn4213LiveStats.p1.total} / 16 câu ({khtn4213LiveStats.p1.pts} / 4.0đ)
+                        </span>
+                      ) : (
+                        <span>16 câu (4.0đ)</span>
+                      )}
+                    </td>
                   </tr>
+
+                  {/* HÀNG 2: PHẦN II (ĐÚNG/SAI) */}
                   <tr>
-                    <td className="p-1.5 text-left font-bold text-teal-900">Phần III: Trả lời ngắn (4 câu)</td>
-                    <td className="p-1.5 text-slate-400">0 câu</td>
-                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">2 câu (0.5đ)</td>
-                    <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">2 câu (0.5đ)</td>
-                    <td className="p-1.5 text-slate-400">0 câu</td>
-                    <td className="p-1.5 font-bold">4 câu (1.0đ)</td>
+                    <td className="p-1.5 text-left font-bold text-teal-900">
+                      Phần II: Trắc nghiệm Đúng/Sai (2 câu = 8 ý)
+                    </td>
+                    {/* Nhận biết: Chuẩn 4 ý */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p2.biet === 4
+                            ? 'bg-blue-50 text-blue-700'
+                            : khtn4213LiveStats.p2.biet > 4
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p2.biet} / 4 ý ({(khtn4213LiveStats.p2.biet * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className="text-[9px] font-semibold">
+                            {khtn4213LiveStats.p2.biet === 4 ? '✓ Đủ (ý a, b)' : khtn4213LiveStats.p2.biet > 4 ? `⚠️ Thừa +${khtn4213LiveStats.p2.biet - 4} ý` : `⚠️ Thiếu -${4 - khtn4213LiveStats.p2.biet} ý`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>4 ý Biết (1.0đ)</span>
+                      )}
+                    </td>
+                    {/* Thông hiểu: Chuẩn 2 ý */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p2.hieu === 2
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : khtn4213LiveStats.p2.hieu > 2
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p2.hieu} / 2 ý ({(khtn4213LiveStats.p2.hieu * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className="text-[9px] font-semibold">
+                            {khtn4213LiveStats.p2.hieu === 2 ? '✓ Đủ (ý c)' : khtn4213LiveStats.p2.hieu > 2 ? `⚠️ Thừa +${khtn4213LiveStats.p2.hieu - 2} ý` : `⚠️ Thiếu -${2 - khtn4213LiveStats.p2.hieu} ý`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>2 ý Hiểu (0.5đ)</span>
+                      )}
+                    </td>
+                    {/* Vận dụng: Chuẩn 2 ý */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p2.vd === 2
+                            ? 'bg-orange-50 text-orange-700'
+                            : khtn4213LiveStats.p2.vd > 2
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p2.vd} / 2 ý ({(khtn4213LiveStats.p2.vd * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className="text-[9px] font-semibold">
+                            {khtn4213LiveStats.p2.vd === 2 ? '✓ Đủ (ý d)' : khtn4213LiveStats.p2.vd > 2 ? `⚠️ Thừa +${khtn4213LiveStats.p2.vd - 2} ý` : `⚠️ Thiếu -${2 - khtn4213LiveStats.p2.vd} ý`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>2 ý VD (0.5đ)</span>
+                      )}
+                    </td>
+                    {/* VDC: Chuẩn 0 */}
+                    <td className="p-1.5 border border-teal-100 text-slate-400">0 ý</td>
+                    {/* Tổng P.II: Chuẩn 8 ý = 2 câu = 2.0đ */}
+                    <td className="p-1.5 border border-teal-100 font-bold">
+                      {khtn4213LiveStats ? (
+                        <span className={khtn4213LiveStats.p2.totalY === 8 ? 'text-teal-900' : 'text-amber-800 font-black'}>
+                          {khtn4213LiveStats.p2.cau} câu ({khtn4213LiveStats.p2.totalY} / 8 ý) ({khtn4213LiveStats.p2.pts} / 2.0đ)
+                        </span>
+                      ) : (
+                        <span>2 câu (2.0đ)</span>
+                      )}
+                    </td>
                   </tr>
+
+                  {/* HÀNG 3: PHẦN III (TRẢ LỜI NGẮN) */}
                   <tr>
-                    <td className="p-1.5 text-left font-bold text-teal-900">Phần IV: Tự luận (3 câu)</td>
-                    <td className="p-1.5 text-slate-400">0 câu</td>
-                    <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">1 câu (1.0đ)</td>
-                    <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">1 câu (1.0đ)</td>
-                    <td className="p-1.5 bg-red-50/70 font-bold text-red-700">1 câu (1.0đ)</td>
-                    <td className="p-1.5 font-bold">3 câu (3.0đ)</td>
+                    <td className="p-1.5 text-left font-bold text-teal-900">
+                      Phần III: Trả lời ngắn (4 câu)
+                    </td>
+                    {/* Nhận biết: Chuẩn 0 */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats?.p3.biet > 0 ? (
+                        <span className="text-rose-700 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">
+                          ⚠️ {khtn4213LiveStats.p3.biet} câu (CV 4956 không có NB ở P.III)
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">0 câu</span>
+                      )}
+                    </td>
+                    {/* Thông hiểu: Chuẩn 2 câu */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p3.hieu === 2
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : khtn4213LiveStats.p3.hieu > 2
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p3.hieu} / 2 câu ({(khtn4213LiveStats.p3.hieu * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className="text-[9px] font-semibold">
+                            {khtn4213LiveStats.p3.hieu === 2 ? '✓ Đủ chuẩn' : khtn4213LiveStats.p3.hieu > 2 ? `⚠️ Thừa +${khtn4213LiveStats.p3.hieu - 2} câu` : `⚠️ Thiếu -${2 - khtn4213LiveStats.p3.hieu} câu`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-emerald-700">2 câu (0.5đ)</span>
+                      )}
+                    </td>
+                    {/* Vận dụng: Chuẩn 2 câu */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          khtn4213LiveStats.p3.vd === 2
+                            ? 'bg-orange-50 text-orange-700'
+                            : khtn4213LiveStats.p3.vd > 2
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-rose-50 text-rose-900 border border-rose-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.p3.vd} / 2 câu ({(khtn4213LiveStats.p3.vd * 0.25).toFixed(2).replace('.00','')}đ)</div>
+                          <div className="text-[9px] font-semibold">
+                            {khtn4213LiveStats.p3.vd === 2 ? '✓ Đủ chuẩn' : khtn4213LiveStats.p3.vd > 2 ? `⚠️ Thừa +${khtn4213LiveStats.p3.vd - 2} câu` : `⚠️ Thiếu -${2 - khtn4213LiveStats.p3.vd} câu`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-orange-700">2 câu (0.5đ)</span>
+                      )}
+                    </td>
+                    {/* VDC: Chuẩn 0 */}
+                    <td className="p-1.5 border border-teal-100 text-slate-400">0 câu</td>
+                    {/* Tổng P.III: Chuẩn 4 câu = 1.0đ */}
+                    <td className="p-1.5 border border-teal-100 font-bold">
+                      {khtn4213LiveStats ? (
+                        <span className={khtn4213LiveStats.p3.total === 4 ? 'text-teal-900' : 'text-amber-800 font-black'}>
+                          {khtn4213LiveStats.p3.total} / 4 câu ({khtn4213LiveStats.p3.pts} / 1.0đ)
+                        </span>
+                      ) : (
+                        <span>4 câu (1.0đ)</span>
+                      )}
+                    </td>
+                  </tr>
+
+                  {/* HÀNG 4: PHẦN IV (TỰ LUẬN) */}
+                  <tr>
+                    <td className="p-1.5 text-left font-bold text-teal-900">
+                      Phần IV: Tự luận (3 câu)
+                    </td>
+                    {/* Nhận biết: Chuẩn 0 */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats?.tl.bietPts > 0 ? (
+                        <span className="text-rose-700 font-bold bg-rose-100 px-1.5 py-0.5 rounded text-[10px]">
+                          ⚠️ {khtn4213LiveStats.tl.bietPts}đ (không có NB ở TL)
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">0 câu</span>
+                      )}
+                    </td>
+                    {/* Thông hiểu: Chuẩn 1 câu = 1.0đ */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          Math.abs(khtn4213LiveStats.tl.hieuPts - 1.0) < 0.05
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.tl.hieuPts} / 1.0đ</div>
+                          <div className="text-[9px] font-semibold">
+                            {Math.abs(khtn4213LiveStats.tl.hieuPts - 1.0) < 0.05 ? '✓ Đủ (1 câu)' : '⚠️ Chưa đủ 1.0đ'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-emerald-700">1 câu (1.0đ)</span>
+                      )}
+                    </td>
+                    {/* Vận dụng: Chuẩn 1 câu = 1.0đ */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          Math.abs(khtn4213LiveStats.tl.vdPts - 1.0) < 0.05
+                            ? 'bg-orange-50 text-orange-700'
+                            : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.tl.vdPts} / 1.0đ</div>
+                          <div className="text-[9px] font-semibold">
+                            {Math.abs(khtn4213LiveStats.tl.vdPts - 1.0) < 0.05 ? '✓ Đủ (1 câu)' : '⚠️ Chưa đủ 1.0đ'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-orange-700">1 câu (1.0đ)</span>
+                      )}
+                    </td>
+                    {/* Vận dụng cao: Chuẩn 1 câu = 1.0đ */}
+                    <td className="p-1.5 border border-teal-100">
+                      {khtn4213LiveStats ? (
+                        <div className={`p-1 rounded font-bold ${
+                          Math.abs(khtn4213LiveStats.tl.vdcPts - 1.0) < 0.05
+                            ? 'bg-red-50 text-red-700'
+                            : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        }`}>
+                          <div>{khtn4213LiveStats.tl.vdcPts} / 1.0đ</div>
+                          <div className="text-[9px] font-semibold">
+                            {Math.abs(khtn4213LiveStats.tl.vdcPts - 1.0) < 0.05 ? '✓ Đủ (1 câu)' : '⚠️ Chưa đủ 1.0đ'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-bold text-red-700">1 câu (1.0đ)</span>
+                      )}
+                    </td>
+                    {/* Tổng P.IV: Chuẩn 3 câu = 3.0đ */}
+                    <td className="p-1.5 border border-teal-100 font-bold">
+                      {khtn4213LiveStats ? (
+                        <span className={Math.abs(khtn4213LiveStats.tl.pts - 3.0) < 0.05 ? 'text-teal-900' : 'text-amber-800 font-black'}>
+                          {khtn4213LiveStats.tl.cau} câu ({khtn4213LiveStats.tl.pts} / 3.0đ)
+                        </span>
+                      ) : (
+                        <span>3 câu (3.0đ)</span>
+                      )}
+                    </td>
                   </tr>
                 </tbody>
+
+                {/* TỔNG CỘNG TOÀN BÀI */}
                 <tfoot className="bg-teal-100 font-black text-teal-950">
                   <tr>
-                    <td className="p-2 text-left uppercase">TỔNG CỘNG</td>
-                    <td className="p-2 text-blue-800">4.0 điểm (40%)</td>
-                    <td className="p-2 text-emerald-800">3.0 điểm (30%)</td>
-                    <td className="p-2 text-orange-800">2.0 điểm (20%)</td>
-                    <td className="p-2 text-red-800">1.0 điểm (10%)</td>
-                    <td className="p-2 text-teal-900 text-sm">10.0 điểm (100%)</td>
+                    <td className="p-2 text-left uppercase">TỔNG CỘNG TOÀN ĐỀ</td>
+                    <td className="p-2 border border-teal-300">
+                      {khtn4213LiveStats ? (
+                        <div>
+                          <div className={Math.abs(khtn4213LiveStats.grand.bietPts - 4.0) < 0.05 ? 'text-blue-800' : 'text-amber-900 font-black'}>
+                            {khtn4213LiveStats.grand.bietPts} / 4.0đ
+                          </div>
+                          <div className="text-[10px] opacity-80">
+                            ({(khtn4213LiveStats.grand.bietPts * 10).toFixed(0)}% / 40%) {Math.abs(khtn4213LiveStats.grand.bietPts - 4.0) < 0.05 ? '✓' : '⚠️'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>4.0 điểm (40%)</span>
+                      )}
+                    </td>
+                    <td className="p-2 border border-teal-300">
+                      {khtn4213LiveStats ? (
+                        <div>
+                          <div className={Math.abs(khtn4213LiveStats.grand.hieuPts - 3.0) < 0.05 ? 'text-emerald-800' : 'text-amber-900 font-black'}>
+                            {khtn4213LiveStats.grand.hieuPts} / 3.0đ
+                          </div>
+                          <div className="text-[10px] opacity-80">
+                            ({(khtn4213LiveStats.grand.hieuPts * 10).toFixed(0)}% / 30%) {Math.abs(khtn4213LiveStats.grand.hieuPts - 3.0) < 0.05 ? '✓' : '⚠️'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>3.0 điểm (30%)</span>
+                      )}
+                    </td>
+                    <td className="p-2 border border-teal-300">
+                      {khtn4213LiveStats ? (
+                        <div>
+                          <div className={Math.abs(khtn4213LiveStats.grand.vdPts - 2.0) < 0.05 ? 'text-orange-800' : 'text-amber-900 font-black'}>
+                            {khtn4213LiveStats.grand.vdPts} / 2.0đ
+                          </div>
+                          <div className="text-[10px] opacity-80">
+                            ({(khtn4213LiveStats.grand.vdPts * 10).toFixed(0)}% / 20%) {Math.abs(khtn4213LiveStats.grand.vdPts - 2.0) < 0.05 ? '✓' : '⚠️'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>2.0 điểm (20%)</span>
+                      )}
+                    </td>
+                    <td className="p-2 border border-teal-300">
+                      {khtn4213LiveStats ? (
+                        <div>
+                          <div className={Math.abs(khtn4213LiveStats.grand.vdcPts - 1.0) < 0.05 ? 'text-red-800' : 'text-amber-900 font-black'}>
+                            {khtn4213LiveStats.grand.vdcPts} / 1.0đ
+                          </div>
+                          <div className="text-[10px] opacity-80">
+                            ({(khtn4213LiveStats.grand.vdcPts * 10).toFixed(0)}% / 10%) {Math.abs(khtn4213LiveStats.grand.vdcPts - 1.0) < 0.05 ? '✓' : '⚠️'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span>1.0 điểm (10%)</span>
+                      )}
+                    </td>
+                    <td className="p-2 border border-teal-300 text-sm">
+                      {khtn4213LiveStats ? (
+                        <div>
+                          <span className={`font-black ${
+                            Math.abs(khtn4213LiveStats.grand.pts - 10.0) < 0.05 ? 'text-emerald-800' : 'text-rose-700'
+                          }`}>
+                            {khtn4213LiveStats.grand.pts} / 10.0đ
+                          </span>
+                          <div className="text-[10px] opacity-80">
+                            {Math.abs(khtn4213LiveStats.grand.pts - 10.0) < 0.05 ? '✓ 100%' : `(Lệch ${khtn4213LiveStats.grand.pts > 10 ? `+${(khtn4213LiveStats.grand.pts - 10).toFixed(2)}` : `${(khtn4213LiveStats.grand.pts - 10).toFixed(2)}`}đ)`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-teal-900">10.0 điểm (100%)</span>
+                      )}
+                    </td>
                   </tr>
                 </tfoot>
               </table>
             </div>
+
+            {/* TRỢ LÝ CÂN BẰNG MA TRẬN THEO CV 4956 */}
+            {khtn4213LiveStats && (
+              khtn4213LiveStats.isPerfectMatch ? (
+                <div className="mt-3 p-3 bg-emerald-100 border border-emerald-300 rounded-lg flex items-center gap-2 text-emerald-900 text-xs font-semibold shadow-xs">
+                  <span className="text-base shrink-0">🎉</span>
+                  <span><strong>Ma trận đã chuẩn xác 100% theo CV 4956:</strong> Đạt đúng 16 câu P.I (4.0đ), 8 ý P.II (2.0đ), 4 câu P.III (1.0đ), 3 câu Tự luận (3.0đ) và đúng tỉ lệ 40% Biết - 30% Hiểu - 20% VD - 10% VDC! Thầy/cô có thể yên tâm chuyển sang bước tiếp theo.</span>
+                </div>
+              ) : (
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-lg text-xs shadow-xs">
+                  <div className="font-bold text-amber-900 mb-1.5 flex items-center gap-1.5">
+                    <span className="text-sm">💡</span> Hướng dẫn cân bằng ma trận theo CV 4956 ({khtn4213LiveStats.adviceList.length} điểm cần điều chỉnh):
+                  </div>
+                  <ul className="space-y-1 pl-4 list-disc text-slate-800">
+                    {khtn4213LiveStats.adviceList.map((adv, idx) => (
+                      <li key={idx} className={adv.type === 'error' ? 'text-red-700 font-semibold' : 'text-amber-800'}>
+                        {adv.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            )}
 
             {/* THÔNG BÁO TIẾN ĐỘ CHẾ ĐỘ CUỐI KÌ 25-75 */}
             {config.isCuoiKi && cuoiKiStats && (
@@ -1824,6 +2281,30 @@ export default function Step2_MatrixBuilder() {
           ⚡ Nhập nhanh ĐVKT
         </button>
       </div>
+
+      {/* FLOATING QUICK TRACKER CHO KHTN 4-2-1-3 KHI CUỘN */}
+      {khtn4213LiveStats && (
+        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 text-white backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-slate-700 flex items-center gap-2.5 text-xs select-none pointer-events-auto">
+          <span className="text-teal-400 font-bold flex items-center gap-1">
+            <span>📊</span> KHTN 4-2-1-3:
+          </span>
+          <span className={`px-2 py-0.5 rounded font-bold ${khtn4213LiveStats.p1.total === 16 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`} title="Phần I: TNKQ">
+            P.I: {khtn4213LiveStats.p1.total}/16c
+          </span>
+          <span className={`px-2 py-0.5 rounded font-bold ${khtn4213LiveStats.p2.totalY === 8 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`} title="Phần II: Đúng/Sai">
+            P.II: {khtn4213LiveStats.p2.totalY}/8ý
+          </span>
+          <span className={`px-2 py-0.5 rounded font-bold ${khtn4213LiveStats.p3.total === 4 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`} title="Phần III: Trả lời ngắn">
+            P.III: {khtn4213LiveStats.p3.total}/4c
+          </span>
+          <span className={`px-2 py-0.5 rounded font-bold ${Math.abs(khtn4213LiveStats.tl.pts - 3.0) < 0.05 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`} title="Phần IV: Tự luận">
+            TL: {khtn4213LiveStats.tl.pts}/3.0đ
+          </span>
+          <span className={`px-2.5 py-0.5 rounded font-black text-xs ${Math.abs(khtn4213LiveStats.grand.pts - 10.0) < 0.05 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white animate-pulse'}`}>
+            Tổng: {khtn4213LiveStats.grand.pts}/10đ
+          </span>
+        </div>
+      )}
 
       {/* MODAL SMART IMPORT */}
       {showSmartImport && (
