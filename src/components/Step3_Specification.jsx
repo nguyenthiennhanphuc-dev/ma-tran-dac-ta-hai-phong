@@ -200,7 +200,14 @@ export default function Step3_Specification() {
   const fmtTuLuanCau = (level) => {
     const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
     if (cau === 0) return '';
-    return cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
+    const diem = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKey), 0) * 100) / 100;
+    if (diem > 0) {
+      const diemStr = String(diem).replace('.', ',');
+      return `${cauStr} (${diemStr} điểm)`;
+    }
+    return cauStr;
   };
 
   const getIndicatorsForCell = (dv, type, level) => {
