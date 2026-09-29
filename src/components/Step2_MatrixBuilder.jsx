@@ -632,8 +632,8 @@ export default function Step2_MatrixBuilder() {
     if (ec.isCauTrucToan3223) {
       // Cấu trúc Toán 3-2-2-3 GDPT 2018: cứng số câu
       // P.I: 12 câu × 0,25đ = 3đ | P.II: 2 câu × 4ý = 8ý × 0,25đ = 2đ
-      // P.III: 4 câu × 0,50đ = 2đ | P.IV: 3 câu TL × 1đ = 3đ
-      return { soCauP1: 12, soYP2: 8, soCauP2: 2, soYP3: 4, tongYTuLuan: 3 };
+      // P.III: 4 câu × 0,50đ = 2đ | P.IV: 4 câu/ý TL = 3đ (2H: 1,5đ + 2VD: 1,5đ)
+      return { soCauP1: 12, soYP2: 8, soCauP2: 2, soYP3: 4, tongYTuLuan: 4 };
     }
     const tongDiem = ec.tongDiem || 10.0;
     const tiLe = ec.tiLeNhanThuc;
@@ -1507,7 +1507,7 @@ export default function Step2_MatrixBuilder() {
               <button
                 onClick={autoFillMatrix}
                 className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-3.5 py-1.5 rounded-lg shadow font-bold text-xs hover:from-purple-700 hover:to-violet-700 hover:shadow-md transition-all"
-                title="Tự động phân bổ theo Cấu trúc Toán Khánh Hòa: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(3H+1VD P.III) + 3TL(1H+2VD P.IV)"
+                title="Tự động phân bổ theo Cấu trúc Toán Khánh Hòa: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(2H+2VD P.III) + Tự luận(2H:1,5đ + 2VD:1,5đ P.IV)"
               >
                 <span>⚡</span> Auto-Fill chuẩn Toán Khánh Hòa
               </button>
@@ -1552,15 +1552,15 @@ export default function Step2_MatrixBuilder() {
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">4 câu</td>
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-red-600">0,50đ ★</td>
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">2,0đ (20%)</td>
-                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">3H + 1VD</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">2H + 2VD</td>
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100">
                   <td className="border border-purple-300 px-2 py-1.5 font-bold text-purple-800">P.IV</td>
                   <td className="border border-purple-300 px-2 py-1.5 text-center">Tự luận</td>
-                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">3 câu</td>
-                  <td className="border border-purple-300 px-2 py-1.5 text-center">1,0đ/câu</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">4 câu/ý (tùy biến)</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center">Linh hoạt</td>
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">3,0đ (30%)</td>
-                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">1H + 1VD + 1VD</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">2H (1,5đ) + 2VD (1,5đ)</td>
                 </tr>
                 <tr className="bg-purple-200 font-extrabold text-purple-900">
                   <td colSpan={4} className="border border-purple-300 px-2 py-1.5 text-right">Tổng</td>
@@ -1571,7 +1571,7 @@ export default function Step2_MatrixBuilder() {
             </table>
           </div>
           <p className="text-purple-600 mt-2 text-[11px] font-semibold">
-            ★ P.III = 0,50đ/câu (khác KHTN 4-2-1-3 là 0,25đ/câu). Tỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng.
+            ★ P.III = 0,50đ/câu (2H + 2VD). Tự luận = 3,0đ (Hiểu 1,5đ + Vận dụng 1,5đ). Tỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng.
           </p>
         </div>
       )}

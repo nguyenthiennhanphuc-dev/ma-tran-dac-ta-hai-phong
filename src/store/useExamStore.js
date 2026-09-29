@@ -663,9 +663,11 @@ export const useExamStore = create(
             { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
               subItems: [{ diem: 1.0, level: 'hieu' }] },
             { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
-              subItems: [{ diem: 1.0, level: 'vanDung' }] },
+              subItems: [{ diem: 0.5, level: 'hieu' }] },
             { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
               subItems: [{ diem: 1.0, level: 'vanDung' }] },
+            { id: 'tl_q4', label: 'Câu 22', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 0.5, level: 'vanDung' }] },
           ],
         },
         dungSaiConfig: {
@@ -2079,9 +2081,9 @@ export const useExamStore = create(
         // ║  Phần II (2 câu Đ/S × 4ý × 0.25đ = 2.0đ):                        ║
         // ║    Mỗi câu: 2B + 1H + 1VD (Tổng: 4B + 2H + 2VD)                  ║
         // ║    Câu 13 + Câu 14 (config qua DungSaiConfigModal)                 ║
-        // ║  Phần III (4 câu TLN × 0.50đ = 2.0đ): 3H + 1VD (1.5đ Hiểu + 0.5đ VD)    ║
-        // ║  Phần IV  (3 câu TL × 1.0đ = 3.0đ):                               ║
-        // ║    Câu 19: 1H (1.0đ), Câu 20: 1VD (1.0đ), Câu 21: 1VD (1.0đ)    ║
+        // ║  Phần III (4 câu TLN × 0.50đ = 2.0đ): 2H + 2VD (1.0đ Hiểu + 1.0đ VD)    ║
+        // ║  Phần IV  (Tự luận = 3.0đ: 2 câu Hiểu [1.5đ] + 2 câu VD [1.5đ]):        ║
+        // ║    Mặc định: Câu 19 (1.0đ H), Câu 20 (0.5đ H), Câu 21 (1.0đ VD), Câu 22 (0.5đ VD) ║
         // ║    Config qua TuLuanConfigModal (tuLuanConfig.questions)           ║
         // ║  TỔNG: 10.0đ (40% Biết - 30% Hiểu - 30% Vận dụng)                  ║
         // ╚══════════════════════════════════════════════════════════════════════╝
@@ -2219,15 +2221,11 @@ export const useExamStore = create(
             }
           }
 
-          // ─── P.III: 4 câu Trả lời ngắn (3H + 1VD) × 0,50đ ───
-          // Cơ cấu chuẩn để đạt 30% Hiểu (3,0đ) và 30% Vận dụng (3,0đ):
-          // P.II: 2H (0,5đ) + 2VD (0,5đ)
-          // P.III: 3H (1,5đ) + 1VD (0,5đ)
-          // P.IV: 1H (1,0đ) + 2VD (2,0đ)
-          // => Tổng Hiểu = 0,5 + 1,5 + 1,0 = 3,0đ (30%) | Tổng VD = 0,5 + 0,5 + 2,0 = 3,0đ (30%)
+          // ─── P.III: 4 câu Trả lời ngắn (2H + 2VD) × 0,50đ = 2,0đ ───
+          // 2 câu Thông hiểu (1,0đ) + 2 câu Vận dụng (1,0đ)
           const soCauP3 = 4;
           const sortedByTiet = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
-          let hieuP3Left = 3, vdP3Left = 1;
+          let hieuP3Left = 2, vdP3Left = 2;
           sortedByTiet.forEach(f => {
             if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
             else if (vdP3Left > 0) { f.dv.traLoiNgan.vanDung += 1; vdP3Left--; }
@@ -2249,7 +2247,9 @@ export const useExamStore = create(
             }
           });
 
-          // ─── P.IV: Tự luận (3.0đ) ───
+          // ─── P.IV: Tự luận (3.0đ): 2 câu Thông hiểu (1,5đ) + 2 câu Vận dụng (1,5đ) ───
+          // Tổng Thông hiểu toàn đề = 0,5đ (P.II) + 1,0đ (P.III) + 1,5đ (P.IV) = 3,0đ (30%)
+          // Tổng Vận dụng toàn đề = 0,5đ (P.II) + 1,0đ (P.III) + 1,5đ (P.IV) = 3,0đ (30%)
           const tlCfg = state.tuLuanConfig;
           const hasCustomTL = Boolean(tlCfg?.enabled) && Array.isArray(tlCfg?.questions) && tlCfg.questions.length > 0 && tlCfg.questions.some(q => q.subItems && q.subItems.length > 0);
 
@@ -2261,9 +2261,11 @@ export const useExamStore = create(
               { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'hieu' }] },
               { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
-                subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                subItems: [{ diem: 0.5, level: 'hieu' }] },
               { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                 subItems: [{ diem: 1.0, level: 'vanDung' }] },
+              { id: 'tl_q4', label: 'Câu 22', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 0.5, level: 'vanDung' }] },
             ];
           }
 
@@ -2385,9 +2387,11 @@ export const useExamStore = create(
                   { id: 'tl_q1', label: 'Câu 19', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                     subItems: [{ diem: 1.0, level: 'hieu' }] },
                   { id: 'tl_q2', label: 'Câu 20', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
-                    subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                    subItems: [{ diem: 0.5, level: 'hieu' }] },
                   { id: 'tl_q3', label: 'Câu 21', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
                     subItems: [{ diem: 1.0, level: 'vanDung' }] },
+                  { id: 'tl_q4', label: 'Câu 22', kienThuc: '', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 0.5, level: 'vanDung' }] },
                 ],
               };
 
@@ -2402,7 +2406,7 @@ export const useExamStore = create(
                 ]
               });
 
-          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=2câu DS (custom=${hasCustomDS}), P.III=${soCauP3}câu(3H+1VD), P.IV=TL (custom=${hasCustomTL})`);
+          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=2câu DS (custom=${hasCustomDS}), P.III=${soCauP3}câu(2H+2VD), P.IV=TL(2H:1.5đ+2VD:1.5đ, custom=${hasCustomTL})`);
           return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223, dungSaiConfig: finalDungSaiConfig3223 };
         }
 

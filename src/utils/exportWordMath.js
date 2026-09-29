@@ -2252,8 +2252,9 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
         const phanTL = hasTraLoiNgan ? 4 : 3;
         // PHẦN II: TỰ LUẬN (nếu có Tự luận mode)
             if (examConfig.isCauTrucToan3223) {
+              const cauRangeText = soCauTL > 1 ? `từ câu 19 đến câu ${18 + soCauTL}` : `câu 19`;
               html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
-              html += `<p style="font-size:14pt;font-style:italic;">Thí sinh trình bày lời giải chi tiết từ câu 19 đến câu 21. Mỗi câu đúng trọn vẹn được 1,0 điểm.</p>`;
+              html += `<p style="font-size:14pt;font-style:italic;">Thí sinh trình bày lời giải chi tiết ${cauRangeText}.</p>`;
             } else if (examConfig.isCauTruc4213) {
               const diemTL = matrix.reduce((s, t) => s + (t.donViKienThuc || []).reduce((s2, dv) => s2 + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0), 0), 0);
               html += `<p class="bold" style="font-size:14pt;text-transform:uppercase;">PHẦN B. TỰ LUẬN (${String(diemTL).replace('.',',')} ĐIỂM)</p>`;
@@ -2366,8 +2367,9 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
             const phanTL = hasTraLoiNgan ? 4 : 3;
             // PHẦN II: TỰ LUẬN (nếu có Tự luận mode)
             if (examConfig.isCauTrucToan3223) {
+              const cauRangeText = soCauTL > 1 ? `từ câu 19 đến câu ${18 + soCauTL}` : `câu 19`;
               html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
-              html += `<p style="font-size:14pt;font-style:italic;">Thí sinh trình bày lời giải chi tiết từ câu 19 đến câu 21. Mỗi câu đúng trọn vẹn được 1,0 điểm.</p>`;
+              html += `<p style="font-size:14pt;font-style:italic;">Thí sinh trình bày lời giải chi tiết ${cauRangeText}.</p>`;
             } else if (isMinistry) {
               const sectionTitle = hasTraLoiNgan ? "PHẦN IV. Câu hỏi tự luận" : "PHẦN III. Câu hỏi tự luận";
               html += `<p class="bold" style="font-size:14pt;">${sectionTitle}</p>`;

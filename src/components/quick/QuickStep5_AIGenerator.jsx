@@ -1073,8 +1073,8 @@ export default function Step5_AIGenerator() {
 📊 CƠ CẤU ĐỀ THI CHUẨN TOÁN KHÁNH HÒA (21 CÂU - 10 ĐIỂM):
 - PHẦN I (3,0 điểm): 12 câu trắc nghiệm nhiều phương án lựa chọn (Câu 1 đến Câu 12). Mỗi câu 0,25 điểm. 100% mức độ Nhận biết.
 - PHẦN II (2,0 điểm): 2 câu trắc nghiệm Đúng/Sai (Câu 13, Câu 14). Mỗi câu gồm 4 ý a, b, c, d (mỗi ý 0,25 điểm). Cơ cấu mức độ mỗi câu bắt buộc: ý a) Nhận biết, ý b) Nhận biết, ý c) Thông hiểu, ý d) Vận dụng. Tuyệt đối không có Vận dụng cao.
-- PHẦN III (2,0 điểm): 4 câu trắc nghiệm trả lời ngắn (Câu 15 đến Câu 18). Mỗi câu đúng được 0,50 điểm. Gồm 3 câu Thông hiểu và 1 câu Vận dụng. Mỗi câu độc lập, đáp án là 1 con số cụ thể (tối đa 4 chữ số).
-- PHẦN IV (3,0 điểm): 3 câu Tự luận (Câu 19 đến Câu 21). Mỗi câu đúng trọn vẹn được 1,0 điểm. Gồm 1 câu Thông hiểu và 2 câu Vận dụng. Trình bày bài giải chi tiết kèm biểu điểm rõ ràng.\n`;
+- PHẦN III (2,0 điểm): 4 câu trắc nghiệm trả lời ngắn (Câu 15 đến Câu 18). Mỗi câu đúng được 0,50 điểm. Gồm 2 câu Thông hiểu và 2 câu Vận dụng. Mỗi câu độc lập, đáp án là 1 con số cụ thể (tối đa 4 chữ số).
+- PHẦN IV (3,0 điểm): Tự luận (Tổng 3,0 điểm). Cơ cấu bắt buộc: Mức độ Thông hiểu đạt 1,5 điểm và mức độ Vận dụng đạt 1,5 điểm. Mặc định gồm 2 câu Thông hiểu (tổng 1,5đ) và 2 câu Vận dụng (tổng 1,5đ) hoặc bám sát theo số câu/ý người dùng cấu hình ở Ma trận. Trình bày bài giải chi tiết kèm biểu điểm rõ ràng.\n`;
     } else {
       prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC môn ${monHocName} lớp ${gradeName} BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
     }
@@ -1157,7 +1157,7 @@ Giải thích: [Giải thích ngắn gọn]
       } else if (isCauTrucToan3223) {
         prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN KHÁNH HÒA - 3-2-2-3):
 - Gồm 4 câu Trắc nghiệm trả lời ngắn (Câu 15 đến Câu 18), mỗi câu đúng được 0,50 điểm (Tổng 2,0 điểm).
-- Cơ cấu mức độ nhận thức: Gồm 3 câu Thông hiểu và 1 câu Vận dụng.
+- Cơ cấu mức độ nhận thức: Gồm 2 câu Thông hiểu và 2 câu Vận dụng.
 - BẮT BUỘC đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG LÀ MỘT CON SỐ CỤ THỂ (tối đa 4 chữ số, ví dụ: 5, 12, 150, 0.25, 12.5) hoặc phân số/biểu thức ngắn gọn.
 - Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
 `;
@@ -1190,8 +1190,9 @@ Giải thích: [Cách giải/Lý do ngắn gọn]\n\n`;
       prompt += `[LOẠI 4: TỰ LUẬN] (Tổng điểm toàn phần tự luận: ${tongDiemTuLuanThucTe} điểm)\n`;
       if (isCauTrucToan3223) {
         prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN KHÁNH HÒA - 3-2-2-3):
-- Gồm 3 câu Tự luận độc lập (Câu 19 đến Câu 21), mỗi câu đúng trọn vẹn được 1,0 điểm (Tổng 3,0 điểm).
-- Cơ cấu mức độ nhận thức: Gồm 1 câu Thông hiểu và 2 câu Vận dụng.
+- Tổng điểm phần Tự luận: 3,0 điểm.
+- Cơ cấu mức độ nhận thức: Mức độ Thông hiểu đạt 1,5 điểm và mức độ Vận dụng đạt 1,5 điểm.
+- Mặc định gồm 2 câu Thông hiểu (tổng 1,5đ) và 2 câu Vận dụng (tổng 1,5đ), hoặc tuân thủ chính xác theo danh sách câu/ý được liệt kê ở Ma trận bên dưới.
 - Mỗi câu trình bày bài giải chi tiết từng bước rõ ràng, kèm thang điểm cụ thể cho từng bước (cách nhau bằng " || [Điểm]").
 `;
       }

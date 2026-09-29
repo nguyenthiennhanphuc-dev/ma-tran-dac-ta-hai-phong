@@ -179,20 +179,31 @@ m3.forEach(t => t.donViKienThuc.forEach(dv => {
 
 assertEq(p1_3, 12, 'P.I = 12 câu TN (100% Nhận biết = 3.0đ)');
 assertEq(p2_3Y, 8,  'P.II = 8 ý Đ/S (4B + 2H + 2VD = 2.0đ)');
-assertEq(p3_3, 4,  'P.III = 4 câu TLN (3H + 1VD = 2.0đ)');
-assertEq(p3_3Hieu, 3, 'P.III = 3 câu Thông hiểu (1.5đ)');
-assertEq(p3_3VD, 1, 'P.III = 1 câu Vận dụng (0.5đ)');
-assertEq(p4_3, 3,  'P.IV = 3 câu TL (1H + 2VD = 3.0đ)');
+assertEq(p3_3, 4,  'P.III = 4 câu TLN (2H + 2VD = 2.0đ)');
+assertEq(p3_3Hieu, 2, 'P.III = 2 câu Thông hiểu (1.0đ)');
+assertEq(p3_3VD, 2, 'P.III = 2 câu Vận dụng (1.0đ)');
+assertEq(p4_3, 4,  'P.IV = 4 câu TL (2H + 2VD = 3.0đ)');
+assertEq(p4_3Hieu, 2, 'P.IV = 2 câu Tự luận Thông hiểu');
+assertEq(p4_3VD, 2, 'P.IV = 2 câu Tự luận Vận dụng');
+
+// Kiểm tra điểm Tự luận chi tiết: Hiểu = 1.5đ, Vận dụng = 1.5đ
+let diemTLHieu = 0, diemTLVD = 0;
+m3.forEach(t => t.donViKienThuc.forEach(dv => {
+  diemTLHieu += Number(dv.tuLuan?.diemHieu) || 0;
+  diemTLVD += Number(dv.tuLuan?.diemVanDung) || 0;
+}));
+assertEq(Math.round(diemTLHieu * 100) / 100, 1.5, 'Tự luận: Mức Thông hiểu = 1.5đ');
+assertEq(Math.round(diemTLVD * 100) / 100, 1.5, 'Tự luận: Mức Vận dụng = 1.5đ');
 
 // Kiểm tra tỉ lệ nhận thức toàn đề Toán Khánh Hòa: 40% Biết - 30% Hiểu - 30% VD
 const diemBietToanKH = p1_3 * 0.25 + p2_3Biet * 0.25; // 12*0.25 + 4*0.25 = 4.0đ
-const diemHieuToanKH = p2_3Hieu * 0.25 + p3_3Hieu * 0.50 + p4_3Hieu * 1.0; // 2*0.25 + 3*0.50 + 1*1.0 = 3.0đ
-const diemVDToanKH = p2_3VD * 0.25 + p3_3VD * 0.50 + p4_3VD * 1.0; // 2*0.25 + 1*0.50 + 2*1.0 = 3.0đ
-const tongDiemToanKH = diemBietToanKH + diemHieuToanKH + diemVDToanKH;
+const diemHieuToanKH = p2_3Hieu * 0.25 + p3_3Hieu * 0.50 + diemTLHieu; // 2*0.25 + 2*0.50 + 1.5 = 3.0đ
+const diemVDToanKH = p2_3VD * 0.25 + p3_3VD * 0.50 + diemTLVD; // 2*0.25 + 2*0.50 + 1.5 = 3.0đ
+const tongDiemToanKH = Math.round((diemBietToanKH + diemHieuToanKH + diemVDToanKH) * 100) / 100;
 
-assertEq(diemBietToanKH, 4.0, 'Tổng điểm Nhận biết = 4.0đ (40%)');
-assertEq(diemHieuToanKH, 3.0, 'Tổng điểm Thông hiểu = 3.0đ (30%)');
-assertEq(diemVDToanKH, 3.0, 'Tổng điểm Vận dụng = 3.0đ (30%)');
+assertEq(diemBietToanKH, 4.0, 'Tổng điểm Nhận biết toàn đề = 4.0đ (40%)');
+assertEq(diemHieuToanKH, 3.0, 'Tổng điểm Thông hiểu toàn đề = 3.0đ (30%)');
+assertEq(diemVDToanKH, 3.0, 'Tổng điểm Vận dụng toàn đề = 3.0đ (30%)');
 assertEq(tongDiemToanKH, 10.0, 'Tổng điểm toàn đề = 10.0đ (100%)');
 
 // ──────────────────────────────────────────────────────────

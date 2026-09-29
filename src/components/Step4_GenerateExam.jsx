@@ -950,7 +950,7 @@ export default function Step4_GenerateExam() {
                     : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
                 </h3>
                 {isCauTrucToan3223 && (
-                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trình bày lời giải chi tiết từ câu 19 đến câu 21. Mỗi câu đúng trọn vẹn được 1,0 điểm.</p>
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trình bày lời giải chi tiết. Tổng điểm phần Tự luận: 3,0 điểm (Hiểu: 1,5đ, Vận dụng: 1,5đ).</p>
                 )}
               </div>
               {p4FilledCount > 0 && (
