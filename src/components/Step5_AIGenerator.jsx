@@ -1617,6 +1617,7 @@ Giải thích: [Ngắn gọn]
       const key = `phan2_cau${i + 1}`;
       const daDien = isSlotFilled(key);
       const dvktName = tfDvktLabels[i * 4] || ''; // Lấy label của ý đầu tiên trong nhóm 4 ý
+      const dvktSuffix = dvktName ? ` - ${dvktName}` : '';
       const displayNum = isCauTrucToan3223 ? (12 + i + 1) : (i + 1);
       slots.push({ key, label: `Phần II - Câu ${displayNum} (Đúng/Sai)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 2, daDien });
     }
