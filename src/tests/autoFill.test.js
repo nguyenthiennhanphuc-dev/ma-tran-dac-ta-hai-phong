@@ -157,17 +157,43 @@ const s3 = useExamStore.getState();
 const m3 = s3.matrix;
 
 let p1_3 = 0, p2_3Y = 0, p3_3 = 0, p4_3 = 0;
+let p3_3Hieu = 0, p3_3VD = 0;
+let p2_3Biet = 0, p2_3Hieu = 0, p2_3VD = 0;
+let p4_3Hieu = 0, p4_3VD = 0;
+
 m3.forEach(t => t.donViKienThuc.forEach(dv => {
   p1_3 += (dv.nhieuLuaChon?.biet||0) + (dv.nhieuLuaChon?.hieu||0) + (dv.nhieuLuaChon?.vanDung||0);
   p2_3Y += (dv.dungSai?.biet||0) + (dv.dungSai?.hieu||0) + (dv.dungSai?.vanDung||0);
+  p2_3Biet += (dv.dungSai?.biet||0);
+  p2_3Hieu += (dv.dungSai?.hieu||0);
+  p2_3VD += (dv.dungSai?.vanDung||0);
+
   p3_3 += (dv.traLoiNgan?.biet||0) + (dv.traLoiNgan?.hieu||0) + (dv.traLoiNgan?.vanDung||0);
+  p3_3Hieu += (dv.traLoiNgan?.hieu||0);
+  p3_3VD += (dv.traLoiNgan?.vanDung||0);
+
   p4_3 += (dv.tuLuan?.biet||0) + (dv.tuLuan?.hieu||0) + (dv.tuLuan?.vanDung||0);
+  p4_3Hieu += (dv.tuLuan?.hieu||0);
+  p4_3VD += (dv.tuLuan?.vanDung||0);
 }));
 
-assertEq(p1_3, 12, 'P.I = 12 câu TN');
-assertEq(p2_3Y, 8,  'P.II = 8 ý Đ/S (2 câu × 4 ý)');
-assertEq(p3_3, 4,  'P.III = 4 câu TLN');
-assertEq(p4_3, 3,  'P.IV = 3 câu TL');
+assertEq(p1_3, 12, 'P.I = 12 câu TN (100% Nhận biết = 3.0đ)');
+assertEq(p2_3Y, 8,  'P.II = 8 ý Đ/S (4B + 2H + 2VD = 2.0đ)');
+assertEq(p3_3, 4,  'P.III = 4 câu TLN (3H + 1VD = 2.0đ)');
+assertEq(p3_3Hieu, 3, 'P.III = 3 câu Thông hiểu (1.5đ)');
+assertEq(p3_3VD, 1, 'P.III = 1 câu Vận dụng (0.5đ)');
+assertEq(p4_3, 3,  'P.IV = 3 câu TL (1H + 2VD = 3.0đ)');
+
+// Kiểm tra tỉ lệ nhận thức toàn đề Toán Khánh Hòa: 40% Biết - 30% Hiểu - 30% VD
+const diemBietToanKH = p1_3 * 0.25 + p2_3Biet * 0.25; // 12*0.25 + 4*0.25 = 4.0đ
+const diemHieuToanKH = p2_3Hieu * 0.25 + p3_3Hieu * 0.50 + p4_3Hieu * 1.0; // 2*0.25 + 3*0.50 + 1*1.0 = 3.0đ
+const diemVDToanKH = p2_3VD * 0.25 + p3_3VD * 0.50 + p4_3VD * 1.0; // 2*0.25 + 1*0.50 + 2*1.0 = 3.0đ
+const tongDiemToanKH = diemBietToanKH + diemHieuToanKH + diemVDToanKH;
+
+assertEq(diemBietToanKH, 4.0, 'Tổng điểm Nhận biết = 4.0đ (40%)');
+assertEq(diemHieuToanKH, 3.0, 'Tổng điểm Thông hiểu = 3.0đ (30%)');
+assertEq(diemVDToanKH, 3.0, 'Tổng điểm Vận dụng = 3.0đ (30%)');
+assertEq(tongDiemToanKH, 10.0, 'Tổng điểm toàn đề = 10.0đ (100%)');
 
 // ──────────────────────────────────────────────────────────
 // KẾT QUẢ

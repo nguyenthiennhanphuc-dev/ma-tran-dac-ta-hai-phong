@@ -2079,11 +2079,11 @@ export const useExamStore = create(
         // ║  Phần II (2 câu Đ/S × 4ý × 0.25đ = 2.0đ):                        ║
         // ║    Mỗi câu: 2B + 1H + 1VD (Tổng: 4B + 2H + 2VD)                  ║
         // ║    Câu 13 + Câu 14 (config qua DungSaiConfigModal)                 ║
-        // ║  Phần III (4 câu TLN × 0.50đ = 2.0đ): 2H + 2VD                   ║
+        // ║  Phần III (4 câu TLN × 0.50đ = 2.0đ): 3H + 1VD (1.5đ Hiểu + 0.5đ VD)    ║
         // ║  Phần IV  (3 câu TL × 1.0đ = 3.0đ):                               ║
         // ║    Câu 19: 1H (1.0đ), Câu 20: 1VD (1.0đ), Câu 21: 1VD (1.0đ)    ║
         // ║    Config qua TuLuanConfigModal (tuLuanConfig.questions)           ║
-        // ║  TỔNG: 10.0đ                                                       ║
+        // ║  TỔNG: 10.0đ (40% Biết - 30% Hiểu - 30% Vận dụng)                  ║
         // ╚══════════════════════════════════════════════════════════════════════╝
         if (state.examConfig.isCauTrucToan3223) {
           console.log('⚡ AutoFill: Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)');
@@ -2219,10 +2219,15 @@ export const useExamStore = create(
             }
           }
 
-          // ─── P.III: 4 câu Trả lời ngắn (2H + 2VD) × 0,50đ ───
+          // ─── P.III: 4 câu Trả lời ngắn (3H + 1VD) × 0,50đ ───
+          // Cơ cấu chuẩn để đạt 30% Hiểu (3,0đ) và 30% Vận dụng (3,0đ):
+          // P.II: 2H (0,5đ) + 2VD (0,5đ)
+          // P.III: 3H (1,5đ) + 1VD (0,5đ)
+          // P.IV: 1H (1,0đ) + 2VD (2,0đ)
+          // => Tổng Hiểu = 0,5 + 1,5 + 1,0 = 3,0đ (30%) | Tổng VD = 0,5 + 0,5 + 2,0 = 3,0đ (30%)
           const soCauP3 = 4;
           const sortedByTiet = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
-          let hieuP3Left = 2, vdP3Left = 2;
+          let hieuP3Left = 3, vdP3Left = 1;
           sortedByTiet.forEach(f => {
             if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
             else if (vdP3Left > 0) { f.dv.traLoiNgan.vanDung += 1; vdP3Left--; }
@@ -2397,7 +2402,7 @@ export const useExamStore = create(
                 ]
               });
 
-          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=2câu DS (custom=${hasCustomDS}), P.III=${soCauP3}câu(2H+2VD), P.IV=TL (custom=${hasCustomTL})`);
+          console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=2câu DS (custom=${hasCustomDS}), P.III=${soCauP3}câu(3H+1VD), P.IV=TL (custom=${hasCustomTL})`);
           return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223, dungSaiConfig: finalDungSaiConfig3223 };
         }
 

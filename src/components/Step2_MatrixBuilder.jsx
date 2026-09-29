@@ -1507,7 +1507,7 @@ export default function Step2_MatrixBuilder() {
               <button
                 onClick={autoFillMatrix}
                 className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-3.5 py-1.5 rounded-lg shadow font-bold text-xs hover:from-purple-700 hover:to-violet-700 hover:shadow-md transition-all"
-                title="Tự động phân bổ theo Cấu trúc Toán Khánh Hòa: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(P.III) + 3TL(P.IV)"
+                title="Tự động phân bổ theo Cấu trúc Toán Khánh Hòa: 12B(P.I) + 2DS(P.II) + 4TLN×0,5đ(3H+1VD P.III) + 3TL(1H+2VD P.IV)"
               >
                 <span>⚡</span> Auto-Fill chuẩn Toán Khánh Hòa
               </button>
@@ -1552,7 +1552,7 @@ export default function Step2_MatrixBuilder() {
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold">4 câu</td>
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-red-600">0,50đ ★</td>
                   <td className="border border-purple-300 px-2 py-1.5 text-center font-bold text-purple-700">2,0đ (20%)</td>
-                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">2H + 2VD</td>
+                  <td className="border border-purple-300 px-2 py-1.5 text-center text-slate-600">3H + 1VD</td>
                 </tr>
                 <tr className="bg-purple-50 hover:bg-purple-100">
                   <td className="border border-purple-300 px-2 py-1.5 font-bold text-purple-800">P.IV</td>
