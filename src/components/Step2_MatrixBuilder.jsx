@@ -266,14 +266,14 @@ export default function Step2_MatrixBuilder() {
   // Helper: Render cell Tự luận cho 1 mức độ nhận thức
   const renderTuLuanCell = (topicId, dvId, dv, level) => {
     const subs = (dv.tuLuan?.subItems || []).filter(s => s.level === level);
-    const totalDiem = subs.reduce((s, sub) => s + (sub.diem || 0), 0);
+    const totalDiem = Math.round(subs.reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
     return (
-      <td className="border border-slate-300 p-1 bg-green-50/10 align-top min-w-[85px]">
+      <td className="border border-slate-300 p-1 bg-green-50/10 align-top min-w-[92px]">
         <div className="flex flex-col gap-1.5">
           {subs.map((sub, subIdx) => {
             // Lấy mapping nhãn câu và mã năng lực từ indicatorMap
             const mapping = dv.indicatorMap?.[`tuLuan_${level}_${subIdx}`];
-            const qLabel = typeof mapping === 'object' ? mapping.label : '';
+            const qLabel = (typeof mapping === 'object' && mapping?.label) ? mapping.label : (sub.label || sub.qLabel || '');
             const indCode = typeof mapping === 'object' ? mapping.code : mapping;
 
             return (
@@ -281,7 +281,13 @@ export default function Step2_MatrixBuilder() {
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1">
                     {examConfig.isCauTruc4213 ? (
-                      <span className="text-[9px] text-slate-400 font-bold">{qLabel}</span>
+                      <input
+                        type="text"
+                        value={sub.label || qLabel || (subs.length > 1 ? `Ý ${subIdx + 1}` : 'Câu')}
+                        onChange={(e) => updateTuLuanSubItem(topicId, dvId, sub.id, 'label', e.target.value)}
+                        className="w-11 text-[9px] text-slate-700 font-bold bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-400 rounded px-0.5 outline-none border border-transparent hover:border-slate-300 transition-colors"
+                        title="Tên câu/ý tự luận (có thể chỉnh sửa: Câu 1, Câu 2...)"
+                      />
                     ) : (
                       <>
                         <span className="text-[9px] text-slate-400 font-bold">{String.fromCharCode(97 + subIdx)}.</span>
@@ -289,10 +295,37 @@ export default function Step2_MatrixBuilder() {
                       </>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-red-700">{sub.diem ? sub.diem.toFixed(2).replace('.00', '').replace('.50', ',5') : '0'}đ</span>
-                    <button onClick={() => removeTuLuanSubItem(topicId, dvId, sub.id)} className="text-red-300 hover:text-red-600 p-0.5 shrink-0" title="Xóa ý này">
-                      <X size={9} />
+                  <div className="flex items-center gap-0.5">
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0.1"
+                      max="10"
+                      value={sub.diem === '' || sub.diem === undefined ? '' : sub.diem}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          updateTuLuanSubItem(topicId, dvId, sub.id, 'diem', '');
+                        } else {
+                          const val = parseFloat(raw);
+                          updateTuLuanSubItem(topicId, dvId, sub.id, 'diem', isNaN(val) ? 0 : Math.round(val * 100) / 100);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (sub.diem === '' || isNaN(sub.diem) || Number(sub.diem) <= 0) {
+                          updateTuLuanSubItem(topicId, dvId, sub.id, 'diem', 0.5);
+                        }
+                      }}
+                      className="w-11 h-5 text-center text-[10px] font-bold text-red-700 bg-red-50 hover:bg-white focus:bg-white border border-red-200 focus:border-red-500 rounded px-0.5 outline-none focus:ring-1 focus:ring-red-400 transition-all cursor-text shadow-sm"
+                      title="Chỉnh sửa điểm cho câu/ý tự luận này (VD: 0.25, 0.5, 0.75, 1.0...)"
+                    />
+                    <span className="text-[9px] font-bold text-red-600 select-none">đ</span>
+                    <button 
+                      onClick={() => removeTuLuanSubItem(topicId, dvId, sub.id)} 
+                      className="text-red-300 hover:text-red-600 p-0.5 shrink-0 transition-colors ml-0.5" 
+                      title="Xóa ý này"
+                    >
+                      <X size={10} />
                     </button>
                   </div>
                 </div>

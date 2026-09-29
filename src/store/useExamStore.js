@@ -1102,7 +1102,7 @@ export const useExamStore = create(
         })
       })),
 
-      // --- ACTIONS CHO Tß╗░ LUß║¼N SUB-ITEMS (linh hoß║ít ─æiß╗âm theo ├╜) ---
+      // --- ACTIONS CHO TỰ LUẬN SUB-ITEMS (linh hoạt điểm theo ý) ---
       addTuLuanSubItem: (topicId, dvId, level) => set((state) => ({
         matrix: state.matrix.map(topic => {
           if (topic.id !== topicId) return topic;
@@ -1111,20 +1111,35 @@ export const useExamStore = create(
             donViKienThuc: (topic.donViKienThuc || []).map(dv => {
               if (dv.id !== dvId) return dv;
               const subItems = dv.tuLuan?.subItems || [];
+              let currentTlCount = 0;
+              state.matrix.forEach(t => {
+                (t.donViKienThuc || []).forEach(d => {
+                  currentTlCount += (d.tuLuan?.subItems || []).length;
+                });
+              });
+              const defaultLabel = state.examConfig?.isCauTruc4213 
+                ? `Câu ${currentTlCount + 1}` 
+                : `${String.fromCharCode(97 + subItems.length)}.`;
+              const defaultDiem = state.examConfig?.isCauTruc4213 ? 1.0 : 0.5;
+
               const newSub = {
                 id: crypto.randomUUID(),
                 y: '',
-                diem: 0.5,
-                level: level || 'biet'
+                diem: defaultDiem,
+                level: level || 'biet',
+                label: defaultLabel,
+                qLabel: defaultLabel
               };
               const updated = { ...(dv.tuLuan || {}), subItems: [...subItems, newSub] };
               // Sync old fields
               updated.biet = updated.subItems.filter(s => s.level === 'biet').length;
               updated.hieu = updated.subItems.filter(s => s.level === 'hieu').length;
               updated.vanDung = updated.subItems.filter(s => s.level === 'vanDung').length;
-              updated.diemBiet = Math.round(updated.subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
-              updated.diemHieu = Math.round(updated.subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
-              updated.diemVanDung = Math.round(updated.subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              updated.vanDungCao = updated.subItems.filter(s => s.level === 'vanDungCao').length;
+              updated.diemBiet = Math.round(updated.subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              updated.diemHieu = Math.round(updated.subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              updated.diemVanDung = Math.round(updated.subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              updated.diemVanDungCao = Math.round(updated.subItems.filter(s => s.level === 'vanDungCao').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
               return { ...dv, tuLuan: updated };
             })
           };
@@ -1144,9 +1159,11 @@ export const useExamStore = create(
               updated.biet = updated.subItems.filter(s => s.level === 'biet').length;
               updated.hieu = updated.subItems.filter(s => s.level === 'hieu').length;
               updated.vanDung = updated.subItems.filter(s => s.level === 'vanDung').length;
-              updated.diemBiet = Math.round(updated.subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
-              updated.diemHieu = Math.round(updated.subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
-              updated.diemVanDung = Math.round(updated.subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              updated.vanDungCao = updated.subItems.filter(s => s.level === 'vanDungCao').length;
+              updated.diemBiet = Math.round(updated.subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              updated.diemHieu = Math.round(updated.subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              updated.diemVanDung = Math.round(updated.subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              updated.diemVanDungCao = Math.round(updated.subItems.filter(s => s.level === 'vanDungCao').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
               return { ...dv, tuLuan: updated };
             })
           };
@@ -1160,17 +1177,20 @@ export const useExamStore = create(
             ...topic,
             donViKienThuc: (topic.donViKienThuc || []).map(dv => {
               if (dv.id !== dvId) return dv;
+              const parsedValue = field === 'diem' ? (parseFloat(value) || 0) : value;
               const subItems = (dv.tuLuan?.subItems || []).map(s =>
-                s.id === subItemId ? { ...s, [field]: value } : s
+                s.id === subItemId ? { ...s, [field]: parsedValue } : s
               );
               // Auto-sync old fields for backward compatibility
               const newTuLuan = { ...(dv.tuLuan || {}), subItems };
               newTuLuan.biet = subItems.filter(s => s.level === 'biet').length;
               newTuLuan.hieu = subItems.filter(s => s.level === 'hieu').length;
               newTuLuan.vanDung = subItems.filter(s => s.level === 'vanDung').length;
-              newTuLuan.diemBiet = Math.round(subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
-              newTuLuan.diemHieu = Math.round(subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
-              newTuLuan.diemVanDung = Math.round(subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100;
+              newTuLuan.vanDungCao = subItems.filter(s => s.level === 'vanDungCao').length;
+              newTuLuan.diemBiet = Math.round(subItems.filter(s => s.level === 'biet').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              newTuLuan.diemHieu = Math.round(subItems.filter(s => s.level === 'hieu').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              newTuLuan.diemVanDung = Math.round(subItems.filter(s => s.level === 'vanDung').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
+              newTuLuan.diemVanDungCao = Math.round(subItems.filter(s => s.level === 'vanDungCao').reduce((s, sub) => s + (Number(sub.diem) || 0), 0) * 100) / 100;
               return { ...dv, tuLuan: newTuLuan };
             })
           };
