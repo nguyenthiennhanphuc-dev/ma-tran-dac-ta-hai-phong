@@ -895,13 +895,13 @@ export default function Step5_AIGenerator() {
     if (isCauTrucKHTNVao10) {
       prompt = `Bạn là một chuyên gia ra đề thi tuyển sinh vào lớp 10 THPT xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ THI TUYỂN SINH VÀO LỚP 10 THPT MÔN KHOA HỌC TỰ NHIÊN (CHUẨN QUYẾT ĐỊNH 1038/QĐ-SGDĐT HẢI PHÒNG - THỜI GIAN LÀM BÀI: 60 PHÚT - 100% TRẮC NGHIỆM GỒM 40 LỆNH HỎI) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
     } else if (isCauTrucToan3223) {
-      prompt = `Bạn là một chuyên gia ra đề thi môn Toán cấp THCS xuất sắc, am hiểu sâu sắc Chương trình GDPT 2018. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC MÔN TOÁN THEO CẤU TRÚC ĐỔI MỚI KHÁNH HÒA (CẤU TRÚC ĐIỂM 3-2-2-3 - THỜI GIAN LÀM BÀI: 90 PHÚT - TỔNG 10,0 ĐIỂM - 21 CÂU HỎI) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.
+      prompt = `Bạn là một chuyên gia ra đề thi môn Toán cấp THCS xuất sắc, am hiểu sâu sắc Chương trình GDPT 2018. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC MÔN TOÁN THEO CẤU TRÚC ĐỔI MỚI KHÁNH HÒA (CẤU TRÚC ĐIỂM 3-2-2-3 - THỜI GIAN LÀM BÀI: 90 PHÚT - TỔNG 10,0 ĐIỂM - 22 CÂU HỎI) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.
 
-📊 CƠ CẤU ĐỀ THI CHUẨN TOÁN KHÁNH HÒA (21 CÂU - 10 ĐIỂM):
+📊 CƠ CẤU ĐỀ THI CHUẨN TOÁN KHÁNH HÒA (22 CÂU - 10 ĐIỂM):
 - PHẦN I (3,0 điểm): 12 câu trắc nghiệm nhiều phương án lựa chọn (Câu 1 đến Câu 12). Mỗi câu 0,25 điểm. 100% mức độ Nhận biết.
 - PHẦN II (2,0 điểm): 2 câu trắc nghiệm Đúng/Sai (Câu 13, Câu 14). Mỗi câu gồm 4 ý a, b, c, d (mỗi ý 0,25 điểm). Cơ cấu mức độ mỗi câu bắt buộc: ý a) Nhận biết, ý b) Nhận biết, ý c) Thông hiểu, ý d) Vận dụng. Tuyệt đối không có Vận dụng cao.
 - PHẦN III (2,0 điểm): 4 câu trắc nghiệm trả lời ngắn (Câu 15 đến Câu 18). Mỗi câu đúng được 0,50 điểm. Gồm 2 câu Thông hiểu và 2 câu Vận dụng. Mỗi câu độc lập, đáp án là 1 con số cụ thể (tối đa 4 chữ số).
-- PHẦN IV (3,0 điểm): Tự luận (Tổng 3,0 điểm). Cơ cấu bắt buộc: Mức độ Thông hiểu đạt 1,5 điểm và mức độ Vận dụng đạt 1,5 điểm. Mặc định gồm 2 câu Thông hiểu (tổng 1,5đ) và 2 câu Vận dụng (tổng 1,5đ) hoặc bám sát theo số câu/ý người dùng cấu hình ở Ma trận. Trình bày bài giải chi tiết từng bước kèm biểu điểm rõ ràng.\n`;
+- PHẦN IV (3,0 điểm): Tự luận (Tổng 3,0 điểm). Cơ cấu bắt buộc: Mức độ Thông hiểu đạt 1,5 điểm và mức độ Vận dụng đạt 1,5 điểm. Mặc định gồm 4 câu (Câu 19 đến Câu 22): 2 câu Thông hiểu (Câu 19 = 1,0đ, Câu 20 = 0,5đ) và 2 câu Vận dụng (Câu 21 = 1,0đ, Câu 22 = 0,5đ) hoặc bám sát theo số câu/ý người dùng cấu hình ở Ma trận. Trình bày bài giải chi tiết từng bước kèm biểu điểm rõ ràng.\n`;
     } else {
       prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC môn ${monHocName} lớp ${gradeName} BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
     }

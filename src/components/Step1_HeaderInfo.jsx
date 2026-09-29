@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useExamStore, isKHTNSubject } from '../store/useExamStore';
+import { useExamStore, isKHTNSubject, isMathSubject } from '../store/useExamStore';
 import { FileBadge, RotateCcw } from 'lucide-react';
 
 const DEFAULT_HEADER = {
@@ -14,7 +14,7 @@ const DEFAULT_HEADER = {
 const isMojibake = (str) => typeof str === 'string' && (/[├┤╖ñ£—ÉÇÈÍ¿»]/.test(str) || /SB╖|TR\s*├|l\s*├ím/i.test(str));
 
 export default function Step1_HeaderInfo() {
-  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe } = useExamStore();
+  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe, setCauTrucToan3223 } = useExamStore();
 
   // Tự động kiểm tra và dọn dẹp ký tự lỗi font (mojibake) từ localStorage cũ
   useEffect(() => {
@@ -179,6 +179,67 @@ export default function Step1_HeaderInfo() {
                       </div>
                       <span className="text-[10px] font-normal text-slate-500">
                         Cấu trúc 3-2-2-3 (TN 7đ + TL 3đ), 3-4-3 (100% TN), hoặc chỉnh tự do
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Panel chọn cấu trúc đề thi Môn Toán */}
+              {!isKHTNSubject(examHeader.monHoc) && isMathSubject(examHeader.monHoc) && (
+                <div className="mt-2 p-2.5 bg-purple-50/50 border border-purple-200 rounded-xl shadow-sm animate-fadeIn space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                      <span>📐</span> Cấu trúc đề thi Môn Toán:
+                    </span>
+                    <span className="text-[10px] text-purple-600 italic">Chọn cấu trúc chuẩn GDPT 2018</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Nút Cấu trúc Toán Khánh Hòa (3-2-2-3) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCauTrucToan3223();
+                        if (!examHeader.thoiGian || examHeader.thoiGian.includes('45')) {
+                          updateExamHeader('thoiGian', 'làm bài: 90 phút');
+                        }
+                      }}
+                      className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
+                        examConfig.isCauTrucToan3223
+                          ? 'bg-purple-100/80 border-purple-500 text-purple-900 ring-2 ring-purple-300 font-bold'
+                          : 'bg-white border-purple-200 text-purple-800 hover:bg-purple-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          ⚡ Toán Khánh Hòa (3-2-2-3)
+                        </span>
+                        {examConfig.isCauTrucToan3223 && <span className="text-purple-700 text-[10px] bg-purple-200 px-1.5 py-0.5 rounded font-bold">Đang chọn</span>}
+                      </div>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        12 TN + 2 Đ/S + 4 TLN(0,5đ) + 4 TL (3-2-2-3đ · 90p)
+                      </span>
+                    </button>
+
+                    {/* Nút Cấu trúc Khác / Tự do */}
+                    <button
+                      type="button"
+                      onClick={() => setCauTrucDe('3')}
+                      className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
+                        !examConfig.isCauTrucToan3223 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10
+                          ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-bold'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          ⚙️ Cấu trúc khác / Tự do
+                        </span>
+                        {!examConfig.isCauTrucToan3223 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
+                      </div>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        Cấu trúc theo Bộ GDĐT hoặc tự do tùy chỉnh điểm
                       </span>
                     </button>
                   </div>

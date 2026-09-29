@@ -1,12 +1,20 @@
 import { saveAs } from 'file-saver';
 import katex from 'katex';
-import { useExamStore, getTuLuanCauCount } from '../store/useExamStore';
+import { useExamStore, getTuLuanCauCount, getTopicTuLuanDiem } from '../store/useExamStore';
 import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel } from './specTableHelper';
 
 const getFormatTLCau = (matrix, lvl) => {
     const storeState = useExamStore.getState();
     const c = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
-    return c === 0 ? "" : (c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ','));
+    if (c === 0) return "";
+    const cStr = c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ',');
+    const tlKey = lvl === 'biet' ? 'diemBiet' : lvl === 'hieu' ? 'diemHieu' : lvl === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
+    const diem = Math.round((matrix || []).reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKey), 0) * 100) / 100;
+    if (diem > 0) {
+      const diemStr = String(diem).replace('.', ',');
+      return `${cStr} (${diemStr} điểm)`;
+    }
+    return cStr;
 };
 
 // ═══════════════════════════════════════════════════════════════════

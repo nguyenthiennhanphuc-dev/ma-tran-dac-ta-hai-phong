@@ -13,11 +13,11 @@ import { generateKhtnVao10Matrix, KHTN_VAO10_CONFIG, KHTN_VAO10_SAMPLE_TOPICS } 
 // =============================================================================
 // HELPER: Ph├ít hiß╗çn m├┤n hß╗ìc hiß╗çn tß║íi
 // =============================================================================
-const isMathSubject = (monHoc) => /to├ín|toan|─æß║íi sß╗æ|h├¼nh hß╗ìc|giß║úi t├¡ch/i.test(monHoc || '');
-const isChemistrySubject = (monHoc) => /h├│a|hoa hß╗ìc|h├│a hß╗ìc/i.test(monHoc || '');
-const isBiologySubject = (monHoc) => /sinh|sinh hß╗ìc/i.test(monHoc || '');
-const isPhysicsSubject = (monHoc) => /l├╜|l├¡|vß║¡t l├¡|vß║¡t l├╜/i.test(monHoc || '');
-const isGeographySubject = (monHoc) => /─æß╗ïa|─æß╗ïa l├¡|─æß╗ïa l├╜/i.test(monHoc || '');
+const isMathSubject = (monHoc) => /toán|toan|đại số|dai so|hình học|hinh hoc|giải tích|giai tich/i.test(monHoc || '');
+const isChemistrySubject = (monHoc) => /hóa|hoa|hóa học|hoa hoc/i.test(monHoc || '');
+const isBiologySubject = (monHoc) => /sinh|sinh học|sinh hoc/i.test(monHoc || '');
+const isPhysicsSubject = (monHoc) => /lý|lí|vật lí|vat li|vật lý|vat ly/i.test(monHoc || '');
+const isGeographySubject = (monHoc) => /địa|dia|địa lí|dia li|địa lý|dia ly/i.test(monHoc || '');
 const isKHTNSubject = (monHoc) => /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHoc || '');
 
 // Kiß╗âm tra cß║Ñu tr├║c 4-2-0 (To├ín) v├á c├│ Tß╗▒ luß║¡n ─æß╗â ├íp dß╗Ñng bß║úng ─æß║╖c tß║ú mß║½u mß╗¢i
@@ -3435,5 +3435,5 @@ export const useExamStore = create(
   )
 );
 
-// Export helpers cho c├íc component sß╗¡ dß╗Ñng
-export { getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet, isNewMathStructure, isKHTNSubject };
+// Export helpers cho các component sử dụng
+export { getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet, isNewMathStructure, isKHTNSubject, isMathSubject };

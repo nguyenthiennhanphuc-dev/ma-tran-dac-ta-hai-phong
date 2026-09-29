@@ -1368,7 +1368,7 @@ export default function Step2_MatrixBuilder() {
           {isMath && !isKHTN && (
             <button
               onClick={() => {
-                if (window.confirm('Áp dụng Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)?\n\n• Phần I: 12 câu × 0,25đ = 3,0đ (Nhận biết)\n• Phần II: 2 câu ĐS × 4 ý × 0,25đ = 2,0đ\n• Phần III: 4 câu × 0,50đ = 2,0đ (Hiểu + VD)\n• Phần IV: 3 câu Tự luận × 1,0đ = 3,0đ\n\nTỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng')) {
+                if (window.confirm('Áp dụng Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)?\n\n• Phần I: 12 câu × 0,25đ = 3,0đ (Nhận biết)\n• Phần II: 2 câu ĐS × 4 ý × 0,25đ = 2,0đ (4B + 2H + 2VD)\n• Phần III: 4 câu × 0,50đ = 2,0đ (2H + 2VD)\n• Phần IV: 4 câu Tự luận = 3,0đ (2 câu Hiểu 1,5đ + 2 câu VD 1,5đ)\n\nTỉ lệ: 40% Biết – 30% Hiểu – 30% Vận dụng · 90 phút')) {
                   setCauTrucToan3223();
                 }
               }}

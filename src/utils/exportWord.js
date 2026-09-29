@@ -1,6 +1,6 @@
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, VerticalAlign, PageOrientation, HeadingLevel, TableLayoutType, BorderStyle, ImageRun, TabStopType, TabStopPosition, UnderlineType } from 'docx';
 import { saveAs } from 'file-saver';
-import { useExamStore, getTuLuanCauCount } from '../store/useExamStore';
+import { useExamStore, getTuLuanCauCount, getTopicTuLuanDiem } from '../store/useExamStore';
 import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel } from './specTableHelper';
 import { suggestKhtnCode, normalizeKhtnCode, getRowKhtnCode, isKhtnCodeAllowedForLevel } from '../data/khtnCompetencyData';
 import { parseMixedTextToRuns } from './latexToDocxMath';
@@ -1189,7 +1189,15 @@ export const exportToWord = async (options = {}) => {
     const storeState = useExamStore.getState();
     const formatTLCau = (lvl) => {
       const c = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
-      return c === 0 ? "" : (c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ','));
+      if (c === 0) return "";
+      const cStr = c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ',');
+      const tlKey = lvl === 'biet' ? 'diemBiet' : lvl === 'hieu' ? 'diemHieu' : lvl === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
+      const diem = Math.round((matrix || []).reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKey), 0) * 100) / 100;
+      if (diem > 0) {
+        const diemStr = String(diem).replace('.', ',');
+        return `${cStr} (${diemStr} điểm)`;
+      }
+      return cStr;
     };
     tot2.push(createCell(formatTLCau('biet')), createCell(formatTLCau('hieu')), createCell(formatTLCau('vanDung')));
     if (isKHTNMon) tot2.push(createCell(formatTLCau('vanDungCao')));
