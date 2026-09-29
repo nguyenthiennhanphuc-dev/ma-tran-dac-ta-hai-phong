@@ -988,7 +988,7 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
 
     // === TÍNH MAP CÂU SỐ TRONG KHUNG ĐỀ CHO TỪNG Ô ===
     const qMap = {};
-    const isCont = (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? false : config.isContinuousNumbering;
+    const isCont = (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? false : (examConfig.isCauTrucToan3223 ? true : config.isContinuousNumbering);
     // Phase 1: NLC
     let nlcC = 1;
     matrix.forEach((t, ti) => {
@@ -1681,7 +1681,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
 
         // BIẾN ĐẾM TOÀN CỤC CHO ĐÁNH SỐ CÂU HỎI LIÊN TỤC (ĐỀ THI)
         let globalQuestionIndex = 1;
-        const isContinuous = (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? false : config.isContinuousNumbering;
+        const isContinuous = (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? false : (examConfig.isCauTrucToan3223 ? true : config.isContinuousNumbering);
 
         // === LOGIC TIÊU ĐỀ PHẦN ĐỘNG THEO TỰ LUẬN ===
         const hasTuLuanMode = config.hasTuLuan;
@@ -1740,7 +1740,10 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               ? "DẠNG 1. Câu hỏi trắc nghiệm nhiều phương án lựa chọn"
               : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn";
             let d1Desc = "Học sinh khoanh tròn chữ cái đứng trước câu trả lời đúng:";
-            if (examConfig.isCauTrucKHTNVao10) {
+            if (examConfig.isCauTrucToan3223) {
+              d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${diemP1Str} điểm).`;
+              d1Desc = `Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
+            } else if (examConfig.isCauTrucKHTNVao10) {
               d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${diemP1Str} điểm).`;
               d1Desc = `Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn 1 phương án.`;
             } else if (examConfig.isCauTruc4213) {
@@ -1751,7 +1754,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               d1Desc = `Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
             }
 
-            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isMinistry) {
+            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTrucToan3223 || isMinistry) {
               html += `<p style="font-size:14pt;"><b>${d1Title}</b> ${d1Desc}</p>`;
             } else {
               html += `<p class="bold" style="font-size:14pt;">${d1Title}</p>`;
@@ -1806,7 +1809,10 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               ? "DẠNG 1. Câu hỏi trắc nghiệm nhiều phương án lựa chọn"
               : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn";
             let d1Desc = "Học sinh khoanh tròn chữ cái đứng trước câu trả lời đúng:";
-            if (examConfig.isCauTrucKHTNVao10) {
+            if (examConfig.isCauTrucToan3223) {
+              d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${diemP1Str} điểm).`;
+              d1Desc = `Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
+            } else if (examConfig.isCauTrucKHTNVao10) {
               d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (${diemP1Str} điểm).`;
               d1Desc = `Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
             } else if (examConfig.isCauTruc4213) {
@@ -1817,7 +1823,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               const totalM = (typeof questions !== 'undefined' && questions.length > 0) ? questions.length : getTotalY('nhieuLuaChon');
               d1Desc = `Thí sinh trả lời từ câu 1 đến câu ${totalM}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
             }
-            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isMinistry) {
+            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTrucToan3223 || isMinistry) {
               html += `<p style="font-size:14pt;"><b>${d1Title}</b> ${d1Desc}</p>`;
             } else {
               html += `<p class="bold" style="font-size:14pt;">${d1Title}</p>`;
@@ -1880,7 +1886,13 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               ? "DẠNG 2. Câu hỏi trắc nghiệm đúng/ sai"
               : "PHẦN II. Câu trắc nghiệm đúng sai";
             let d2Desc = "Trong mỗi ý a), b), c), d) ở mỗi câu, học sinh chọn đúng ghi (Đ) hoặc sai ghi (S) vào bài làm.";
-            if (examConfig.isCauTrucKHTNVao10) {
+            if (examConfig.isCauTrucToan3223) {
+              const startQ = 13;
+              const endQ = 14;
+              const d2Points = "2,0";
+              d2Title = `PHẦN II. Câu trắc nghiệm đúng sai (${d2Points} điểm).`;
+              d2Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
+            } else if (examConfig.isCauTrucKHTNVao10) {
               const startQ = isContinuous ? globalQuestionIndex : 1;
               const endQ = startQ + soCauTF - 1;
               const d2Points = String(4 * examConfig.diemMoiYP2 * soCauTF).replace('.', ',');
@@ -1898,7 +1910,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               const endQ = startQ + soCauTF - 1;
               d2Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
             }
-            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isMinistry) {
+            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTrucToan3223 || isMinistry) {
               html += `<p style="font-size:14pt;"><b>${d2Title}</b> ${d2Desc}</p>`;
             } else {
               html += `<p class="bold" style="font-size:14pt;">${d2Title}</p>`;
@@ -1973,7 +1985,13 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               ? "DẠNG 2. Câu hỏi trắc nghiệm đúng/ sai"
               : "PHẦN II. Câu trắc nghiệm đúng sai";
             let d2Desc = "Trong mỗi ý a), b), c), d) ở mỗi câu, học sinh chọn đúng ghi (Đ) hoặc sai ghi (S) vào bài làm.";
-            if (examConfig.isCauTrucKHTNVao10) {
+            if (examConfig.isCauTrucToan3223) {
+              const startQ = 13;
+              const endQ = 14;
+              const d2Points = "2,0";
+              d2Title = `PHẦN II. Câu trắc nghiệm đúng sai (${d2Points} điểm).`;
+              d2Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
+            } else if (examConfig.isCauTrucKHTNVao10) {
               const startQ = isContinuous ? globalQuestionIndex : 1;
               const endQ = startQ + soCauTF - 1;
               const d2Points = String(4 * examConfig.diemMoiYP2 * soCauTF).replace('.', ',');
@@ -1992,7 +2010,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               const endQ = startQ + totalTFItems - 1;
               d2Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
             }
-            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isMinistry) {
+            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTrucToan3223 || isMinistry) {
               html += `<p style="font-size:14pt;"><b>${d2Title}</b> ${d2Desc}</p>`;
             } else {
               html += `<p class="bold" style="font-size:14pt;">${d2Title}</p>`;
@@ -2081,7 +2099,13 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               ? "DẠNG 3. Câu trả lời ngắn"
               : "PHẦN III. Câu trắc nghiệm trả lời ngắn";
             let d3Desc = "Học sinh trả lời các câu hỏi bằng cách ghi lại kết quả bằng con số vào bài thi.";
-            if (examConfig.isCauTrucKHTNVao10) {
+            if (examConfig.isCauTrucToan3223) {
+              const startQ = 15;
+              const endQ = 18;
+              const d3Points = "2,0";
+              d3Title = `PHẦN III. Câu trắc nghiệm trả lời ngắn (${d3Points} điểm).`;
+              d3Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Mỗi câu đúng được 0,5 điểm.`;
+            } else if (examConfig.isCauTrucKHTNVao10) {
               const startQ = isContinuous ? globalQuestionIndex : 1;
               const endQ = startQ + totalSA - 1;
               const d3Points = String(p3_pt * totalSA).replace('.', ',');
@@ -2099,7 +2123,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               const endQ = startQ + totalSA - 1;
               d3Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}.`;
             }
-            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isMinistry) {
+            if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTrucToan3223 || isMinistry) {
               html += `<p style="font-size:14pt;"><b>${d3Title}</b> ${d3Desc}</p>`;
             } else {
               html += `<p class="bold" style="font-size:14pt;">${d3Title}</p>`;
@@ -2152,7 +2176,13 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               ? "DẠNG 3. Câu trả lời ngắn"
               : "PHẦN III. Câu trắc nghiệm trả lời ngắn";
             let d3Desc = "Học sinh trả lời các câu hỏi bằng cách ghi lại kết quả bằng con số vào bài thi.";
-            if (examConfig.isCauTrucKHTNVao10) {
+            if (examConfig.isCauTrucToan3223) {
+              const startQ = 15;
+              const endQ = 18;
+              const d3Points = "2,0";
+              d3Title = `PHẦN III. Câu trắc nghiệm trả lời ngắn (${d3Points} điểm).`;
+              d3Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Mỗi câu đúng được 0,5 điểm.`;
+            } else if (examConfig.isCauTrucKHTNVao10) {
               const startQ = isContinuous ? globalQuestionIndex : 1;
               const endQ = startQ + totalSA - 1;
               const d3Points = String(p3_pt * totalSA).replace('.', ',');
@@ -2171,7 +2201,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
               const endQ = startQ + totalSAItems - 1;
               d3Desc = `Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}.`;
             }
-            if (isMinistry || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTruc4213) {
+            if (isMinistry || examConfig.isCauTrucKHTNVao10 || examConfig.isCauTruc4213 || examConfig.isCauTrucToan3223) {
               html += `<p style="font-size:14pt;"><b>${d3Title}</b> ${d3Desc}</p>`;
             } else {
               html += `<p class="bold" style="font-size:14pt;">${d3Title}</p>`;
@@ -2221,7 +2251,10 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
         const soCauTL = computeTLCauCount();
         const phanTL = hasTraLoiNgan ? 4 : 3;
         // PHẦN II: TỰ LUẬN (nếu có Tự luận mode)
-            if (examConfig.isCauTruc4213) {
+            if (examConfig.isCauTrucToan3223) {
+              html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
+              html += `<p style="font-size:14pt;font-style:italic;">Thí sinh trình bày lời giải chi tiết từ câu 19 đến câu 21. Mỗi câu đúng trọn vẹn được 1,0 điểm.</p>`;
+            } else if (examConfig.isCauTruc4213) {
               const diemTL = matrix.reduce((s, t) => s + (t.donViKienThuc || []).reduce((s2, dv) => s2 + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0), 0), 0);
               html += `<p class="bold" style="font-size:14pt;text-transform:uppercase;">PHẦN B. TỰ LUẬN (${String(diemTL).replace('.',',')} ĐIỂM)</p>`;
             } else if (isMinistry) {
@@ -2262,7 +2295,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
             const displayNum = isContinuous ? globalQuestionIndex++ : (i + 1);
             const hasMultiY = !!(q.yA && q.yB);
             const tlDiemStr = String(Math.round(totalDiem * 100) / 100).replace('.', ',');
-            const cauTienTo = examConfig.isCauTruc4213 ? `Câu ${displayNum} (${tlDiemStr} điểm).` : `Câu ${displayNum}.`;
+            const cauTienTo = (examConfig.isCauTruc4213 || examConfig.isCauTrucToan3223) ? `Câu ${displayNum} (${tlDiemStr} điểm).` : `Câu ${displayNum}.`;
             
             const renderMeta = (m) => {
                 if (examConfig.isCauTruc4213 && m && m.kienThuc && (config.showExamRedMetadata !== false)) {
@@ -2332,7 +2365,10 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
             if (!isContinuous) globalQuestionIndex = 1;
             const phanTL = hasTraLoiNgan ? 4 : 3;
             // PHẦN II: TỰ LUẬN (nếu có Tự luận mode)
-            if (isMinistry) {
+            if (examConfig.isCauTrucToan3223) {
+              html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
+              html += `<p style="font-size:14pt;font-style:italic;">Thí sinh trình bày lời giải chi tiết từ câu 19 đến câu 21. Mỗi câu đúng trọn vẹn được 1,0 điểm.</p>`;
+            } else if (isMinistry) {
               const sectionTitle = hasTraLoiNgan ? "PHẦN IV. Câu hỏi tự luận" : "PHẦN III. Câu hỏi tự luận";
               html += `<p class="bold" style="font-size:14pt;">${sectionTitle}</p>`;
             } else if (hasTuLuanMode) {
@@ -2347,7 +2383,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
                 const slotData = examSlots[`phan${phanTL}_cau${i + 1}`];
                 if (slotData) {
                     const tlDiemStr = String(qMeta[`phan4_y${currentEmptyTlIdx}`]?.diem || examConfig.diemMoiCauP4 || 1.0).replace('.', ',');
-                    const cauTienTo = examConfig.isCauTruc4213 ? `Câu ${displayNum} (${tlDiemStr} điểm).` : `Câu ${displayNum}.`;
+                    const cauTienTo = (examConfig.isCauTruc4213 || examConfig.isCauTrucToan3223) ? `Câu ${displayNum} (${tlDiemStr} điểm).` : `Câu ${displayNum}.`;
                     const hasMultiY2 = !!(slotData.yA && slotData.yB);
                     if (hasMultiY2) {
                         const intro2 = slotData.noiDung ? ` ${formatTextWithMath(slotData.noiDung)}` : '';
@@ -2418,7 +2454,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
 
         // BIẾN ĐẾM TOÀN CỤC CHO ĐÁNH SỐ CÂU HỎI LIÊN TỤC (ĐÁP ÁN)
         let globalAnswerIndex = 1;
-        const isContinuousAK = examConfig.isCauTruc4213 ? false : config.isContinuousNumbering;
+        const isContinuousAK = examConfig.isCauTruc4213 ? false : (examConfig.isCauTrucToan3223 ? true : config.isContinuousNumbering);
 
         // === LOGIC TIÊU ĐỀ PHẦN ĐỘNG THEO TỰ LUẬN (ĐÁP ÁN) ===
         const hasTuLuanModeAK = config.hasTuLuan;

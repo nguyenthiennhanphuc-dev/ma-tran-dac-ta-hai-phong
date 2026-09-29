@@ -287,6 +287,7 @@ export function generateSimilarQuestionPrompt(slotData, metaInfo, options = {}) 
 export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, examConfig = {}, examHeader = {}) {
   const isKHTN = (examHeader?.monHoc || '').toLowerCase().includes('khoa học tự nhiên') || (examHeader?.monHoc || '').toLowerCase().includes('khtn') || examConfig?.isCauTruc4213 || examConfig?.isCauTrucKHTNVao10;
   const isVao10 = examConfig?.isCauTrucKHTNVao10 || (examHeader?.kyThi && /tuyển sinh|vào 10/i.test(examHeader.kyThi));
+  const isToanKhanhHoa = Boolean(examConfig?.isCauTrucToan3223);
 
   let prompt = `Bạn là một chuyên gia ra đề thi xuất sắc. Dưới đây là nội dung của một ĐỀ THI MẪU (Đề số 1).\n`;
   prompt += `Nhiệm vụ của bạn là dựa vào cấu trúc và mức độ khó của đề mẫu này, tạo ra một ĐỀ THI MỚI (Đề số 2) tương đương 100% về cấu trúc, độ phân hóa và định dạng.\n\n`;
@@ -304,8 +305,8 @@ export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, exa
   prompt += `5. BẮT BUỘC VẼ HÌNH: NẾU lời giải của bất kỳ bài toán nào có chứa hàm số, đồ thị, hình học hoặc biểu đồ: BẮT BUỘC phải sinh ra một thẻ "Hình ảnh:" chứa JSON minh họa ở cuối phần giải thích.\n`;
   if (isKHTN && isVao10) {
     prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ (QĐ 1038 - KHTN VÀO 10): Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Thông hiểu, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng. Tuyệt đối không có Nhận biết và không có Vận dụng cao ở câu Đúng/Sai.\n`;
-  } else if (isKHTN) {
-    prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ (CV 4956): Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Nhận biết, ý c) mức Thông hiểu, ý d) mức Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
+  } else if (isKHTN || isToanKhanhHoa) {
+    prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ: Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Nhận biết, ý c) mức Thông hiểu, ý d) mức Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
   } else {
     prompt += `6. ĐÚNG/SAI (LOẠI 2) PHÂN PHỐI MỨC ĐỘ: Với mỗi câu Đúng/Sai mới, bắt buộc mệnh đề a) mức Nhận biết, ý b) mức Thông hiểu, ý c) mức Vận dụng, ý d) mức Vận dụng cao.\n`;
   }
@@ -360,7 +361,7 @@ export function generateFullEquivalentExamPrompt(examSlotsList, lockedSlots, exa
         prompt += `b) (Mức độ: Thông hiểu) ${q.yB || ''}\n`;
         prompt += `c) (Mức độ: Vận dụng) ${q.yC || ''}\n`;
         prompt += `d) (Mức độ: Vận dụng) ${q.yD || ''}\n`;
-      } else if (isKHTN) {
+      } else if (isKHTN || isToanKhanhHoa) {
         prompt += `a) (Mức độ: Nhận biết) ${q.yA || ''}\n`;
         prompt += `b) (Mức độ: Nhận biết) ${q.yB || ''}\n`;
         prompt += `c) (Mức độ: Thông hiểu) ${q.yC || ''}\n`;
