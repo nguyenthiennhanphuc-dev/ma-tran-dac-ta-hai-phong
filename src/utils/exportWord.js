@@ -512,6 +512,13 @@ export const exportToWord = async (options = {}) => {
     return `${v} ý (${code})`;
   };
 
+  const fmtDsCauWord = (cnt) => {
+    if (!cnt) return '';
+    const c = cnt * 0.25;
+    const cStr = c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ',');
+    return `${cStr} (${cnt} ý)`;
+  };
+
   // === TÍNH MAP CÂU SỐ TRONG KHUNG ĐỀ CHO TỪNG Ô ===
   const qMap = {};
   const isCont = isCauTrucKHTNVao10 ? false : (isKHTNMon ? true : (examConfig.isCauTruc4213 ? false : config.isContinuousNumbering));
@@ -657,19 +664,46 @@ export const exportToWord = async (options = {}) => {
         // BẢNG 1: MA TRẬN KHTN (Khớp 100% mẫu MA_TRAN_CUỐI_HK 2_KHTN7_YẾN 26-27_SUA.docx & ảnh media_1789318008907.png)
         // Chỉ hiện số câu/ý và mã NT1, NT2... không kèm ngoặc vuông hay Câu 1
         if (qKey.includes('_ds_')) {
-          if (qKey.includes('_ds_biet')) {
-            if (num === '2' || Number(num) === 2) {
-              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/2 ý", font: 'Times New Roman', size: 24 })] }));
-              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "a, b", font: 'Times New Roman', size: 24 })] }));
+          if (isCauTrucKHTNVao10) {
+            if (qKey.includes('_ds_biet')) {
+              if (num === '2' || Number(num) === 2) {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/2 ý", font: 'Times New Roman', size: 24 })] }));
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "a, b", font: 'Times New Roman', size: 24 })] }));
+              } else {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num ? `${num}/4 ý` : "1/4 ý", font: 'Times New Roman', size: 24 })] }));
+              }
+            } else if (qKey.includes('_ds_hieu')) {
+              if (num === '2' || Number(num) === 2) {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/2 ý", font: 'Times New Roman', size: 24 })] }));
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "a, b", font: 'Times New Roman', size: 24 })] }));
+              } else {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num ? `${num}/4 ý` : "1/4 ý", font: 'Times New Roman', size: 24 })] }));
+              }
+            } else if (qKey.includes('_ds_vanDung')) {
+              if (num === '2' || Number(num) === 2) {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/2 ý", font: 'Times New Roman', size: 24 })] }));
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "c, d", font: 'Times New Roman', size: 24 })] }));
+              } else {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num ? `${num}/4 ý` : "1/4 ý", font: 'Times New Roman', size: 24 })] }));
+              }
             } else {
-              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/4 ý", font: 'Times New Roman', size: 24 })] }));
+              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num, font: 'Times New Roman', size: 24 })] }));
             }
-          } else if (qKey.includes('_ds_hieu')) {
-            lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/4 ý c", font: 'Times New Roman', size: 24 })] }));
-          } else if (qKey.includes('_ds_vanDung')) {
-            lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/4 ý d", font: 'Times New Roman', size: 24 })] }));
           } else {
-            lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num, font: 'Times New Roman', size: 24 })] }));
+            if (qKey.includes('_ds_biet')) {
+              if (num === '2' || Number(num) === 2) {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/2 ý", font: 'Times New Roman', size: 24 })] }));
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "a, b", font: 'Times New Roman', size: 24 })] }));
+              } else {
+                lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/4 ý", font: 'Times New Roman', size: 24 })] }));
+              }
+            } else if (qKey.includes('_ds_hieu')) {
+              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/4 ý c", font: 'Times New Roman', size: 24 })] }));
+            } else if (qKey.includes('_ds_vanDung')) {
+              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1/4 ý d", font: 'Times New Roman', size: 24 })] }));
+            } else {
+              lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num, font: 'Times New Roman', size: 24 })] }));
+            }
           }
         } else {
           lines.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: num, font: 'Times New Roman', size: 24 })] }));
@@ -926,9 +960,9 @@ export const exportToWord = async (options = {}) => {
     const row1Cells = [
       createCell("Tổng số câu/lệnh hỏi", true, AlignmentType.CENTER, 1, 3, "E2E8F0"),
       createCell(nlcB || ''), createCell(nlcH || ''), createCell(nlcVD || ''),
-      createCell(dsB ? (dsB % 2 === 0 ? String(dsB / 2) : `${(dsB * 0.25).toFixed(1).replace('.', ',')}`) : ''),
-      createCell(dsH ? (dsH % 4 === 0 ? String(dsH / 4) : `${(dsH * 0.25).toFixed(1).replace('.', ',')}`) : ''),
-      createCell(dsVD ? (dsVD % 4 === 0 ? String(dsVD / 4) : `${(dsVD * 0.25).toFixed(1).replace('.', ',')}`) : ''),
+      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsB) : (dsB ? (dsB % 2 === 0 ? String(dsB / 2) : `${(dsB * 0.25).toFixed(1).replace('.', ',')}`) : '')),
+      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsH) : (dsH ? (dsH % 4 === 0 ? String(dsH / 4) : `${(dsH * 0.25).toFixed(1).replace('.', ',')}`) : '')),
+      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsVD) : (dsVD ? (dsVD % 4 === 0 ? String(dsVD / 4) : `${(dsVD * 0.25).toFixed(1).replace('.', ',')}`) : '')),
       createCell(tlnB || ''), createCell(tlnH || ''), createCell(tlnVD || '')
     ];
     if (hasTL) {
@@ -1183,7 +1217,16 @@ export const exportToWord = async (options = {}) => {
   specRows.push(new TableRow({ children: tot1 }));
 
   const tot2 = [
-    createCell("Tổng số câu", true, AlignmentType.CENTER, 1, 4, "F1F5F9"), createCell(sumCount('nhieuLuaChon', 'biet')), createCell(sumCount('nhieuLuaChon', 'hieu')), createCell(sumCount('nhieuLuaChon', 'vanDung')), createCell(sumCount('dungSai', 'biet') * 0.25), createCell(sumCount('dungSai', 'hieu') * 0.25), createCell(sumCount('dungSai', 'vanDung') * 0.25), createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0), createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0), createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)
+    createCell("Tổng số câu", true, AlignmentType.CENTER, 1, 4, "F1F5F9"),
+    createCell(sumCount('nhieuLuaChon', 'biet')),
+    createCell(sumCount('nhieuLuaChon', 'hieu')),
+    createCell(sumCount('nhieuLuaChon', 'vanDung')),
+    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'biet')) : (sumCount('dungSai', 'biet') ? (sumCount('dungSai', 'biet') * 0.25) : 0)),
+    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'hieu')) : (sumCount('dungSai', 'hieu') ? (sumCount('dungSai', 'hieu') * 0.25) : 0)),
+    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'vanDung')) : (sumCount('dungSai', 'vanDung') ? (sumCount('dungSai', 'vanDung') * 0.25) : 0)),
+    createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0),
+    createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0),
+    createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)
   ];
   if (config.hasTuLuan) {
     const storeState = useExamStore.getState();
@@ -1681,29 +1724,55 @@ export const exportToWord = async (options = {}) => {
           }
         } else {
           examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" }))], spacing: { after: 100 } }));
-          const tfPlaceholderRows = [];
-          tfPlaceholderRows.push(new TableRow({
-            children: [
-              new TableCell({ width: { size: 85, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Nhận định", bold: true, size: 28, font: "Times New Roman" })] })] }),
-              new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Đ/S", bold: true, size: 28, font: "Times New Roman" })] })] }),
-            ]
-          }));
-          for (let j = 0; j < 4; j++) {
-            const flatIdx = i * 4 + j;
-            const item = tfFlatItems[flatIdx];
+          if (isMinistry || examConfig.isCauTruc4213 || isCauTrucKHTNVao10) {
+            const tfYKeys = [['a.', 'a)', 0], ['b.', 'b)', 1], ['c.', 'c)', 2], ['d.', 'd)', 3]];
+            tfYKeys.forEach(([labelMin, label4213, idx]) => {
+              const flatIdx = i * 4 + idx;
+              const item = tfFlatItems[flatIdx] || {};
+              const label = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? label4213 : labelMin;
+              examParagraphs.push(new Paragraph({
+                children: [
+                  new TextRun({ text: `${label} `, size: 28, font: "Times New Roman" }),
+                  new TextRun({ text: `(Ghi nội dung ý ${label}... ${item.level ? `[Mức độ: ${item.level}]` : ''})`, italics: true, size: 28, font: "Times New Roman" })
+                ],
+                indent: { left: 720 },
+                spacing: { after: 60 }
+              }));
+
+              if ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10) && (config.showExamRedMetadata !== false) && item.dvkt) {
+                examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `* Kiến thức: ${item.dvkt}`, italics: true, color: "FF0000", size: 22, font: "Times New Roman" })], spacing: { after: 40 } }));
+                let chiBaoText = formatChiBaoText(item?.level, item?.chiBao);
+                if (chiBaoText) {
+                  examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `* NLTD/chỉ báo: ${chiBaoText}`, italics: true, color: "FF0000", size: 22, font: "Times New Roman" })], spacing: { after: 40 } }));
+                }
+              }
+            });
+            examParagraphs.push(new Paragraph({ text: "", spacing: { after: 120 } }));
+          } else {
+            const tfPlaceholderRows = [];
             tfPlaceholderRows.push(new TableRow({
               children: [
-                new TableCell({ width: { size: 85, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: `${alphabet[j]} ${item ? `[${item.topic} - Mức độ: ${item.level}]` : ''}`, size: 28, font: "Times New Roman" })], spacing: { after: 40 } })] }),
-                new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "", size: 28, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 85, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Nhận định", bold: true, size: 28, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Đ/S", bold: true, size: 28, font: "Times New Roman" })] })] }),
               ]
             }));
+            for (let j = 0; j < 4; j++) {
+              const flatIdx = i * 4 + j;
+              const item = tfFlatItems[flatIdx];
+              tfPlaceholderRows.push(new TableRow({
+                children: [
+                  new TableCell({ width: { size: 85, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: `${alphabet[j]} ${item ? `[${item.topic} - Mức độ: ${item.level}]` : ''}`, size: 28, font: "Times New Roman" })], spacing: { after: 40 } })] }),
+                  new TableCell({ width: { size: 15, type: WidthType.PERCENTAGE }, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "", size: 28, font: "Times New Roman" })] })] }),
+                ]
+              }));
+            }
+            examParagraphs.push(new Table({
+              rows: tfPlaceholderRows,
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: standardBorders,
+            }));
+            examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
           }
-          examParagraphs.push(new Table({
-            rows: tfPlaceholderRows,
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: standardBorders,
-          }));
-          examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
         }
       }
     }

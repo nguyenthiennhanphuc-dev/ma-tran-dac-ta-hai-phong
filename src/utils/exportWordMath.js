@@ -1245,7 +1245,7 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
     rows += `<tr>
       ${cell('Tổng số câu', { bold: true, align: 'center', colspan: 4, bg: 'F1F5F9' })}
       ${cell(sumCount('nhieuLuaChon', 'biet'))}${cell(sumCount('nhieuLuaChon', 'hieu'))}${cell(sumCount('nhieuLuaChon', 'vanDung'))}
-      ${cell(sumCount('dungSai', 'biet') * 0.25)}${cell(sumCount('dungSai', 'hieu') * 0.25)}${cell(sumCount('dungSai', 'vanDung') * 0.25)}
+      ${cell(examConfig.isCauTrucKHTNVao10 ? ((y) => { if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(sumCount('dungSai', 'biet')) : (sumCount('dungSai', 'biet') * 0.25))}${cell(examConfig.isCauTrucKHTNVao10 ? ((y) => { if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(sumCount('dungSai', 'hieu')) : (sumCount('dungSai', 'hieu') * 0.25))}${cell(examConfig.isCauTrucKHTNVao10 ? ((y) => { if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(sumCount('dungSai', 'vanDung')) : (sumCount('dungSai', 'vanDung') * 0.25))}
       ${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)}
       ${config.hasTuLuan ? cell(getFormatTLCau(matrix, 'biet')) + cell(getFormatTLCau(matrix, 'hieu')) + cell(getFormatTLCau(matrix, 'vanDung')) : ''}
     </tr>`;
