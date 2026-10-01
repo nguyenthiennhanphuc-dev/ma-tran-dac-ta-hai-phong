@@ -24,28 +24,47 @@ export const SYMBOLS_MAP = {
   // Toán tử & quan hệ
   '\\times': '×', '\\cdot': '·', '\\div': '÷', '\\pm': '±', '\\mp': '∓',
   '\\le': '≤', '\\leq': '≤', '\\ge': '≥', '\\geq': '≥', '\\ne': '≠', '\\neq': '≠',
-  '\\approx': '≈', '\\equiv': '≡', '\\cong': '≅', '\\sim': '∼', '\\propto': '∝',
+  '\\approx': '≈', '\\equiv': '≡', '\\cong': '≅', '\\sim': '∽', '\\backsim': '∽', '\\propto': '∝',
   '\\infty': '∞',
 
   // Tập hợp & Logic
   '\\in': '∈', '\\notin': '∉', '\\subset': '⊂', '\\subseteq': '⊆',
   '\\supset': '⊃', '\\supseteq': '⊇', '\\cup': '∪', '\\cap': '∩',
-  '\\emptyset': '∅', '\\varnothing': '∅', '\\forall': '∀', '\\exists': '∃',
-  '\\neg': '¬',
+  '\\emptyset': '∅', '\\varnothing': '∅', '\\forall': '∀', '\\exists': '∃', '\\nexists': '∄',
+  '\\neg': '¬', '\\setminus': '∖', '\\backslash': '\\',
 
-  // Mũi tên
+  // Tập số
+  '\\mathbb{R}': 'ℝ', '\\mathbf{R}': 'ℝ',
+  '\\mathbb{N}': 'ℕ', '\\mathbf{N}': 'ℕ',
+  '\\mathbb{Z}': 'ℤ', '\\mathbf{Z}': 'ℤ',
+  '\\mathbb{Q}': 'ℚ', '\\mathbf{Q}': 'ℚ',
+  '\\mathbb{C}': 'ℂ', '\\mathbf{C}': 'ℂ',
+
+  // Mũi tên & Logic suy luận
   '\\to': '→', '\\rightarrow': '→', '\\leftarrow': '←',
-  '\\Leftarrow': '⇐', '\\Rightarrow': '⇒', '\\leftrightarrow': '↔', '\\Leftrightarrow': '⇔',
-  '\\uparrow': '↑', '\\downarrow': '↓',
+  '\\Leftarrow': '⇐', '\\Rightarrow': '⇒', '\\implies': '⇒',
+  '\\leftrightarrow': '↔', '\\Leftrightarrow': '⇔', '\\iff': '⇔',
+  '\\uparrow': '↑', '\\downarrow': '↓', '\\mapsto': '↦',
 
   // Hình học & Ký hiệu khác
+  '\\triangle': '△', '\\bigtriangleup': '△',
   '\\angle': '∠', '\\measuredangle': '∡', '\\sphericalangle': '∢',
   '\\circ': '°', '\\prime': '′', '\\doubleprime': '″',
   '\\bot': '⊥', '\\perp': '⊥', '\\parallel': '∥',
   '\\degree': '°', '\\partial': '∂', '\\nabla': '∇',
+  '\\colon': ':',
+
+  // Dấu ba chấm
+  '\\dots': '…', '\\ldots': '…', '\\cdots': '⋯', '\\vdots': '⋮', '\\ddots': '⋱',
+
+  // Tích phân bội
+  '\\iint': '∬', '\\iiint': '∭', '\\oint': '∮',
+
+  // Dấu ngoặc nhọn
+  '\\{': '{', '\\}': '}',
 
   // Khoảng cách
-  '\\,': ' ', '\\;': ' ', '\\:': ' ', '\\quad': '  ', '\\qquad': '    ', '\\ ': ' '
+  '\\,': ' ', '\\;': ' ', '\\:': ' ', '\\quad': '  ', '\\qquad': '    ', '\\ ': ' ', '\\!': ''
 };
 
 // Chuẩn hóa chuỗi LaTeX trước khi parse
@@ -62,11 +81,27 @@ export function preprocessLatex(latex) {
   // Chuẩn hóa góc: \widehat{ABC} -> \angle ABC
   s = s.replace(/\\widehat\{([^}]+)\}/g, '\\angle $1');
 
-  // Chuẩn hóa độ: ^{\circ} hoặc ^\circ -> °
-  s = s.replace(/\^\{\\circ\}|\^\\circ/g, '°');
+  // Chuẩn hóa độ: ^{\circ} hoặc ^\circ hoặc \degree -> °
+  s = s.replace(/\^\{\\circ\}|\^\\circ|\\degree/g, '°');
 
   // Chuẩn hóa \vec{} và \overrightarrow{}
   s = s.replace(/\\overrightarrow\{([^}]+)\}/g, '\\vec{$1}');
+
+  // Chuẩn hóa tập số \mathbb{R}, \mathbb{N}, v.v.
+  s = s.replace(/\\(mathbb|mathbf)\{R\}/g, 'ℝ');
+  s = s.replace(/\\(mathbb|mathbf)\{N\}\^?\*?/g, (m) => m.includes('*') ? 'ℕ*' : 'ℕ');
+  s = s.replace(/\\(mathbb|mathbf)\{Z\}/g, 'ℤ');
+  s = s.replace(/\\(mathbb|mathbf)\{Q\}/g, 'ℚ');
+  s = s.replace(/\\(mathbb|mathbf)\{C\}/g, 'ℂ');
+
+  // Chuẩn hóa hệ phương trình \begin{cases} ... \end{cases} -> \left\{ pt1;\; pt2 \right.
+  s = s.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (_, content) => {
+    const lines = content.split(/\\\\/).map(line => line.replace(/&/g, ' ').trim()).filter(Boolean);
+    return '\\left\\{ ' + lines.join(';\\; ') + ' \\right.';
+  });
+
+  // Bỏ dấu & gióng hàng TeX nếu còn sót
+  s = s.replace(/&/g, ' ');
 
   return s;
 }
@@ -79,6 +114,40 @@ export function tokenizeLatex(latex) {
 
   while (i < s.length) {
     const c = s[i];
+
+    // Xử lý khối text như \text{...}, \mathrm{...}, \mathbf{...}, \operatorname{...}
+    // Giữ nguyên khoảng trắng và ký tự tiếng Việt
+    if (c === '\\') {
+      let cmd = '\\';
+      let j = i + 1;
+      while (j < s.length && /[a-zA-Z]/.test(s[j])) {
+        cmd += s[j];
+        j++;
+      }
+      if (cmd === '\\text' || cmd === '\\mathrm' || cmd === '\\mathbf' || cmd === '\\operatorname') {
+        while (j < s.length && /\s/.test(s[j])) j++;
+        if (j < s.length && s[j] === '{') {
+          j++; // skip '{'
+          let textContent = '';
+          let depth = 1;
+          while (j < s.length && depth > 0) {
+            if (s[j] === '{') depth++;
+            else if (s[j] === '}') {
+              depth--;
+              if (depth === 0) {
+                j++;
+                break;
+              }
+            }
+            textContent += s[j];
+            j++;
+          }
+          tokens.push({ type: 'text_run', val: textContent });
+          i = j;
+          continue;
+        }
+      }
+    }
 
     if (/\s/.test(c)) {
       i++;
@@ -161,6 +230,41 @@ export function parseTokensToDocxMath(tokens) {
   function parseSingleElement(tok) {
     if (!tok) return [new MathRun('')];
 
+    if (tok.type === 'text_run') {
+      return [new MathRun(tok.val)];
+    }
+
+    // Nhóm ngoặc tròn ( ... ) hoặc vuông [ ... ]
+    if (tok.type === 'delimiter' && (tok.val === '(' || tok.val === '[')) {
+      const openChar = tok.val;
+      const closeChar = openChar === '(' ? ')' : ']';
+      let depth = 1;
+      let j = i;
+      let found = false;
+
+      while (j < tokens.length) {
+        if (tokens[j].val === openChar) depth++;
+        else if (tokens[j].val === closeChar) {
+          depth--;
+          if (depth === 0) {
+            found = true;
+            break;
+          }
+        }
+        j++;
+      }
+
+      if (found) {
+        const innerTokens = tokens.slice(i, j);
+        i = j + 1; // Nhảy qua dấu ngoặc đóng
+        const innerElems = parseTokensToDocxMath(innerTokens);
+        const bracketObj = openChar === '('
+          ? new MathRoundBrackets({ children: innerElems })
+          : new MathSquareBrackets({ children: innerElems });
+        return [bracketObj];
+      }
+    }
+
     if (tok.type === 'command') {
       // 1. Ký hiệu đặc biệt
       if (SYMBOLS_MAP[tok.val]) {
@@ -186,7 +290,7 @@ export function parseTokensToDocxMath(tokens) {
           } else if (t.val === '\\right') {
             leftDepth--;
             if (leftDepth === 0) {
-              const closeDelim = next(); // Bỏ qua dấu ngoặc đóng tương ứng
+              if (i < tokens.length) next(); // Bỏ qua dấu ngoặc đóng tương ứng của \right
               break;
             }
             innerTokens.push(t);
@@ -199,6 +303,11 @@ export function parseTokensToDocxMath(tokens) {
         if (openDelim?.val === '[') return [new MathSquareBrackets({ children: innerElems })];
         if (openDelim?.val === '{' || openDelim?.val === '\\{') return [new MathCurlyBrackets({ children: innerElems })];
         return [new MathRoundBrackets({ children: innerElems })];
+      }
+
+      if (tok.val === '\\right') {
+        if (peek()) next();
+        return [];
       }
 
       // 4. Vectơ

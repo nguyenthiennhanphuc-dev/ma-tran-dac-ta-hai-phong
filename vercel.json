@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/health",
+      "destination": "https://latex2mathtypeweb.onrender.com/"
+    },
+    {
+      "source": "/api/convert-docx",
+      "destination": "https://latex2mathtypeweb.onrender.com/api/convert-docx"
+    },
+    {
+      "source": "/api/convert-text",
+      "destination": "https://latex2mathtypeweb.onrender.com/api/convert-text"
+    }
+  ]
+}

@@ -3,11 +3,16 @@ import { exportToWord, generateWordDocxBlob } from './exportWord';
 
 const REQUEST_TIMEOUT_MS = 90000; // 90 giây tối đa để đợi máy chủ Render khởi động lại
 
-// Danh sách các cổng kết nối MathType theo thứ tự ưu tiên
+const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+// Danh sách các cổng kết nối MathType theo thứ tự ưu tiên:
+// 1. Same-origin proxy (/api/convert-docx) được Vercel rewrite trực tiếp sang Render -> 100% không bị CORS!
+// 2. Local Python backend (chỉ thử khi đang dev local trên localhost)
+// 3. Direct Render (fallback)
 const CANDIDATE_ENDPOINTS = [
-  'http://localhost:8000/api/convert-docx', // Local Python backend (đã bật CORS, proxy Render)
-  '/api/convert-docx',                      // Vite dev server proxy (same-origin)
-  'https://latex2mathtypeweb.onrender.com/api/convert-docx' // Direct Render
+  '/api/convert-docx',
+  ...(isLocal ? ['http://localhost:8000/api/convert-docx'] : []),
+  'https://latex2mathtypeweb.onrender.com/api/convert-docx'
 ];
 
 /**
@@ -43,8 +48,10 @@ export async function exportToWordMathType(options = {}) {
     onStatus('converting', 'Đang kết nối máy chủ MathType để nhúng công thức OLE (vui lòng đợi trong giây lát)...');
     tickerId = setInterval(() => {
       elapsedSeconds += 1;
-      if (elapsedSeconds === 15) {
-        onStatus('waiting', 'Máy chủ MathType đang khởi động lại và xử lý (khoảng 30-45s), xin vui lòng kiên nhẫn đợi nhé...');
+      if (elapsedSeconds === 5) {
+        onStatus('waiting', 'Đang gửi tài liệu lên máy chủ MathType OLE...');
+      } else if (elapsedSeconds === 15) {
+        onStatus('waiting', 'Máy chủ MathType đang khởi động và nhúng công thức OLE (khoảng 20-30s)...');
       } else if (elapsedSeconds === 40) {
         onStatus('waiting', 'Đang tiếp tục hoàn tất nhúng công thức OLE MathType, xin đừng đóng trình duyệt...');
       } else if (elapsedSeconds === 70) {

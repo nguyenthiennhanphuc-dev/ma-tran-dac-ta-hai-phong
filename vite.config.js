@@ -5,10 +5,22 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3001, // Bạn có thể đổi số 3000 thành 8080 hoặc bất kỳ số nào bạn thích
+    port: 3001,
     strictPort: true,
     proxy: {
+      '/api/health': {
+        target: 'https://latex2mathtypeweb.onrender.com',
+        rewrite: () => '/',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api/convert-docx': {
+        target: 'https://latex2mathtypeweb.onrender.com',
+        changeOrigin: true,
+        secure: false,
+        timeout: 120000,
+      },
+      '/api/convert-text': {
         target: 'https://latex2mathtypeweb.onrender.com',
         changeOrigin: true,
         secure: false,

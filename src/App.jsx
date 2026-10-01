@@ -194,11 +194,9 @@ export default function App() {
     setIsCheckingBackend(true);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s cho Render Free tier thức dậy
-      const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const url = isLocalhost ? 'http://localhost:8000' : rawUrl;
-      const res = await fetch(`${url}/api/health`, { signal: controller.signal });
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s cho Render Free tier thức dậy
+      // Gọi qua proxy /api/health (được Vercel rewrites và Vite proxy sang Render)
+      const res = await fetch('/api/health', { signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
         setBackendOnline(true);
@@ -712,8 +710,14 @@ export default function App() {
                         <button
                           onClick={() => { setPendingExportType('omml'); setShowNumberingModal(true); }}
                           className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-white shadow-md transition-all bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:scale-[1.02] ring-2 ring-blue-300"
-                          title="Công thức Word chuẩn Office (sửa bằng Alt + =), 100% Offline không cần mạng">
-                          <FileDown size={20} /> Xuất Word Equation (OMML)
+                          title="Công thức Word chuẩn Office (sửa bằng Alt + =), định dạng .docx 100% Offline không cần mạng">
+                          <FileDown size={20} /> Xuất Word Equation (.docx)
+                        </button>
+                        <button
+                          onClick={() => { setPendingExportType('legacy_doc'); setShowNumberingModal(true); }}
+                          className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-sm transition-all hover:scale-[1.02]"
+                          title="Công thức Word Equation chuẩn KaTeX MathML 100% tuyệt đối không lỗi, tự chuyển thành Equation khi mở bằng Word">
+                          <FileDown size={20} /> Xuất Word Equation (.doc KaTeX)
                         </button>
                         <button
                           onClick={() => { setPendingExportType('mathtype'); setShowNumberingModal(true); }}
@@ -743,7 +747,7 @@ export default function App() {
                         )}
                       </div>
                       <p className="text-center text-xs text-slate-500 mt-2">
-                        💡 <b>Word Equation (OMML)</b>: 100% Offline, sửa trực tiếp trên mọi máy với <kbd className="bg-slate-200 px-1 rounded">Alt + =</kbd> | <b>MathType (OLE)</b>: Mở sửa bằng MathType 6/7.
+                        💡 <b>Word Equation (.docx)</b>: 100% Offline, sửa với <kbd className="bg-slate-200 px-1 rounded">Alt + =</kbd> | <b>Word Equation (.doc KaTeX)</b>: Chuẩn MathML đẹp 100% | <b>MathType (OLE)</b>: Mở sửa bằng MathType 6/7.
                       </p>
                     </div>
                   </>
