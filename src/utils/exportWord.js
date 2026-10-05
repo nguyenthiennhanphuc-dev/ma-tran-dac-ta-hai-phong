@@ -437,8 +437,11 @@ export const exportToWord = async (options = {}) => {
   }, 0);
 
   const getTopicLevelCount = (topic, level) => getTopicSum(topic, 'nhieuLuaChon', level) + getTopicSum(topic, 'dungSai', level) + (config.hasTraLoiNgan ? getTopicSum(topic, 'traLoiNgan', level) : 0) + getTopicSum(topic, 'tuLuan', level);
-  const getLevelTotalItems = (level) => sumCount('nhieuLuaChon', level) + sumCount('dungSai', level) + (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) + sumCount('tuLuan', level);
-  const getLevelTotalQuestions = (level) => sumCount('nhieuLuaChon', level) + (sumCount('dungSai', level) * 0.25) + (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) + sumCount('tuLuan', level);
+  const getLevelTotalQuestions = (level) => {
+    const storeState = useExamStore.getState();
+    const tlCau = config.hasTuLuan ? getTuLuanCauCount(matrix, level, storeState?.tuLuanConfig) : 0;
+    return sumCount('nhieuLuaChon', level) + (sumCount('dungSai', level) * 0.25) + (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) + tlCau;
+  };
 
   const getTopicTuLuanPoints = (topic) => (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0) + (isKHTNMon ? (Number(dv.tuLuan?.diemVanDungCao) || 0) : 0), 0);
 
@@ -606,21 +609,178 @@ export const exportToWord = async (options = {}) => {
   if (config.hasTuLuan) {
     const totalTLN = config.hasTraLoiNgan ? sumCount('traLoiNgan','biet') + sumCount('traLoiNgan','hieu') + sumCount('traLoiNgan','vanDung') : 0;
     const tlStart = isCont ? ((totalNLC + 1) + totalDSCau + totalTLN) : 1;
-    let tlC = tlStart;
+
+    // 1. Thu thập tất cả các item Tự luận từ ma trận theo thứ tự
+    const allTLItems = [];
     matrix.forEach((t, ti) => {
       (t.donViKienThuc || []).forEach((dv, di) => {
-        ['biet','hieu','vanDung', ...(isKHTNMon ? ['vanDungCao'] : [])].forEach(lvl => {
-          const n = Number(dv.tuLuan?.[lvl]) || (Array.isArray(dv.tuLuan?.subItems) ? dv.tuLuan.subItems.filter(s => s.level === lvl).length : 0);
-          if (n > 0) {
-            let qNums = [];
-            for (let i = 0; i < n; i++) {
-              qNums.push(isKHTNMon ? `C${tlC++}` : `TL.${tlC++}`);
-            }
-            qMap[`${ti}_${di}_tl_${lvl}`] = qNums.join(', ');
+        ['biet', 'hieu', 'vanDung', ...(isKHTNMon ? ['vanDungCao'] : [])].forEach(lvl => {
+          const subList = Array.isArray(dv.tuLuan?.subItems)
+            ? dv.tuLuan.subItems.filter(s => s.level === lvl)
+            : [];
+          const count = subList.length > 0 ? subList.length : (Number(dv.tuLuan?.[lvl]) || 0);
+          for (let i = 0; i < count; i++) {
+            const sub = subList[i] || {};
+            allTLItems.push({
+              ti,
+              di,
+              lvl,
+              subIdx: i,
+              id: sub.id,
+              qId: sub.qId,
+              qLabel: sub.qLabel,
+              label: sub.label,
+              diem: sub.diem || 1.0,
+              dvkt: dv.noiDung || ''
+            });
           }
         });
       });
     });
+
+    if (allTLItems.length > 0) {
+      // Helper: trích xuất số thứ tự câu từ chuỗi (ví dụ "Câu 1a" -> 1, "tl_q1" -> 1)
+      const extractQNum = (it) => {
+        if (!it) return null;
+        const candidates = [it.qLabel, it.label, it.qId];
+        for (const str of candidates) {
+          if (!str) continue;
+          const m = String(str).match(/(?:câu|tl_q|tl\.?)\s*(\d+)/i) || String(str).match(/\d+/);
+          if (m) return parseInt(m[1] || m[0], 10);
+        }
+        return null;
+      };
+
+      // Helper: trích xuất ký tự ý (a, b, c...) nếu có
+      const extractSubLetter = (str) => {
+        if (!str) return '';
+        const m = String(str).match(/(?:câu\s*\d+|tl\s*\d+)?([a-z])\b/i) || String(str).match(/([a-z])\)/i);
+        return m ? m[1].toLowerCase() : '';
+      };
+
+      // 2. Gom nhóm theo câu hỏi lớn (đồng bộ Step4)
+      const storeState = useExamStore.getState();
+      const tuLuanConfig = storeState?.tuLuanConfig;
+      const questionsConfig = tuLuanConfig?.questions || [];
+
+      const grouped = {};
+      const unnumbered = [];
+      const usedIndices = new Set();
+
+      if (questionsConfig.length > 0) {
+        questionsConfig.forEach((q, qIdx) => {
+          const qNum = extractQNum(q) || (qIdx + 1);
+          const expectedPrefix = (q.label || `Câu ${qNum}`).toLowerCase().trim();
+          const chunk = [];
+
+          allTLItems.forEach((item, idx) => {
+            if (usedIndices.has(idx)) return;
+            const itemNum = extractQNum(item);
+            const itemLabel = (item.label || item.qLabel || '').toLowerCase().trim();
+
+            const isMatch = (item.qId && q.id && item.qId === q.id) ||
+                            (itemNum !== null && itemNum === qNum) ||
+                            (itemLabel && itemLabel.startsWith(expectedPrefix));
+            if (isMatch) {
+              chunk.push(item);
+              usedIndices.add(idx);
+            }
+          });
+
+          if (chunk.length > 0) {
+            chunk.sort((a, b) => {
+              const letterA = extractSubLetter(a.label);
+              const letterB = extractSubLetter(b.label);
+              if (letterA && letterB) return letterA.localeCompare(letterB);
+              return (a.label || '').localeCompare(b.label || '');
+            });
+            grouped[qNum] = chunk;
+          }
+        });
+      }
+
+      // Quét các item chưa khớp theo config
+      allTLItems.forEach((item, idx) => {
+        if (usedIndices.has(idx)) return;
+        const num = extractQNum(item);
+        if (num !== null) {
+          if (!grouped[num]) grouped[num] = [];
+          grouped[num].push(item);
+          usedIndices.add(idx);
+        } else {
+          unnumbered.push(item);
+        }
+      });
+
+      const finalQuestions = [];
+      const sortedNums = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+      sortedNums.forEach(num => {
+        const chunk = grouped[num];
+        chunk.sort((a, b) => {
+          const letterA = extractSubLetter(a.label);
+          const letterB = extractSubLetter(b.label);
+          if (letterA && letterB) return letterA.localeCompare(letterB);
+          return (a.label || '').localeCompare(b.label || '');
+        });
+        finalQuestions.push(chunk);
+      });
+
+      // Các item còn lại: gom theo ĐVKT (tối đa 2 ý/câu)
+      if (unnumbered.length > 0) {
+        const dvktGroups = {};
+        unnumbered.forEach(item => {
+          const key = item.dvkt || '_unknown';
+          if (!dvktGroups[key]) dvktGroups[key] = [];
+          dvktGroups[key].push(item);
+        });
+        Object.values(dvktGroups).forEach(grp => {
+          for (let i = 0; i < grp.length; i += 2) {
+            finalQuestions.push(grp.slice(i, i + 2));
+          }
+        });
+      }
+
+      // 3. Phân bổ nhãn câu hỏi (C23 ý a, C23 ý b... hoặc C23 ý a, b)
+      const alphabet = ['a', 'b', 'c', 'd', 'e', 'f'];
+      const cellMap = {}; // key: `${ti}_${di}_tl_${lvl}` -> array of { qNum, letter }
+
+      finalQuestions.forEach((chunk, cIdx) => {
+        const actualQNum = isCont ? (tlStart + cIdx) : (cIdx + 1);
+        const isMulti = chunk.length > 1;
+
+        chunk.forEach((item, iIdx) => {
+          const letter = isMulti ? (extractSubLetter(item.label) || alphabet[iIdx] || '') : '';
+          const key = `${item.ti}_${item.di}_tl_${item.lvl}`;
+          if (!cellMap[key]) cellMap[key] = [];
+          cellMap[key].push({ actualQNum, letter });
+        });
+      });
+
+      // 4. Định dạng nhãn cho từng ô
+      Object.keys(cellMap).forEach(key => {
+        const items = cellMap[key];
+        const byQNum = {};
+        items.forEach(it => {
+          if (!byQNum[it.actualQNum]) byQNum[it.actualQNum] = [];
+          if (it.letter) byQNum[it.actualQNum].push(it.letter);
+        });
+
+        const labels = [];
+        Object.keys(byQNum).map(Number).sort((a, b) => a - b).forEach(qNum => {
+          const letters = byQNum[qNum];
+          const prefix = isKHTNMon ? `C${qNum}` : `TL.${qNum}`;
+          if (letters.length === 0) {
+            labels.push(prefix);
+          } else if (letters.length === 1) {
+            labels.push(`${prefix} ý ${letters[0]}`);
+          } else {
+            labels.push(`${prefix} ý ${letters.join(', ')}`);
+          }
+        });
+
+        qMap[key] = labels.join(', ');
+      });
+    }
   }
   
   // Helper: Tạo ô có cả mã câu hỏi (VD: "C1-4" hoặc "C5a-b")
@@ -951,9 +1111,12 @@ export const exportToWord = async (options = {}) => {
     const tlnH = sumCount('traLoiNgan', 'hieu');
     const tlnVD = sumCount('traLoiNgan', 'vanDung');
 
-    const tlH = sumCount('tuLuan', 'hieu');
-    const tlVD = sumCount('tuLuan', 'vanDung');
-    const tlVDC = sumCount('tuLuan', 'vanDungCao');
+    const storeState = useExamStore.getState();
+    const fmtTLCauMatrix = (lvl) => {
+      const c = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
+      if (c === 0) return '';
+      return c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ',');
+    };
     const khtnGrandTotalCau = getLevelTotalQuestions('biet') + getLevelTotalQuestions('hieu') + getLevelTotalQuestions('vanDung') + getLevelTotalQuestions('vanDungCao');
 
     // Dòng 1: Tổng số câu/lệnh hỏi
@@ -966,7 +1129,7 @@ export const exportToWord = async (options = {}) => {
       createCell(tlnB || ''), createCell(tlnH || ''), createCell(tlnVD || '')
     ];
     if (hasTL) {
-      row1Cells.push(createCell(tlH || ''), createCell(tlVD || ''), createCell(tlVDC || ''));
+      row1Cells.push(createCell(fmtTLCauMatrix('hieu')), createCell(fmtTLCauMatrix('vanDung')), createCell(fmtTLCauMatrix('vanDungCao')));
     }
     row1Cells.push(
       createCell(getLevelTotalQuestions('biet') > 0 ? getLevelTotalQuestions('biet').toFixed(1).replace('.0', '').replace('.', ',') : '', true),
@@ -1075,7 +1238,13 @@ export const exportToWord = async (options = {}) => {
       createCell("T\u1ed5ng s\u1ed1 c\u00e2u", true, AlignmentType.RIGHT, 1, 3, "F1F5F9"), createCell(sumCount('nhieuLuaChon', 'biet'), true, AlignmentType.CENTER), createCell(sumCount('nhieuLuaChon', 'hieu'), true, AlignmentType.CENTER), createCell(sumCount('nhieuLuaChon', 'vanDung'), true, AlignmentType.CENTER), createCell(fmtDsCau('biet'), true, AlignmentType.CENTER), createCell(fmtDsCau('hieu'), true, AlignmentType.CENTER), createCell(fmtDsCau('vanDung'), true, AlignmentType.CENTER), createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0, true, AlignmentType.CENTER), createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0, true, AlignmentType.CENTER), createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0, true, AlignmentType.CENTER)
     ];
     if (config.hasTuLuan) {
-      t2.push(createCell(sumCount('tuLuan', 'biet'), true, AlignmentType.CENTER), createCell(sumCount('tuLuan', 'hieu'), true, AlignmentType.CENTER), createCell(sumCount('tuLuan', 'vanDung'), true, AlignmentType.CENTER));
+      const storeState = useExamStore.getState();
+      const fmtTLCauMatrixNonKhtn = (lvl) => {
+        const c = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
+        if (c === 0) return '';
+        return c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ',');
+      };
+      t2.push(createCell(fmtTLCauMatrixNonKhtn('biet'), true, AlignmentType.CENTER), createCell(fmtTLCauMatrixNonKhtn('hieu'), true, AlignmentType.CENTER), createCell(fmtTLCauMatrixNonKhtn('vanDung'), true, AlignmentType.CENTER));
     }
     t2.push(createCell(fmtTongCau('biet'), true, AlignmentType.CENTER), createCell(fmtTongCau('hieu'), true, AlignmentType.CENTER), createCell(fmtTongCau('vanDung'), true, AlignmentType.CENTER));
     t2.push(createCell(grandTotalCau, true, AlignmentType.CENTER));

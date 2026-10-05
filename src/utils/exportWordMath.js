@@ -1043,36 +1043,173 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
     if (config.hasTuLuan) {
         const totalTLN = config.hasTraLoiNgan ? sumCount('traLoiNgan','biet') + sumCount('traLoiNgan','hieu') + sumCount('traLoiNgan','vanDung') : 0;
         const tlStart = isCont ? (dsCauStart + totalDSCau + totalTLN) : 1;
-        let tlC = tlStart;
+
+        const allTLItems = [];
         matrix.forEach((t, ti) => {
             (t.donViKienThuc || []).forEach((dv, di) => {
                 ['biet','hieu','vanDung', 'vanDungCao'].forEach(lvl => {
-                    const n = Number(dv.tuLuan?.[lvl]) || (Array.isArray(dv.tuLuan?.subItems) ? dv.tuLuan.subItems.filter(s => s.level === lvl).length : 0);
-                    if (n > 0) {
-                        let qNums = [];
-                        for (let i = 0; i < n; i++) {
-                            const ind = dv.indicatorMap?.[`tuLuan_${lvl}_${i}`];
-                            const label = (typeof ind === 'object' ? ind.label : '') || (dv.tuLuan?.subItems?.filter(s => s.level === lvl)?.[i]?.label || '');
-                            const m = String(label).match(/(?:câu|tl_q|tl\.?)\s*(\d+)/i) || String(label).match(/\d+/);
-                            if (m) qNums.push(parseInt(m[1] || m[0], 10));
-                        }
-                        if (qNums.length > 0) {
-                            const sNum = Math.min(...qNums) + (tlStart - 1);
-                            const eNum = Math.max(...qNums) + (tlStart - 1);
-                            qMap[`${ti}_${di}_tl_${lvl}`] = { s: sNum, e: eNum, type: 'tl' };
-                        } else {
-                            qMap[`${ti}_${di}_tl_${lvl}`] = { s: tlC, e: tlC + n - 1, type: 'tl' };
-                            tlC += n;
-                        }
+                    const subList = Array.isArray(dv.tuLuan?.subItems)
+                        ? dv.tuLuan.subItems.filter(s => s.level === lvl)
+                        : [];
+                    const count = subList.length > 0 ? subList.length : (Number(dv.tuLuan?.[lvl]) || 0);
+                    for (let i = 0; i < count; i++) {
+                        const sub = subList[i] || {};
+                        allTLItems.push({
+                            ti, di, lvl, subIdx: i,
+                            id: sub.id, qId: sub.qId, qLabel: sub.qLabel, label: sub.label,
+                            diem: sub.diem || 1.0, dvkt: dv.noiDung || ''
+                        });
                     }
                 });
             });
         });
+
+        if (allTLItems.length > 0) {
+            const extractQNum = (it) => {
+                if (!it) return null;
+                const candidates = [it.qLabel, it.label, it.qId];
+                for (const str of candidates) {
+                    if (!str) continue;
+                    const m = String(str).match(/(?:câu|tl_q|tl\.?)\s*(\d+)/i) || String(str).match(/\d+/);
+                    if (m) return parseInt(m[1] || m[0], 10);
+                }
+                return null;
+            };
+
+            const extractSubLetter = (str) => {
+                if (!str) return '';
+                const m = String(str).match(/(?:câu\s*\d+|tl\s*\d+)?([a-z])\b/i) || String(str).match(/([a-z])\)/i);
+                return m ? m[1].toLowerCase() : '';
+            };
+
+            const storeState = useExamStore.getState();
+            const tuLuanConfig = storeState?.tuLuanConfig;
+            const questionsConfig = tuLuanConfig?.questions || [];
+
+            const grouped = {};
+            const unnumbered = [];
+            const usedIndices = new Set();
+
+            if (questionsConfig.length > 0) {
+                questionsConfig.forEach((q, qIdx) => {
+                    const qNum = extractQNum(q) || (qIdx + 1);
+                    const expectedPrefix = (q.label || `Câu ${qNum}`).toLowerCase().trim();
+                    const chunk = [];
+
+                    allTLItems.forEach((item, idx) => {
+                        if (usedIndices.has(idx)) return;
+                        const itemNum = extractQNum(item);
+                        const itemLabel = (item.label || item.qLabel || '').toLowerCase().trim();
+
+                        const isMatch = (item.qId && q.id && item.qId === q.id) ||
+                                        (itemNum !== null && itemNum === qNum) ||
+                                        (itemLabel && itemLabel.startsWith(expectedPrefix));
+                        if (isMatch) {
+                            chunk.push(item);
+                            usedIndices.add(idx);
+                        }
+                    });
+
+                    if (chunk.length > 0) {
+                        chunk.sort((a, b) => {
+                            const letterA = extractSubLetter(a.label);
+                            const letterB = extractSubLetter(b.label);
+                            if (letterA && letterB) return letterA.localeCompare(letterB);
+                            return (a.label || '').localeCompare(b.label || '');
+                        });
+                        grouped[qNum] = chunk;
+                    }
+                });
+            }
+
+            allTLItems.forEach((item, idx) => {
+                if (usedIndices.has(idx)) return;
+                const num = extractQNum(item);
+                if (num !== null) {
+                    if (!grouped[num]) grouped[num] = [];
+                    grouped[num].push(item);
+                    usedIndices.add(idx);
+                } else {
+                    unnumbered.push(item);
+                }
+            });
+
+            const finalQuestions = [];
+            const sortedNums = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+            sortedNums.forEach(num => {
+                const chunk = grouped[num];
+                chunk.sort((a, b) => {
+                    const letterA = extractSubLetter(a.label);
+                    const letterB = extractSubLetter(b.label);
+                    if (letterA && letterB) return letterA.localeCompare(letterB);
+                    return (a.label || '').localeCompare(b.label || '');
+                });
+                finalQuestions.push(chunk);
+            });
+
+            if (unnumbered.length > 0) {
+                const dvktGroups = {};
+                unnumbered.forEach(item => {
+                    const key = item.dvkt || '_unknown';
+                    if (!dvktGroups[key]) dvktGroups[key] = [];
+                    dvktGroups[key].push(item);
+                });
+                Object.values(dvktGroups).forEach(grp => {
+                    for (let i = 0; i < grp.length; i += 2) {
+                        finalQuestions.push(grp.slice(i, i + 2));
+                    }
+                });
+            }
+
+            const alphabet = ['a', 'b', 'c', 'd', 'e', 'f'];
+            const cellMap = {};
+
+            finalQuestions.forEach((chunk, cIdx) => {
+                const actualQNum = isCont ? (tlStart + cIdx) : (cIdx + 1);
+                const isMulti = chunk.length > 1;
+
+                chunk.forEach((item, iIdx) => {
+                    const letter = isMulti ? (extractSubLetter(item.label) || alphabet[iIdx] || '') : '';
+                    const key = `${item.ti}_${item.di}_tl_${item.lvl}`;
+                    if (!cellMap[key]) cellMap[key] = [];
+                    cellMap[key].push({ actualQNum, letter });
+                });
+            });
+
+            const isKHTNMonExport = /KHTN|Khoa học tự nhiên/i.test(examHeader?.monHoc || '') || examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10;
+
+            Object.keys(cellMap).forEach(key => {
+                const items = cellMap[key];
+                const byQNum = {};
+                items.forEach(it => {
+                    if (!byQNum[it.actualQNum]) byQNum[it.actualQNum] = [];
+                    if (it.letter) byQNum[it.actualQNum].push(it.letter);
+                });
+
+                const labels = [];
+                Object.keys(byQNum).map(Number).sort((a, b) => a - b).forEach(qNum => {
+                    const letters = byQNum[qNum];
+                    const prefix = isKHTNMonExport ? `C${qNum}` : `TL.${qNum}`;
+                    if (letters.length === 0) {
+                        labels.push(prefix);
+                    } else if (letters.length === 1) {
+                        labels.push(`${prefix} ý ${letters[0]}`);
+                    } else {
+                        labels.push(`${prefix} ý ${letters.join(', ')}`);
+                    }
+                });
+
+                qMap[key] = labels.join(', ');
+            });
+        }
     }
     // Helper: format câu số dưới giá trị
     const fmtQ = (key) => {
         const q = qMap[key];
         if (!q) return '';
+        if (typeof q === 'string') {
+            return `<br/><span style="font-size:9pt;color:#555;">${q}</span>`;
+        }
         if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) {
             const [, , type] = key.split('_');
             let qLabel = '';
