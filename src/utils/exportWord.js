@@ -2466,9 +2466,9 @@ export const exportToWord = async (options = {}) => {
             const rowChildren = [];
             for(let j=0; j<4; j++){
               if(i+j < cellsArray.length){
-                rowChildren.push(createCell(cellsArray[i+j], false));
+                rowChildren.push(createCell(cellsArray[i+j], false, AlignmentType.CENTER, 1, 1, "", mathMode));
               } else {
-                rowChildren.push(createCell("", false));
+                rowChildren.push(createCell("", false, AlignmentType.CENTER, 1, 1, "", mathMode));
               }
             }
             saDataRows.push(new TableRow({ children: rowChildren }));
@@ -2496,7 +2496,7 @@ export const exportToWord = async (options = {}) => {
             answerKeyParagraphs.push(new Paragraph({
               children: [
                 new TextRun({ text: `${examConfig.isCauTruc4213 ? `III.${displayNum}` : `Câu ${displayNum}`}: `, bold: true, size: 28, font: "Times New Roman" }),
-                new TextRun({ text: String(dapAn).replace(/\*\*/g, '').trim(), size: 28, font: "Times New Roman" })
+                ...parseMixedTextToRuns(String(dapAn).replace(/\*\*/g, '').trim(), 28, "Times New Roman", mathMode)
               ],
               spacing: { after: 60 }
             }));
@@ -2505,7 +2505,7 @@ export const exportToWord = async (options = {}) => {
               answerKeyParagraphs.push(new Paragraph({
                 children: [
                   new TextRun({ text: `Giải thích: `, bold: true, italics: true, size: 28, font: "Times New Roman" }),
-                  new TextRun({ text: slotData.giaiThich.replace(/\*\*/g, '').trim(), italics: true, size: 28, font: "Times New Roman" })
+                  ...parseMixedTextToRuns(slotData.giaiThich.replace(/\*\*/g, '').trim(), 28, "Times New Roman", mathMode, false, undefined)
                 ],
                 spacing: { after: 120 }
               }));
@@ -2717,7 +2717,7 @@ export const exportToWord = async (options = {}) => {
           const gtLines = slotData.giaiThich.split('\n');
           const gtParagraphs = gtLines.filter(l => l.trim() !== '').map(line =>
             new Paragraph({
-              children: [new TextRun({ text: line.trim(), italics: true, size: 20, font: "Times New Roman" })],
+              children: parseMixedTextToRuns(line.trim(), 20, "Times New Roman", mathMode, false, undefined),
               spacing: { after: 40 }
             })
           );

@@ -2,6 +2,7 @@ import { saveAs } from 'file-saver';
 import katex from 'katex';
 import { useExamStore, getTuLuanCauCount, getTopicTuLuanDiem } from '../store/useExamStore';
 import { getActiveLevelsForDv, formatLevelDisplayName, parseYccdByLevel } from './specTableHelper';
+import { autoEncloseMath } from './latexToDocxMath';
 
 const getFormatTLCau = (matrix, lvl) => {
     const storeState = useExamStore.getState();
@@ -78,16 +79,22 @@ function graphImgHtml(base64Src) {
 // ==========================================
 const _formatTextMathML = (text) => {
     if (!text) return "";
-    let processed = String(text);
+    // Tự động chuẩn hóa decode entities và bọc các công thức toán chưa có $
+    let processed = autoEncloseMath(String(text));
 
     const renderMath = (math, isDisplay, originalMatch) => {
         try {
-            const html = katex.renderToString(math, { throwOnError: false, displayMode: isDisplay });
+            const cleanMath = String(math).trim();
+            const html = katex.renderToString(cleanMath, { throwOnError: false, displayMode: isDisplay });
             const mathmlMatch = html.match(/<math[^>]*>.*?<\/math>/s);
             if (mathmlMatch) {
                 let mathml = mathmlMatch[0];
-                // BÍ QUYẾT: Xóa thẻ semantics và annotation để ÉP MS Word phải vẽ công thức, không được in text
-                mathml = mathml.replace(/<semantics[^>]*>/g, '').replace(/<\/semantics>/g, '');
+                // Đảm bảo namespace XML MathML chuẩn của W3C
+                if (!mathml.includes('xmlns=')) {
+                    mathml = mathml.replace('<math', '<math xmlns="http://www.w3.org/1998/Math/MathML"');
+                }
+                // Thay semantics bằng mrow để bảo toàn DOM cho Microsoft Word
+                mathml = mathml.replace(/<semantics[^>]*>/g, '<mrow>').replace(/<\/semantics>/g, '</mrow>');
                 mathml = mathml.replace(/<annotation[^>]*>.*?<\/annotation>/gs, '');
                 // Tăng kích thước subscript/superscript cho giống đánh thủ công
                 if (!mathml.includes('scriptsizemultiplier')) {

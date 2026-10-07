@@ -67,10 +67,102 @@ export const SYMBOLS_MAP = {
   '\\,': ' ', '\\;': ' ', '\\:': ' ', '\\quad': '  ', '\\qquad': '    ', '\\ ': ' ', '\\!': ''
 };
 
+// ═══════════════════════════════════════════════════════════════════
+// HÀM GIẢI MÃ HTML ENTITIES & TỰ ĐỘNG CHUẨN HÓA CÔNG THỨC TOÁN
+// ═══════════════════════════════════════════════════════════════════
+export function decodeHtmlEntities(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&le;/g, '\\le')
+    .replace(/&ge;/g, '\\ge')
+    .replace(/&plusmn;/g, '\\pm')
+    .replace(/&times;/g, '\\times')
+    .replace(/&divide;/g, '\\div')
+    .replace(/&deg;/g, '^\\circ')
+    .replace(/&Omega;/g, '\\Omega')
+    .replace(/&omega;/g, '\\omega')
+    .replace(/&alpha;/g, '\\alpha')
+    .replace(/&beta;/g, '\\beta')
+    .replace(/&pi;/g, '\\pi')
+    .replace(/&Delta;/g, '\\Delta')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
+}
+
+function transformOutsideMath(str, transformFn) {
+  const parts = str.split(/(\$\$[\s\S]*?\$\$|\$[^\$]+?\$)/g);
+  return parts.map((part, idx) => {
+    if (idx % 2 === 1) return part; // Nằm trong $...$, giữ nguyên
+    return transformFn(part);
+  }).join('');
+}
+
+/**
+ * Tự động nhận diện các biểu thức công thức toán/lý/hóa trong câu hỏi & đáp án
+ * chưa được bọc trong $...$ để bọc lại và chuẩn hóa cho Word Equation và MathType OLE
+ */
+export function autoEncloseMath(text) {
+  if (!text) return '';
+  let s = decodeHtmlEntities(String(text));
+
+  // 1. Chuyển đổi số mũ & chỉ số Unicode
+  s = transformOutsideMath(s, t => {
+    return t.replace(/²/g, '^2').replace(/³/g, '^3').replace(/⁴/g, '^4')
+            .replace(/₀/g, '_0').replace(/₁/g, '_1').replace(/₂/g, '_2')
+            .replace(/₃/g, '_3').replace(/₄/g, '_4').replace(/₅/g, '_5')
+            .replace(/₆/g, '_6').replace(/₇/g, '_7').replace(/₈/g, '_8').replace(/₉/g, '_9');
+  });
+
+  // 2. Nhận diện các biểu thức công thức động năng/cơ năng: Wđ = 1/2.m.v^2 hoặc Wđ = m.v^2...
+  s = transformOutsideMath(s, t => {
+    return t.replace(/(?:W[đd]|W_đ|W_t|W)\s*=\s*(?:1\/2\.m\.v\^2|1\/2\.m\.v|m\.v\^2|m\.v|mgh|P\.h)/gi, (m) => {
+      let f = m.replace(/W[đd]/gi, 'W_{đ}')
+               .replace(/1\/2\.m\.v\^2/gi, '\\frac{1}{2}mv^2')
+               .replace(/1\/2\.m\.v/gi, '\\frac{1}{2}mv')
+               .replace(/m\.v\^2/gi, 'mv^2')
+               .replace(/m\.v/gi, 'mv')
+               .replace(/P\.h/gi, 'P \\cdot h');
+      return '$' + f + '$';
+    });
+  });
+
+  // 3. Nhận diện các biểu thức quang học/điện học:
+  s = transformOutsideMath(s, t => {
+    let res = t.replace(/(i_\{?gh\}?\s*=\s*[0-9.,]+)(?:°|\^\\circ|\\degree)?/gi, (m, expr) => {
+      return '$' + expr.replace(/i_gh/g, 'i_{gh}') + '^\\circ$';
+    });
+    res = res.replace(/(R_[0-9]+\s*=\s*[0-9.,]+\s*(?:Ω|\\Omega)?)/g, (m) => {
+      return '$' + m.replace(/Ω/g, '\\ \\Omega') + '$';
+    });
+    res = res.replace(/(n\s*=\s*[0-9]+\/[0-9]+)/gi, (m) => {
+      const parts = m.split('=');
+      const frac = parts[1].trim().split('/');
+      return '$n = \\frac{' + frac[0] + '}{' + frac[1] + '}$';
+    });
+    return res;
+  });
+
+  // 4. Bọc các lệnh LaTeX mồ côi còn sót chưa có $
+  s = transformOutsideMath(s, t => {
+    let res = t.replace(/(\\(?:frac|dfrac|tfrac)\{[^}]+\}\{[^}]+\}(?:[a-zA-Z0-9_\^\.]*))/g, '$$$1$$');
+    res = res.replace(/(\\(?:sqrt)(?:\[[^\]]+\])?\{[^}]+\})/g, '$$$1$$');
+    res = res.replace(/(\\(?:vec|overrightarrow)\{[^}]+\})/g, '$$$1$$');
+    res = res.replace(/\b([a-zA-Z][a-zA-Z0-9]*_\{[^{}]+\})/g, '$$$1$$');
+    return res;
+  });
+
+  // 5. Dọn dẹp dấu $ thừa nếu có
+  s = s.replace(/\$\$\$+/g, '$').replace(/\$\s*\$/g, '');
+
+  return s;
+}
+
 // Chuẩn hóa chuỗi LaTeX trước khi parse
 export function preprocessLatex(latex) {
   if (!latex) return '';
-  let s = String(latex).trim();
+  let s = decodeHtmlEntities(String(latex)).trim();
 
   // Bỏ các lệnh trang trí không ảnh hưởng ngữ nghĩa
   s = s.replace(/\\(displaystyle|textstyle|limits|nolimits)/g, '');
@@ -87,12 +179,13 @@ export function preprocessLatex(latex) {
   // Chuẩn hóa \vec{} và \overrightarrow{}
   s = s.replace(/\\overrightarrow\{([^}]+)\}/g, '\\vec{$1}');
 
-  // Chuẩn hóa tập số \mathbb{R}, \mathbb{N}, v.v.
-  s = s.replace(/\\(mathbb|mathbf)\{R\}/g, 'ℝ');
-  s = s.replace(/\\(mathbb|mathbf)\{N\}\^?\*?/g, (m) => m.includes('*') ? 'ℕ*' : 'ℕ');
-  s = s.replace(/\\(mathbb|mathbf)\{Z\}/g, 'ℤ');
-  s = s.replace(/\\(mathbb|mathbf)\{Q\}/g, 'ℚ');
-  s = s.replace(/\\(mathbb|mathbf)\{C\}/g, 'ℂ');
+  // Chuẩn hóa tập số \mathbb{R}, \mathbb{N}, v.v. (hỗ trợ linh hoạt khoảng trắng)
+  s = s.replace(/\\(mathbb|mathbf)\s*\{\s*R\s*\}/g, 'ℝ');
+  s = s.replace(/\\(mathbb|mathbf)\s*\{\s*N\s*\}\s*\^?\*?/g, (m) => m.includes('*') ? 'ℕ*' : 'ℕ');
+  s = s.replace(/\\(mathbb|mathbf)\s*\{\s*Z\s*\}/g, 'ℤ');
+  s = s.replace(/\\(mathbb|mathbf)\s*\{\s*Q\s*\}/g, 'ℚ');
+  s = s.replace(/\\(mathbb|mathbf)\s*\{\s*C\s*\}/g, 'ℂ');
+  s = s.replace(/\\(mathbb|mathbf)\s*\{\s*P\s*\}/g, 'ℙ');
 
   // Chuẩn hóa hệ phương trình \begin{cases} ... \end{cases} -> \left\{ pt1;\; pt2 \right.
   s = s.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g, (_, content) => {
@@ -124,7 +217,7 @@ export function tokenizeLatex(latex) {
         cmd += s[j];
         j++;
       }
-      if (cmd === '\\text' || cmd === '\\mathrm' || cmd === '\\mathbf' || cmd === '\\operatorname') {
+      if (cmd === '\\text' || cmd === '\\mathrm' || cmd === '\\mathbf' || cmd === '\\operatorname' || cmd === '\\mathit') {
         while (j < s.length && /\s/.test(s[j])) j++;
         if (j < s.length && s[j] === '{') {
           j++; // skip '{'
@@ -185,12 +278,26 @@ export function tokenizeLatex(latex) {
       continue;
     }
 
-    // Ký tự / toán tử
+    // Ký tự / toán tử (hỗ trợ cả chữ tiếng Việt)
     tokens.push({ type: 'char', val: c });
     i++;
   }
 
   return tokens;
+}
+
+// Helper trích xuất text từ MathRun đối tượng docx
+function extractTextFromMathRun(r) {
+  if (!r) return '';
+  if (typeof r === 'string') return r;
+  if (r.root && Array.isArray(r.root)) {
+    for (const item of r.root) {
+      if (item && item.rootKey === 'm:t' && Array.isArray(item.root) && typeof item.root[0] === 'string') {
+        return item.root[0];
+      }
+    }
+  }
+  return '';
 }
 
 // Parser: Chuyển token stream thành mảng đối tượng Math của docx
@@ -271,8 +378,19 @@ export function parseTokensToDocxMath(tokens) {
         return [new MathRun(SYMBOLS_MAP[tok.val])];
       }
 
-      // 2. Chữ văn bản trong toán: \text{...}, \mathrm{...}, \mathbf{...}
-      if (tok.val === '\\text' || tok.val === '\\mathrm' || tok.val === '\\mathbf' || tok.val === '\\operatorname') {
+      // 1.5. Xử lý \mathbb và \mathbf cho tập số phòng vệ nếu chưa được preprocess
+      if (tok.val === '\\mathbb' || tok.val === '\\mathbf') {
+        const arg = parseArg();
+        const argText = arg.map(extractTextFromMathRun).join('').trim();
+        const doubleStruckMap = { 'R': 'ℝ', 'N': 'ℕ', 'Z': 'ℤ', 'Q': 'ℚ', 'C': 'ℂ', 'P': 'ℙ' };
+        if (doubleStruckMap[argText]) {
+          return [new MathRun(doubleStruckMap[argText])];
+        }
+        return arg;
+      }
+
+      // 2. Chữ văn bản trong toán: \text{...}, \mathrm{...}, \mathbf{...}, \mathit{...}
+      if (tok.val === '\\text' || tok.val === '\\mathrm' || tok.val === '\\mathbf' || tok.val === '\\operatorname' || tok.val === '\\mathit') {
         const arg = parseArg();
         return arg;
       }
@@ -310,22 +428,55 @@ export function parseTokensToDocxMath(tokens) {
         return [];
       }
 
-      // 4. Vectơ
+      // 4. Vectơ (gắn combining right arrow \u20D7 trực tiếp vào chữ cái để hiển thị chính giữa trên đầu)
       if (tok.val === '\\vec') {
         const arg = parseArg();
-        return [...arg, new MathRun('⃗')];
+        const newRuns = [];
+        let applied = false;
+        for (const elem of arg) {
+          const t = extractTextFromMathRun(elem);
+          if (t) {
+            newRuns.push(new MathRun(t.split('').map(c => c + '\u20D7').join('')));
+            applied = true;
+          } else {
+            newRuns.push(elem);
+          }
+        }
+        return applied ? newRuns : [...arg, new MathRun('\u20D7')];
       }
 
-      // 5. Gạch đầu (bar)
+      // 5. Gạch đầu (bar, overline)
       if (tok.val === '\\bar' || tok.val === '\\overline') {
         const arg = parseArg();
-        return [...arg, new MathRun('̅')];
+        const newRuns = [];
+        let applied = false;
+        for (const elem of arg) {
+          const t = extractTextFromMathRun(elem);
+          if (t) {
+            newRuns.push(new MathRun(t.split('').map(c => c + '\u0305').join('')));
+            applied = true;
+          } else {
+            newRuns.push(elem);
+          }
+        }
+        return applied ? newRuns : [...arg, new MathRun('\u0305')];
       }
 
-      // 6. Mũ (hat)
+      // 6. Mũ (hat, widehat)
       if (tok.val === '\\hat' || tok.val === '\\widehat') {
         const arg = parseArg();
-        return [...arg, new MathRun('̂')];
+        const newRuns = [];
+        let applied = false;
+        for (const elem of arg) {
+          const t = extractTextFromMathRun(elem);
+          if (t) {
+            newRuns.push(new MathRun(t.split('').map(c => c + '\u0302').join('')));
+            applied = true;
+          } else {
+            newRuns.push(elem);
+          }
+        }
+        return applied ? newRuns : [...arg, new MathRun('\u0302')];
       }
 
       // 7. Các hàm toán phổ biến: sin, cos, tan, log, ln, lim...
@@ -501,7 +652,9 @@ export function parseMixedTextToRuns(
   textColor = undefined
 ) {
   if (!text) return [new TextRun({ text: '', size: baseFontSize, font: fontName })];
-  const str = String(text);
+  // Tự động chuẩn hóa và bọc các công thức toán/lý/hóa chưa có dấu $
+  const normalizedText = (mathMode !== 'normal') ? autoEncloseMath(text) : String(text);
+  const str = String(normalizedText);
 
   // Nếu chế độ normal, không cần tách math, chỉ xử lý text và markdown bold
   if (mathMode === 'normal') {
@@ -510,7 +663,7 @@ export function parseMixedTextToRuns(
     return parseBoldTextRuns(cleanStr, baseFontSize, fontName, defaultBold, textColor);
   }
 
-  // Nếu chế độ raw_latex: giữ nguyên $...$ dưới dạng TextRun
+  // Nếu chế độ raw_latex: giữ nguyên $...$ dưới dạng TextRun (đã được autoEncloseMath bọc $ đầy đủ)
   if (mathMode === 'raw_latex') {
     return parseBoldTextRuns(str, baseFontSize, fontName, defaultBold, textColor);
   }
