@@ -442,6 +442,9 @@ export const exportToWord = async (options = {}) => {
     const tlCau = config.hasTuLuan ? getTuLuanCauCount(matrix, level, storeState?.tuLuanConfig) : 0;
     return sumCount('nhieuLuaChon', level) + (sumCount('dungSai', level) * 0.25) + (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) + tlCau;
   };
+  const getLevelTotalItems = (level) => {
+    return sumCount('nhieuLuaChon', level) + sumCount('dungSai', level) + (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) + (config.hasTuLuan ? sumCount('tuLuan', level) : 0);
+  };
 
   const getTopicTuLuanPoints = (topic) => (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0) + (isKHTNMon ? (Number(dv.tuLuan?.diemVanDungCao) || 0) : 0), 0);
 
@@ -1146,6 +1149,10 @@ export const exportToWord = async (options = {}) => {
     const ptsVD = getLevelTotalPoints('vanDung');
     const ptsVDC = getLevelTotalPoints('vanDungCao');
     const ptsTotal = ptsB + ptsH + ptsVD + ptsVDC;
+
+    const tlH = hasTL ? (matrix || []).reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, 'diemHieu'), 0) : 0;
+    const tlVD = hasTL ? (matrix || []).reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, 'diemVanDung'), 0) : 0;
+    const tlVDC = hasTL ? (matrix || []).reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, 'diemVanDungCao'), 0) : 0;
 
     const row2Cells = [
       createCell("Tổng số điểm", true, AlignmentType.CENTER, 1, 3, "CBD5E1"),
