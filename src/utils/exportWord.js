@@ -525,6 +525,12 @@ export const exportToWord = async (options = {}) => {
     return `${cStr} (${cnt} ý)`;
   };
 
+  const fmtDsCauMatrix = (cnt) => {
+    if (!cnt) return '';
+    const c = cnt * 0.25;
+    return c % 1 === 0 ? String(c) : c.toFixed(2).replace(/0$/, '').replace('.', ',');
+  };
+
   // === TÍNH MAP CÂU SỐ TRONG KHUNG ĐỀ CHO TỪNG Ô ===
   const qMap = {};
   const isCont = isCauTrucKHTNVao10 ? false : (isKHTNMon ? true : (examConfig.isCauTruc4213 ? false : config.isContinuousNumbering));
@@ -1126,9 +1132,9 @@ export const exportToWord = async (options = {}) => {
     const row1Cells = [
       createCell("Tổng số câu/lệnh hỏi", true, AlignmentType.CENTER, 1, 3, "E2E8F0"),
       createCell(nlcB || ''), createCell(nlcH || ''), createCell(nlcVD || ''),
-      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsB) : (dsB ? (dsB % 2 === 0 ? String(dsB / 2) : `${(dsB * 0.25).toFixed(1).replace('.', ',')}`) : '')),
-      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsH) : (dsH ? (dsH % 4 === 0 ? String(dsH / 4) : `${(dsH * 0.25).toFixed(1).replace('.', ',')}`) : '')),
-      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsVD) : (dsVD ? (dsVD % 4 === 0 ? String(dsVD / 4) : `${(dsVD * 0.25).toFixed(1).replace('.', ',')}`) : '')),
+      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsB) : fmtDsCauMatrix(dsB)),
+      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsH) : fmtDsCauMatrix(dsH)),
+      createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(dsVD) : fmtDsCauMatrix(dsVD)),
       createCell(tlnB || ''), createCell(tlnH || ''), createCell(tlnVD || '')
     ];
     if (hasTL) {
@@ -1397,9 +1403,9 @@ export const exportToWord = async (options = {}) => {
     createCell(sumCount('nhieuLuaChon', 'biet')),
     createCell(sumCount('nhieuLuaChon', 'hieu')),
     createCell(sumCount('nhieuLuaChon', 'vanDung')),
-    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'biet')) : (sumCount('dungSai', 'biet') ? (sumCount('dungSai', 'biet') * 0.25) : 0)),
-    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'hieu')) : (sumCount('dungSai', 'hieu') ? (sumCount('dungSai', 'hieu') * 0.25) : 0)),
-    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'vanDung')) : (sumCount('dungSai', 'vanDung') ? (sumCount('dungSai', 'vanDung') * 0.25) : 0)),
+    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'biet')) : (fmtDsCauMatrix(sumCount('dungSai', 'biet')) || 0)),
+    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'hieu')) : (fmtDsCauMatrix(sumCount('dungSai', 'hieu')) || 0)),
+    createCell(isCauTrucKHTNVao10 ? fmtDsCauWord(sumCount('dungSai', 'vanDung')) : (fmtDsCauMatrix(sumCount('dungSai', 'vanDung')) || 0)),
     createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0),
     createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0),
     createCell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)
@@ -2921,6 +2927,49 @@ export const exportToWord = async (options = {}) => {
                   createCell("Vận dụng kiến thức, kĩ năng vào bối cảnh mới, tình huống thực tiễn; giải quyết vấn đề phức hợp, liên môn.", false, AlignmentType.LEFT),
                 ]
               }),
+            ],
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: standardBorders,
+          }),
+        ] : []),
+
+        // ==================== BẢNG CHỈ BÁO NĂNG LỰC KHOA HỌC TỰ NHIÊN (NẾU MÔN KHTN) ====================
+        ...(isKHTNMon ? [
+          new Paragraph({ text: "", spacing: { after: 200 } }),
+          new Paragraph({ children: [new TextRun({ text: "BẢNG MÃ CHỈ BÁO NĂNG LỰC MÔN KHOA HỌC TỰ NHIÊN (KHTN)", bold: true, size: 28, font: "Times New Roman" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+          new Table({
+            rows: [
+              new TableRow({ children: [createCell("Mã chỉ báo", true, AlignmentType.CENTER, 1, 1, "E2E8F0"), createCell("Nội dung chỉ báo năng lực (Chuẩn CTGDPT 2018)", true, AlignmentType.CENTER, 1, 1, "E2E8F0")] }),
+              new TableRow({ children: [createCell("I. Nhận thức khoa học tự nhiên (Mã NT)", true, AlignmentType.LEFT, 1, 2, "DBEAFE")] }),
+              new TableRow({ children: [createCell("NT1", true), createCell("Nhận biết, kể tên, phát biểu, nêu được đối tượng, khái niệm, quy luật, hiện tượng tự nhiên.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("NT2", true), createCell("Trình bày, mô tả bằng các hình thức ngôn ngữ nói, viết, công thức, sơ đồ, biểu đồ, bảng.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("NT3", true), createCell("So sánh, phân loại, lựa chọn được các đối tượng, khái niệm, hiện tượng theo các tiêu chí khác nhau.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("NT4", true), createCell("Phân tích được các khía cạnh, đặc điểm của sự vật, hiện tượng theo logic nhất định.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("NT5", true), createCell("Tìm được từ khóa, sử dụng được thuật ngữ khoa học, kết nối thông tin, lập dàn ý văn bản khoa học.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("NT6", true), createCell("Giải thích, lập luận được mối quan hệ nhân - quả, cấu tạo - chức năng giữa các sự vật, hiện tượng.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("NT7", true), createCell("Nhận ra điểm sai, chỉnh sửa, đưa ra nhận định phê phán liên quan đến chủ đề khoa học.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("II. Tìm hiểu tự nhiên (Mã TH)", true, AlignmentType.LEFT, 1, 2, "DCFCE7")] }),
+              new TableRow({ children: [createCell("TH1", true), createCell("Đề xuất vấn đề: Nhận ra và đặt được câu hỏi liên quan đến vấn đề/hiện tượng tự nhiên.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("TH2", true), createCell("Đưa ra phán đoán và xây dựng giả thuyết nghiên cứu khoa học đơn giản.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("TH3", true), createCell("Lập kế hoạch thực hiện: Thiết kế phương án, lựa chọn dụng cụ, hóa chất thích hợp.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("TH4", true), createCell("Thực hiện kế hoạch: Tiến hành thí nghiệm, thu thập, lưu giữ, xử lí dữ liệu và rút ra kết luận.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("TH5", true), createCell("Viết, trình bày báo cáo và thảo luận: Vẽ sơ đồ, đồ thị, thiết kế mô hình hoặc dụng cụ.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("TH6", true), createCell("Ra quyết định, đề xuất biện pháp xử lí hoặc giải quyết vấn đề thực tiễn.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("III. Vận dụng kiến thức, kĩ năng đã học (Mã VD)", true, AlignmentType.LEFT, 1, 2, "FEF3C7")] }),
+              new TableRow({ children: [createCell("VD1", true), createCell("Vận dụng kiến thức, kĩ năng đã học để giải thích hiện tượng thực tế, giải bài tập định lượng.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("VD2", true), createCell("Vận dụng kiến thức để đề xuất, giải thích biện pháp và ứng dụng khoa học trong thực tiễn, bảo vệ môi trường.", false, AlignmentType.LEFT)] }),
+            ],
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: standardBorders,
+          }),
+          new Paragraph({ text: "", spacing: { after: 200 } }),
+          new Paragraph({ children: [new TextRun({ text: "ĐỘNG TỪ MÔ TẢ CẤP ĐỘ TƯ DUY TRONG MÔN KHOA HỌC TỰ NHIÊN", bold: true, size: 28, font: "Times New Roman" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+          new Table({
+            rows: [
+              new TableRow({ children: [createCell("Mức độ", true, AlignmentType.CENTER, 1, 1, "E2E8F0"), createCell("Động từ mô tả", true, AlignmentType.CENTER, 1, 1, "E2E8F0")] }),
+              new TableRow({ children: [createCell("1. Biết\n(Nhận biết)", true), createCell("Nhận biết, nhận dạng, gọi tên, nêu được đối tượng/dụng cụ/hóa chất/quy luật. Đọc và viết được ký hiệu, công thức khoa học. Xác định được điều kiện, tính chất cơ bản. Liệt kê được hiện tượng, đặc điểm.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("2. Hiểu\n(Thông hiểu)", true), createCell("Trình bày, giải thích được hiện tượng bằng ngôn ngữ cá nhân. Mô tả quy trình thí nghiệm, so sánh, phân loại đối tượng. Giải thích mối quan hệ cấu tạo - chức năng, nguyên nhân - kết quả. Tính toán đơn giản theo công thức định luật.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("3. Vận dụng &\nVận dụng cao", true), createCell("Vận dụng giải bài tập định lượng phức hợp, phân tích số liệu thực nghiệm. Đề xuất giải pháp bảo vệ môi trường, ứng dụng kỹ thuật vào sản xuất và đời sống. Thiết kế thí nghiệm hoặc mô hình STEM.", false, AlignmentType.LEFT)] }),
             ],
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: standardBorders,
