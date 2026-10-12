@@ -51,6 +51,8 @@ export default function Step3_Specification() {
     (examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(examHeader.kyThi) && isKHTNMon && !config.hasTuLuan)
   );
 
+  const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+
   // =======================================================================
   // NHIỆM VỤ 1 (Hướng A): Tự động phát hiện mã năng lực Hóa từ nội dung YCCĐ
   // Dựa trên khung năng lực GDPT 2018:
@@ -197,10 +199,19 @@ export default function Step3_Specification() {
 
   const sumAll = (type, level) => matrix.reduce((sum, topic) => sum + getTopicSum(topic, type, level), 0);
 
+  const fmtDsCau = (level) => {
+    let y = sumAll('dungSai', level);
+    if (level === 'vanDung') y += sumAll('dungSai', 'vanDungCao');
+    if (y === 0) return '';
+    const cau = y * 0.25;
+    const cauStr = cau % 1 === 0 ? String(cau) : Number(cau.toFixed(2)).toString().replace('.', ',');
+    return `${cauStr} (${y} ý)`;
+  };
+
   const fmtTuLuanCau = (level) => {
     const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
     if (cau === 0) return '';
-    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    const cauStr = cau % 1 === 0 ? String(cau) : Number(cau.toFixed(2)).toString().replace('.', ',');
     const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
     const diem = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKey), 0) * 100) / 100;
     if (diem > 0) {
@@ -407,17 +418,27 @@ export default function Step3_Specification() {
     if (isCauTrucKHTNVao10) {
       prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi Tuyển sinh vào lớp 10 THPT môn ${monHoc} (chương trình THCS - chủ yếu lớp 9) theo Quyết định 1038/QĐ-SGDĐT của Sở GD&ĐT Hải Phòng (Chương trình GDPT 2018). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
       prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở 3 mức độ (Nhận biết, Thông hiểu, Vận dụng). Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
+    } else if (isCauTrucToan8_5050) {
+      prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn Toán lớp 8 theo Chương trình GDPT 2018 (Cấu trúc 50% Trắc nghiệm - 50% Tự luận: 30% Biết - 40% Hiểu - 20% Vận dụng - 10% Vận dụng cao). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng chương trình Toán lớp 8 cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+      prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể (Nhận biết, Thông hiểu, Vận dụng, Vận dụng cao). Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
     } else {
-      prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn ${monHoc}${lop ? ` lớp ${lop}` : ''} theo Chương trình GDPT 2018 (Công văn 4956/SGDĐT). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+      prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn ${monHoc}${lop ? ` lớp ${lop}` : ''} theo Chương trình GDPT 2018${isKHTNMon ? ' (Công văn 4956/SGDĐT)' : ''}. Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
       prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể. Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
     }
 
     dvList.forEach((dv, index) => {
-      // Tính tổng số lượng câu/ý của từng mức độ cho ĐVKT này
-      const sumBiet = (dv.nhieuLuaChon?.biet || 0) + (dv.dungSai?.biet || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.biet || 0) : 0) + (typeof dv.tuLuan?.biet === 'object' ? dv.tuLuan.biet.y : (dv.tuLuan?.biet || 0));
-      const sumHieu = (dv.nhieuLuaChon?.hieu || 0) + (dv.dungSai?.hieu || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.hieu || 0) : 0) + (typeof dv.tuLuan?.hieu === 'object' ? dv.tuLuan.hieu.y : (dv.tuLuan?.hieu || 0));
-      const sumVD = (dv.nhieuLuaChon?.vanDung || 0) + (dv.dungSai?.vanDung || 0) + (config.hasTraLoiNgan ? (dv.traLoiNgan?.vanDung || 0) : 0) + (typeof dv.tuLuan?.vanDung === 'object' ? dv.tuLuan.vanDung.y : (dv.tuLuan?.vanDung || 0));
-      const sumVDC = isCauTrucKHTNVao10 ? 0 : ((Number(dv.dungSai?.vanDungCao) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0));
+      // Tính tổng số lượng câu/ý của từng mức độ cho ĐVKT này (hỗ trợ cả subItems và trường đếm trực tiếp)
+      const tlSubItems = Array.isArray(dv.tuLuan?.subItems) ? dv.tuLuan.subItems : [];
+      const tlCount = (lvl) => {
+        if (tlSubItems.length > 0) return tlSubItems.filter(s => s.level === lvl).length;
+        const v = dv.tuLuan?.[lvl];
+        return typeof v === 'object' ? (Number(v?.y) || 0) : (Number(v) || 0);
+      };
+
+      const sumBiet = (Number(dv.nhieuLuaChon?.biet) || 0) + (Number(dv.dungSai?.biet) || 0) + (config.hasTraLoiNgan ? (Number(dv.traLoiNgan?.biet) || 0) : 0) + (config.hasTuLuan ? tlCount('biet') : 0);
+      const sumHieu = (Number(dv.nhieuLuaChon?.hieu) || 0) + (Number(dv.dungSai?.hieu) || 0) + (config.hasTraLoiNgan ? (Number(dv.traLoiNgan?.hieu) || 0) : 0) + (config.hasTuLuan ? tlCount('hieu') : 0);
+      const sumVD = (Number(dv.nhieuLuaChon?.vanDung) || 0) + (Number(dv.dungSai?.vanDung) || 0) + (config.hasTraLoiNgan ? (Number(dv.traLoiNgan?.vanDung) || 0) : 0) + (config.hasTuLuan ? tlCount('vanDung') : 0);
+      const sumVDC = isCauTrucKHTNVao10 ? 0 : ((Number(dv.dungSai?.vanDungCao) || 0) + (config.hasTraLoiNgan ? (Number(dv.traLoiNgan?.vanDungCao) || 0) : 0) + (config.hasTuLuan ? tlCount('vanDungCao') : 0));
 
       let requiredLevels = [];
       if (sumBiet > 0) requiredLevels.push("Nhận biết");
@@ -480,8 +501,12 @@ export default function Step3_Specification() {
     } else {
       prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
       prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
-      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi theo CT GDPT 2018 (Nêu được, Trình bày được, Phân loại/Giải thích được, Vận dụng được, Đề xuất giải pháp...).\n`;
-      prompt += `3. Định dạng đầu ra mong muốn:\n   - Nhận biết: [Ghi 1 câu ngắn gọn...]\n   - Thông hiểu: [Ghi 1 câu ngắn gọn...]\n   - Vận dụng: [Ghi 1 câu ngắn gọn...]\n   - Vận dụng cao: [Ghi 1 câu ngắn gọn...]`;
+      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi chuẩn theo Chương trình GDPT 2018 môn ${isToanMon ? 'Toán' : monHoc} (Nhận biết: Nhận biết được, nêu được, phát biểu được...; Thông hiểu: Hiểu được, giải thích được, tính được, thực hiện được...; Vận dụng: Vận dụng được kiến thức để giải bài toán/vấn đề...; Vận dụng cao: Vận dụng kiến thức tổng hợp/nâng cao để giải quyết bài toán phức tạp/thực tế...).\n`;
+      prompt += `3. Định dạng đầu ra BẮT BUỘC (Chỉ viết các mức độ được yêu cầu trong ngoặc vuông [ ], tuyệt đối không thêm lời chào, lời dẫn hay giải thích ngoài lề):\n`;
+      prompt += `   - Nhận biết: [Ghi đúng 1 câu ngắn gọn...]\n`;
+      prompt += `   - Thông hiểu: [Ghi đúng 1 câu ngắn gọn...]\n`;
+      prompt += `   - Vận dụng: [Ghi đúng 1 câu ngắn gọn...]\n`;
+      prompt += `   - Vận dụng cao: [Ghi đúng 1 câu ngắn gọn...]`;
     }
 
     try {
@@ -502,14 +527,14 @@ export default function Step3_Specification() {
       const dvList = topic.donViKienThuc || [];
       // Tổng số dòng của toàn bộ chủ đề
       const topicTotalRows = dvList.reduce((sum, dv) => {
-        const active = getActiveLevelsForDv(dv, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+        const active = getActiveLevelsForDv(dv, isKHTNMon || isCauTrucToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
         return sum + active.length;
       }, 0) || 1;
 
       let isFirstTopicRow = true;
 
       dvList.forEach((dv, dvIdx) => {
-        const activeLevels = getActiveLevelsForDv(dv, isKHTNMon, config.hasTraLoiNgan, config.hasTuLuan);
+        const activeLevels = getActiveLevelsForDv(dv, isKHTNMon || isCauTrucToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
         const dvTotalRows = activeLevels.length;
         const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
 
@@ -525,7 +550,7 @@ export default function Step3_Specification() {
               if (!val) return;
               const parts = k.split('_');
               const indLvl = parts[1];
-              if (indLvl === lvl || (!isKHTNMon && lvl === 'vanDung' && indLvl === 'vanDungCao')) {
+              if (indLvl === lvl || ((!isKHTNMon && !isCauTrucToan8_5050) && lvl === 'vanDung' && indLvl === 'vanDungCao')) {
                 levelDetails.push(val);
               }
             });
@@ -765,7 +790,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
                     {lvl === 'vanDung' ? fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan', rowActiveCode) : ''}
                   </td>
-                  {isKHTNMon && (
+                  {(isKHTNMon || isCauTrucToan8_5050) && (
                     <td className="border border-slate-300 p-1 text-center font-medium text-red-700 text-[11px] leading-tight">
                       {lvl === 'vanDungCao' ? fmtY(dv.tuLuan?.vanDungCao, 'vanDungCao', dv, 'tuLuan', rowActiveCode) : ''}
                     </td>
@@ -991,6 +1016,78 @@ export default function Step3_Specification() {
         </div>
       </div>
 
+      {/* [TOÁN 8] BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY 50% TN - 50% TL */}
+      {isCauTrucToan8_5050 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-300 rounded-xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-extrabold text-indigo-900 text-sm flex items-center gap-2">
+              <span className="text-base">📐</span> BẢNG PHÂN BỐ MA TRẬN ĐẶC TẢ MÔN TOÁN 8 (50% TN - 50% TL)
+            </h3>
+            <span className="text-xs bg-indigo-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+              Cơ cấu: 3 - 1 - 1 - 5 (22 câu)
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border border-indigo-200 bg-white rounded-lg shadow-sm text-center">
+              <thead className="bg-indigo-700 text-white font-bold">
+                <tr>
+                  <th className="p-2 border border-indigo-600 text-left">Phần bài thi</th>
+                  <th className="p-2 border border-indigo-600">Nhận biết (30%)</th>
+                  <th className="p-2 border border-indigo-600">Thông hiểu (40%)</th>
+                  <th className="p-2 border border-indigo-600">Vận dụng (20%)</th>
+                  <th className="p-2 border border-indigo-600">VD Cao (10%)</th>
+                  <th className="p-2 border border-indigo-600">Tổng điểm</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-indigo-100 text-slate-700 font-medium">
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-indigo-900">Phần I: TN Nhiều lựa chọn (12 câu × 0.25đ)</td>
+                  <td className="p-1.5 bg-blue-50/70 font-bold text-blue-700">10 câu (2.5đ)</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">2 câu (0.5đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">12 câu (3.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-indigo-900">Phần II: Đúng/Sai (1 câu × 4 ý × 0.25đ)</td>
+                  <td className="p-1.5 bg-blue-50/40 font-bold text-blue-800" colSpan="3">
+                    1 câu gồm 4 ý: 02 Biết (0.5đ) + 01 Hiểu (0.25đ) + 01 Vận dụng (0.25đ)
+                  </td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">1 câu / 4 ý (1.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-indigo-900">Phần III: Trả lời ngắn (4 câu × 0.25đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">3 câu (0.75đ)</td>
+                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">1 câu (0.25đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 font-bold">4 câu (1.0đ)</td>
+                </tr>
+                <tr>
+                  <td className="p-1.5 text-left font-bold text-indigo-900">Phần IV: Tự luận (5 câu × 2 ý a, b × 0.5đ)</td>
+                  <td className="p-1.5 text-slate-400">0 câu</td>
+                  <td className="p-1.5 bg-emerald-50/70 font-bold text-emerald-700">5 ý (2.5đ)</td>
+                  <td className="p-1.5 bg-orange-50/70 font-bold text-orange-700">3 ý (1.5đ)</td>
+                  <td className="p-1.5 bg-red-50/70 font-bold text-red-700">2 ý / C22 (1.0đ)</td>
+                  <td className="p-1.5 font-bold">5 câu / 10 ý (5.0đ)</td>
+                </tr>
+              </tbody>
+              <tfoot className="bg-indigo-100 font-black text-indigo-950">
+                <tr>
+                  <td className="p-2 text-left uppercase">TỔNG CỘNG</td>
+                  <td className="p-2 text-blue-800">3.0 điểm (30%)</td>
+                  <td className="p-2 text-emerald-800">4.0 điểm (40%)</td>
+                  <td className="p-2 text-orange-800">2.0 điểm (20%)</td>
+                  <td className="p-2 text-red-800">1.0 điểm (10%)</td>
+                  <td className="p-2 text-indigo-900 text-sm">10.0 điểm (100%) - 22 câu</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY CHUAN CV 4956/SGDDT */}
       {isKHTNMon && (
         <div className="mb-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-teal-300 rounded-xl shadow-sm">
@@ -1104,11 +1201,11 @@ export default function Step3_Specification() {
                 <th rowSpan="4" className="border border-slate-400 p-2 w-32">Chủ đề/Chương</th>
                 <th rowSpan="4" className="border border-slate-400 p-2 w-40">Nội dung/Đơn vị KT</th>
                 <th rowSpan="4" className="border border-slate-400 p-2 w-64 bg-yellow-50">Yêu cầu cần đạt</th>
-                <th colSpan={config.hasTuLuan ? (isKHTNMon ? "13" : "12") : "9"} className="border border-slate-400 p-2">Số câu hỏi ở các mức độ đánh giá</th>
+                <th colSpan={config.hasTuLuan ? ((isKHTNMon || isCauTrucToan8_5050) ? "13" : "12") : "9"} className="border border-slate-400 p-2">Số câu hỏi ở các mức độ đánh giá</th>
               </tr>
               <tr>
                 <th colSpan="9" className="border border-slate-400 p-1 bg-blue-50">TNKQ</th>
-                {config.hasTuLuan && <th colSpan={isKHTNMon ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
+                {config.hasTuLuan && <th colSpan={(isKHTNMon || isCauTrucToan8_5050) ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
               </tr>
               <tr>
                 <th colSpan="3" className="border border-slate-400 p-1 bg-blue-50/80">Nhiều lựa chọn</th>
@@ -1124,7 +1221,7 @@ export default function Step3_Specification() {
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th>
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">TH</th>
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
-                    {isKHTNMon && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700">VDC</th>}
+                    {(isKHTNMon || isCauTrucToan8_5050) && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700">VDC</th>}
                   </>
                 )}
               </tr>
@@ -1152,7 +1249,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
-                  {isKHTNMon && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
+                  {(isKHTNMon || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
                 </>
               )}
             </tr>
@@ -1162,9 +1259,9 @@ export default function Step3_Specification() {
               <td className="border border-slate-400 p-2">{sumAll('nhieuLuaChon', 'biet')}</td>
               <td className="border border-slate-400 p-2">{sumAll('nhieuLuaChon', 'hieu')}</td>
               <td className="border border-slate-400 p-2">{sumAll('nhieuLuaChon', 'vanDung')}</td>
-              <td className="border border-slate-400 p-2 text-blue-800">{sumAll('dungSai', 'biet') * 0.25}</td>
-              <td className="border border-slate-400 p-2 text-blue-800">{sumAll('dungSai', 'hieu') * 0.25}</td>
-              <td className="border border-slate-400 p-2 text-blue-800">{(sumAll('dungSai', 'vanDung') + sumAll('dungSai', 'vanDungCao')) * 0.25}</td>
+              <td className="border border-slate-400 p-2 text-blue-800">{fmtDsCau('biet') || 0}</td>
+              <td className="border border-slate-400 p-2 text-blue-800">{fmtDsCau('hieu') || 0}</td>
+              <td className="border border-slate-400 p-2 text-blue-800">{fmtDsCau('vanDung') || 0}</td>
               <td className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? sumAll('traLoiNgan', 'biet') : 0}</td>
               <td className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? sumAll('traLoiNgan', 'hieu') : 0}</td>
               <td className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-50' : 'text-blue-800'}`}>{config.hasTraLoiNgan ? sumAll('traLoiNgan', 'vanDung') : 0}</td>
@@ -1173,7 +1270,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('biet')}</td>
                   <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('hieu')}</td>
                   <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('vanDung')}</td>
-                  {isKHTNMon && <td className="border border-slate-400 p-2 text-red-800 font-bold text-center">{fmtTuLuanCau('vanDungCao')}</td>}
+                  {(isKHTNMon || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-800 font-bold text-center">{fmtTuLuanCau('vanDungCao')}</td>}
                 </>
               )}
             </tr>
@@ -1183,7 +1280,7 @@ export default function Step3_Specification() {
               <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('nhieuLuaChon')}</td>
               <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('dungSai')}</td>
               <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-200' : ''}`}>{getColumnTotalPoints('traLoiNgan')}</td>
-              {config.hasTuLuan && <td colSpan={isKHTNMon ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
+              {config.hasTuLuan && <td colSpan={(isKHTNMon || isCauTrucToan8_5050) ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
             </tr>
 
             <tr className="bg-slate-200">
@@ -1191,7 +1288,7 @@ export default function Step3_Specification() {
               <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('nhieuLuaChon') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
               <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('dungSai') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
               <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-100' : ''}`}>{config.hasTraLoiNgan ? ((getColumnTotalPoints('traLoiNgan') / 10) * 100).toFixed(1).replace('.0', '') + '%' : '0%'}</td>
-              {config.hasTuLuan && <td colSpan={isKHTNMon ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
+              {config.hasTuLuan && <td colSpan={(isKHTNMon || isCauTrucToan8_5050) ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             </tr>
           </tfoot>
         </table>

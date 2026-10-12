@@ -8,11 +8,11 @@ const getFormatTLCau = (matrix, lvl) => {
     const storeState = useExamStore.getState();
     const c = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
     if (c === 0) return "";
-    const cStr = c % 1 === 0 ? String(c) : c.toFixed(1).replace('.', ',');
+    const cStr = c % 1 === 0 ? String(c) : Number(c.toFixed(2)).toString().replace('.', ',');
     const tlKey = lvl === 'biet' ? 'diemBiet' : lvl === 'hieu' ? 'diemHieu' : lvl === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
     const diem = Math.round((matrix || []).reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKey), 0) * 100) / 100;
     if (diem > 0) {
-      const diemStr = String(diem).replace('.', ',');
+      const diemStr = Number(diem.toFixed(2)).toString().replace('.', ',');
       return `${cStr} (${diemStr} điểm)`;
     }
     return cStr;
@@ -473,11 +473,21 @@ const getYParts = (q) => {
 // ==========================================
 const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
     const sumCount = (type, level) => matrix.reduce((sum, topic) => {
-        return sum + (topic.donViKienThuc || []).reduce((s2, dv) => s2 + (Number(dv[type]?.[level]) || 0), 0);
+        return sum + (topic.donViKienThuc || []).reduce((s2, dv) => {
+            if (type === 'tuLuan' && Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+                return s2 + dv.tuLuan.subItems.filter(s => s.level === level).length;
+            }
+            return s2 + (Number(dv[type]?.[level]) || 0);
+        }, 0);
     }, 0);
 
     const getTopicSum = (topic, type, level) =>
-        (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv[type]?.[level]) || 0), 0);
+        (topic.donViKienThuc || []).reduce((s, dv) => {
+            if (type === 'tuLuan' && Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+                return s + dv.tuLuan.subItems.filter(sub => sub.level === level).length;
+            }
+            return s + (Number(dv[type]?.[level]) || 0);
+        }, 0);
 
     const getTopicLevelCount = (topic, level) =>
         getTopicSum(topic, 'nhieuLuaChon', level) +
@@ -495,25 +505,36 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
         const nlc = ((Number(dv.nhieuLuaChon?.biet) || 0) + (Number(dv.nhieuLuaChon?.hieu) || 0) + (Number(dv.nhieuLuaChon?.vanDung) || 0)) * examConfig.diemMoiCauP1;
         const ds = ((Number(dv.dungSai?.biet) || 0) + (Number(dv.dungSai?.hieu) || 0) + (Number(dv.dungSai?.vanDung) || 0) + (Number(dv.dungSai?.vanDungCao) || 0)) * examConfig.diemMoiYP2;
         const tln = config.hasTraLoiNgan ? ((Number(dv.traLoiNgan?.biet) || 0) + (Number(dv.traLoiNgan?.hieu) || 0) + (Number(dv.traLoiNgan?.vanDung) || 0)) * examConfig.diemMoiYP3 : 0;
-        const tl = (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0);
+        const tl = (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0) + (Number(dv.tuLuan?.diemVanDungCao) || 0);
         return nlc + ds + tln + tl;
     };
 
+    const getDvLevelPoints = (dv, level) => {
+        const nlc = (level === 'vanDungCao' ? 0 : (Number(dv.nhieuLuaChon?.[level]) || 0) * examConfig.diemMoiCauP1);
+        const ds = ((Number(dv.dungSai?.[level]) || 0) + (level === 'vanDung' ? (Number(dv.dungSai?.vanDungCao) || 0) : 0)) * examConfig.diemMoiYP2;
+        const tln = (config.hasTraLoiNgan && level !== 'vanDungCao' ? (Number(dv.traLoiNgan?.[level]) || 0) * examConfig.diemMoiYP3 : 0);
+        const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
+        const tl = config.hasTuLuan ? (Number(dv.tuLuan?.[tlKey]) || 0) : 0;
+        const total = Math.round((nlc + ds + tln + tl) * 100) / 100;
+        if (total === 0) return '';
+        return Number(total.toFixed(2)).toString().replace('.', ',');
+    };
+
     const getLevelTotalItems = (level) =>
-        sumCount('nhieuLuaChon', level) +
+        (level === 'vanDungCao' ? 0 : sumCount('nhieuLuaChon', level)) +
         sumCount('dungSai', level) + (level === 'vanDung' ? sumCount('dungSai', 'vanDungCao') : 0) +
-        (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) +
+        (config.hasTraLoiNgan && level !== 'vanDungCao' ? sumCount('traLoiNgan', level) : 0) +
         sumCount('tuLuan', level);
 
     const getLevelTotalQuestions = (level) =>
-        sumCount('nhieuLuaChon', level) +
+        (level === 'vanDungCao' ? 0 : sumCount('nhieuLuaChon', level)) +
         ((sumCount('dungSai', level) + (level === 'vanDung' ? sumCount('dungSai', 'vanDungCao') : 0)) * 0.25) +
-        (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) +
+        (config.hasTraLoiNgan && level !== 'vanDungCao' ? sumCount('traLoiNgan', level) : 0) +
         getTuLuanCauCount(matrix, level, useExamStore.getState()?.tuLuanConfig);
 
     const getTopicTuLuanPoints = (topic) =>
         (topic.donViKienThuc || []).reduce((s, dv) =>
-            s + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0), 0);
+            s + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0) + (Number(dv.tuLuan?.diemVanDungCao) || 0), 0);
 
     const getColumnTotalPoints = (type) => {
         if (type === 'tuLuan') return matrix.reduce((sum, t) => sum + getTopicTuLuanPoints(t), 0);
@@ -526,18 +547,18 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
     };
 
     const getLevelTotalPoints = (level) => {
-        const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : 'diemVanDung';
+        const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
         return matrix.reduce((sum, topic) => {
             return sum +
-                getTopicSum(topic, 'nhieuLuaChon', level) * examConfig.diemMoiCauP1 +
+                (level === 'vanDungCao' ? 0 : getTopicSum(topic, 'nhieuLuaChon', level) * examConfig.diemMoiCauP1) +
                 (getTopicSum(topic, 'dungSai', level) + (level === 'vanDung' ? getTopicSum(topic, 'dungSai', 'vanDungCao') : 0)) * examConfig.diemMoiYP2 +
-                (config.hasTraLoiNgan ? getTopicSum(topic, 'traLoiNgan', level) * examConfig.diemMoiYP3 : 0) +
+                (config.hasTraLoiNgan && level !== 'vanDungCao' ? getTopicSum(topic, 'traLoiNgan', level) * examConfig.diemMoiYP3 : 0) +
                 (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.tuLuan?.[tlKey]) || 0), 0);
         }, 0);
     };
 
     const getGrandTotalPoints = () =>
-        getLevelTotalPoints('biet') + getLevelTotalPoints('hieu') + getLevelTotalPoints('vanDung');
+        getLevelTotalPoints('biet') + getLevelTotalPoints('hieu') + getLevelTotalPoints('vanDung') + getLevelTotalPoints('vanDungCao');
 
     const getDvLevelSummary = (dv, level) => {
         const nlc = Number(dv.nhieuLuaChon?.[level]) || 0;
@@ -556,7 +577,7 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
         return `${totalCau}c+ ${totalY} ý`;
     };
 
-    const pct = (val) => ((val / 10) * 100).toFixed(1).replace('.0', '') + '%';
+    const pct = (val) => Number(((val / 10) * 100).toFixed(2)).toString().replace('.', ',') + '%';
 
     // Phát hiện môn học để gắn mã năng lực chuyên môn
     const isHoaMon = /hóa|hoá/i.test(examHeader?.monHoc || '');
@@ -680,7 +701,10 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
       return `${v} (${code})`;
     };
     const fmtY = (val, level, dv, type) => {
-      const v = Number(val) || 0;
+      let v = Number(val) || 0;
+      if (type === 'tuLuan' && Array.isArray(dv?.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+        v = dv.tuLuan.subItems.filter(s => s.level === level).length;
+      }
       if (v <= 0) return 0;
       if (config.showCompetencySymbol === false) return `${v} ý`;
 
@@ -698,7 +722,7 @@ const buildMatrixHelpers = (matrix, config, examConfig, examHeader) => {
 
     return {
         sumCount, getTopicSum, getTopicLevelCount,
-        getDvLevelCount, getDvTotalPoints, getDvLevelSummary,
+        getDvLevelCount, getDvTotalPoints, getDvLevelPoints, getDvLevelSummary,
         getLevelTotalItems, getLevelTotalQuestions,
         getTopicTuLuanPoints, getColumnTotalPoints,
         getLevelTotalPoints, getGrandTotalPoints, pct,
@@ -716,6 +740,7 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
     const { sumCount, getTopicSum, getTopicLevelCount, getLevelTotalItems, getLevelTotalQuestions,
         getColumnTotalPoints, getLevelTotalPoints, getGrandTotalPoints, pct, getIndicatorsForCell,
         isToanMon, getMathIndicatorForLevel, getIndicatorForLevel, getBiologyIndicatorForLevel, isSinhMon } = h;
+    const isToan8_5050 = Boolean(examConfig.isCauTrucToan8_5050);
 
     const cell = (content, opts = {}) => {
         const { bold = false, align = 'center', rowspan = 1, colspan = 1, bg = '', width = '', valign = 'top' } = opts;
@@ -758,7 +783,7 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
         if (v <= 0) return `<td style="border:1px solid black;text-align:center;vertical-align:top;"></td>`;
         let content = `${v}${suffix}`;
         const diemVal = Math.round(v * (Number(diemPerItem) || 0) * 100) / 100;
-        if (diemVal > 0 && !examConfig.isCauTruc4213) content += `<br/><span style="font-size:10pt;color:#DC2626;">${diemVal}đ</span>`;
+        if (diemVal > 0 && !examConfig.isCauTruc4213 && !isToan8_5050) content += `<br/><span style="font-size:10pt;color:#DC2626;">${diemVal}đ</span>`;
 
         let qLabels = null;
         if (dv && dv.indicatorMap) {
@@ -780,7 +805,7 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
         }
         if (qLabels) content += `<br/><span style="font-size:10pt;color:blue;font-weight:bold;">${qLabels}</span>`;
 
-        if (!examConfig.isCauTruc4213 && config.showCompetencySymbol !== false) {
+        if (!examConfig.isCauTruc4213 && !isToan8_5050 && config.showCompetencySymbol !== false) {
             let ind = getIndicatorsForCell(dv, type, level);
             if (!ind && isToanMon) ind = getMathIndicatorForLevel(dv?.yeuCauCanDat, level);
             if (!ind) ind = getIndicatorForLevel(dv?.yeuCauCanDat, level);
@@ -789,78 +814,42 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
         return `<td style="border:1px solid black;text-align:center;vertical-align:top;">${content}</td>`;
     };
 
-    let rows = config.hasTuLuan ? `
-      <colgroup>
-        <col style="width: 4.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 19.8%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.0%;" />
-        <col style="width: 4.0%;" />
-        <col style="width: 4.0%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 4.5%;" />
-        <col style="width: 7.0%;" />
-      </colgroup>
-    ` : `
-      <colgroup>
-        <col style="width: 5.0%;" />
-        <col style="width: 8.0%;" />
-        <col style="width: 22.0%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 5.5%;" />
-        <col style="width: 8.0%;" />
-      </colgroup>
-    `;
+    const tlColCount = config.hasTuLuan ? (isToan8_5050 ? 4 : 3) : 0;
+    const sumColCount = isToan8_5050 ? 4 : 3;
+
+    let rows = '';
 
     // Header 4 dòng
     rows += `<tr>
       ${cell('TT', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
       ${cell('Chủ đề/Chương', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
       ${cell('Nội dung/Đơn vị KT', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
-      ${cell('Mức độ đánh giá', { bold: true, colspan: 6 + (config.hasTraLoiNgan ? 3 : 0) + (config.hasTuLuan ? 3 : 0), bg: 'E2E8F0' })}
-      ${cell('Tổng (Ý)', { bold: true, rowspan: 3, colspan: 3, bg: 'E2E8F0' })}
-      ${cell('Tỉ lệ %', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
+      ${cell('Mức độ đánh giá', { bold: true, colspan: 6 + (config.hasTraLoiNgan ? 3 : 0) + tlColCount, bg: 'E2E8F0' })}
+      ${cell(isToan8_5050 ? 'Điểm theo mức độ' : 'Tổng (Ý)', { bold: true, rowspan: 3, colspan: sumColCount, bg: 'E2E8F0' })}
+      ${cell(isToan8_5050 ? 'Tỉ lệ % điểm' : 'Tỉ lệ %', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
     </tr>`;
     rows += `<tr>
       ${cell('TNKQ', { bold: true, colspan: config.hasTraLoiNgan ? 9 : 6, bg: 'DBEAFE' })}
-      ${config.hasTuLuan ? cell('Tự luận', { bold: true, colspan: 3, bg: 'DCFCE7' }) : ''}
+      ${config.hasTuLuan ? cell('Tự luận', { bold: true, colspan: tlColCount, rowspan: 2, bg: 'DCFCE7' }) : ''}
     </tr>`;
     rows += `<tr>
       ${cell('Nhiều lựa chọn', { bold: true, colspan: 3, bg: 'BFDBFE' })}
       ${cell('Đúng - Sai (Ý)', { bold: true, colspan: 3, bg: 'BFDBFE' })}
-      ${config.hasTraLoiNgan ? cell((examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? 'Trả lời ngắn (Câu)' : 'Trả lời ngắn (Ý)', { bold: true, colspan: 3, bg: 'BFDBFE' }) : ''}
+      ${config.hasTraLoiNgan ? cell((examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isToan8_5050) ? 'Trả lời ngắn' : 'Trả lời ngắn (Ý)', { bold: true, colspan: 3, bg: 'BFDBFE' }) : ''}
     </tr>`;
     rows += `<tr>
       ${['B', 'H', 'VD', 'B', 'H', 'VD', ...(config.hasTraLoiNgan ? ['B', 'H', 'VD'] : [])].map(l => cell(l)).join('')}
-      ${config.hasTuLuan ? ['B', 'H', 'VD'].map(l => cell(l)).join('') : ''}
-      ${cell('B', { bg: 'FFEDD5' })}${cell('H', { bg: 'FFEDD5' })}${cell('VD', { bg: 'FFEDD5' })}
+      ${config.hasTuLuan ? (isToan8_5050 ? ['B', 'TH', 'VD', 'VDC'] : ['B', 'H', 'VD']).map(l => cell(l)).join('') : ''}
+      ${isToan8_5050
+        ? `${cell('B', { bg: 'FFEDD5' })}${cell('TH', { bg: 'FFEDD5' })}${cell('VD', { bg: 'FFEDD5' })}${cell('VDC', { bg: 'FFEDD5' })}`
+        : `${cell('B', { bg: 'FFEDD5' })}${cell('H', { bg: 'FFEDD5' })}${cell('VD', { bg: 'FFEDD5' })}`
+      }
     </tr>`;
 
-    // Dữ liệu từng chủ đề — TẤT CẢ 4 CỘT CUỐI TÍNH RIÊNG TẮNG ĐVKT
-    const { getDvLevelCount, getDvTotalPoints, getDvLevelSummary } = h;
+    // Dữ liệu từng chủ đề — TẤT CẢ CỘT CUỐI TÍNH RIÊNG TỪNG ĐVKT
+    const { getDvLevelCount, getDvTotalPoints, getDvLevelPoints, getDvLevelSummary } = h;
 
-    let specStt = 1;
-    matrix.forEach((topic, index) => {
+    matrix.forEach((topic) => {
         const dvList = topic.donViKienThuc || [];
         const dvCount = dvList.length;
 
@@ -875,25 +864,29 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
             rows += cellWithDiem(dv.nhieuLuaChon?.biet || 0, 'biet', dv, 'nhieuLuaChon', '', examConfig.diemMoiCauP1);
             rows += cellWithDiem(dv.nhieuLuaChon?.hieu || 0, 'hieu', dv, 'nhieuLuaChon', '', examConfig.diemMoiCauP1);
             rows += cellWithDiem(dv.nhieuLuaChon?.vanDung || 0, 'vanDung', dv, 'nhieuLuaChon', '', examConfig.diemMoiCauP1);
-            rows += cellWithDiem(dv.dungSai?.biet || 0, 'biet', dv, 'dungSai', ' ý', examConfig.diemMoiYP2);
-            rows += cellWithDiem(dv.dungSai?.hieu || 0, 'hieu', dv, 'dungSai', ' ý', examConfig.diemMoiYP2);
-            rows += cellWithDiem(dv.dungSai?.vanDung || 0, 'vanDung', dv, 'dungSai', ' ý', examConfig.diemMoiYP2);
+            rows += cellWithDiem(dv.dungSai?.biet || 0, 'biet', dv, 'dungSai', isToan8_5050 ? '' : ' ý', examConfig.diemMoiYP2);
+            rows += cellWithDiem(dv.dungSai?.hieu || 0, 'hieu', dv, 'dungSai', isToan8_5050 ? '' : ' ý', examConfig.diemMoiYP2);
+            rows += cellWithDiem(dv.dungSai?.vanDung || 0, 'vanDung', dv, 'dungSai', isToan8_5050 ? '' : ' ý', examConfig.diemMoiYP2);
             if (config.hasTraLoiNgan) {
-              rows += cellWithDiem(dv.traLoiNgan?.biet || 0, 'biet', dv, 'traLoiNgan', (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? ' câu' : ' ý', examConfig.diemMoiYP3);
-              rows += cellWithDiem(dv.traLoiNgan?.hieu || 0, 'hieu', dv, 'traLoiNgan', (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? ' câu' : ' ý', examConfig.diemMoiYP3);
-              rows += cellWithDiem(dv.traLoiNgan?.vanDung || 0, 'vanDung', dv, 'traLoiNgan', (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? ' câu' : ' ý', examConfig.diemMoiYP3);
+              const tlnSuffix = isToan8_5050 ? '' : ((examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? ' câu' : ' ý');
+              rows += cellWithDiem(dv.traLoiNgan?.biet || 0, 'biet', dv, 'traLoiNgan', tlnSuffix, examConfig.diemMoiYP3);
+              rows += cellWithDiem(dv.traLoiNgan?.hieu || 0, 'hieu', dv, 'traLoiNgan', tlnSuffix, examConfig.diemMoiYP3);
+              rows += cellWithDiem(dv.traLoiNgan?.vanDung || 0, 'vanDung', dv, 'traLoiNgan', tlnSuffix, examConfig.diemMoiYP3);
             }
             if (config.hasTuLuan) {
               const makeTlCell = (count, diem, level) => {
-                const v = Number(count) || 0;
+                let v = Number(count) || 0;
+                if (Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+                  v = dv.tuLuan.subItems.filter(s => s.level === level).length;
+                }
                 if (v <= 0) return cell('');
-                let content = `${v} ý`;
+                let content = isToan8_5050 ? `${v}` : `${v} ý`;
                 const diemVal = Number(diem) || 0;
-                if (diemVal > 0 && !examConfig.isCauTruc4213) content += `<br/><span style="font-size:10pt;">${diemVal}đ</span>`;
+                if (diemVal > 0 && !examConfig.isCauTruc4213 && !isToan8_5050) content += `<br/><span style="font-size:10pt;">${diemVal}đ</span>`;
                 
                 let qLabels = null;
                 if (dv && dv.indicatorMap) {
-                    const c = Number(count) || 0;
+                    const c = v;
                     const labels = [];
                     for (let i = 0; i < c; i++) {
                         const ind = dv.indicatorMap[`tuLuan_${level}_${i}`];
@@ -905,7 +898,7 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
                 }
                 if (qLabels) content += `<br/><span style="font-size:10pt;color:blue;font-weight:bold;">${qLabels}</span>`;
 
-                if (!examConfig.isCauTruc4213 && config.showCompetencySymbol !== false) {
+                if (!examConfig.isCauTruc4213 && !isToan8_5050 && config.showCompetencySymbol !== false) {
                   let ind = getIndicatorsForCell(dv, 'tuLuan', level);
                   if (!ind && isToanMon) ind = getMathIndicatorForLevel(dv?.yeuCauCanDat, level);
                   if (!ind) ind = getIndicatorForLevel(dv?.yeuCauCanDat, level);
@@ -915,21 +908,44 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
               };
               rows += makeTlCell(dv.tuLuan?.biet, dv.tuLuan?.diemBiet, 'biet');
               rows += makeTlCell(dv.tuLuan?.hieu, dv.tuLuan?.diemHieu, 'hieu');
-              rows += makeTlCell(
-                (Number(dv.tuLuan?.vanDung) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0),
-                dv.tuLuan?.diemVanDung, 'vanDung'
-              );
+              if (isToan8_5050) {
+                rows += makeTlCell(dv.tuLuan?.vanDung, dv.tuLuan?.diemVanDung, 'vanDung');
+                rows += makeTlCell(dv.tuLuan?.vanDungCao, dv.tuLuan?.diemVanDungCao, 'vanDungCao');
+              } else {
+                rows += makeTlCell(
+                  (Number(dv.tuLuan?.vanDung) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0),
+                  dv.tuLuan?.diemVanDung, 'vanDung'
+                );
+              }
             }
-            // 4 cột cuối: Tổng B, H, VD và Tỉ lệ % — tính riêng từng ĐVKT
-            rows += cell(getDvLevelSummary(dv, 'biet'), { bold: true, bg: 'FFEDD5' });
-            rows += cell(getDvLevelSummary(dv, 'hieu'), { bold: true, bg: 'FFEDD5' });
-            rows += cell(getDvLevelSummary(dv, 'vanDung'), { bold: true, bg: 'FFEDD5' });
+            // Cột cuối: Tổng B, H, VD(, VDC) và Tỉ lệ % — tính riêng từng ĐVKT
+            if (isToan8_5050) {
+              rows += cell(getDvLevelPoints(dv, 'biet'), { bold: true, bg: 'FFEDD5' });
+              rows += cell(getDvLevelPoints(dv, 'hieu'), { bold: true, bg: 'FFEDD5' });
+              rows += cell(getDvLevelPoints(dv, 'vanDung'), { bold: true, bg: 'FFEDD5' });
+              rows += cell(getDvLevelPoints(dv, 'vanDungCao'), { bold: true, bg: 'FFEDD5' });
+            } else {
+              rows += cell(getDvLevelSummary(dv, 'biet'), { bold: true, bg: 'FFEDD5' });
+              rows += cell(getDvLevelSummary(dv, 'hieu'), { bold: true, bg: 'FFEDD5' });
+              rows += cell(getDvLevelSummary(dv, 'vanDung'), { bold: true, bg: 'FFEDD5' });
+            }
             const dvTotalPoints = getDvTotalPoints(dv);
-            const dvPercent = ((dvTotalPoints / 10) * 100).toFixed(1).replace('.0', '') + '%';
+            const dvPercent = Number(((dvTotalPoints / 10) * 100).toFixed(2)).toString().replace('.', ',') + '%';
             rows += cell(dvPercent, { bold: true });
             rows += '</tr>';
         });
     });
+
+    const fmtDsCauHtml = (y) => {
+        if (!y) return 0;
+        const c = y * 0.25;
+        return `${c % 1 === 0 ? c : Number(c.toFixed(2)).toString().replace('.', ',')} (${y} ý)`;
+    };
+
+    const fmtNum2Html = (v) => {
+        const n = Math.round((Number(v) || 0) * 100) / 100;
+        return Number(n.toFixed(2)).toString().replace('.', ',');
+    };
 
     // Dòng tổng
     rows += `<tr>
@@ -937,46 +953,62 @@ const buildMatrixTable = (matrix, config, examConfig, examHeader) => {
       ${cell(sumCount('nhieuLuaChon', 'biet'))}${cell(sumCount('nhieuLuaChon', 'hieu'))}${cell(sumCount('nhieuLuaChon', 'vanDung'))}
       ${cell(sumCount('dungSai', 'biet'))}${cell(sumCount('dungSai', 'hieu'))}${cell(sumCount('dungSai', 'vanDung') + sumCount('dungSai', 'vanDungCao'))}
       ${config.hasTraLoiNgan ? cell(sumCount('traLoiNgan', 'biet')) + cell(sumCount('traLoiNgan', 'hieu')) + cell(sumCount('traLoiNgan', 'vanDung')) : ''}
-      ${config.hasTuLuan ? cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung')) : ''}
-      ${cell(getLevelTotalItems('biet'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('hieu'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('vanDung'), { bold: true, align: 'center' })}
+      ${config.hasTuLuan ? (isToan8_5050
+        ? cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung')) + cell(sumCount('tuLuan', 'vanDungCao'))
+        : cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung'))
+      ) : ''}
+      ${isToan8_5050
+        ? `${cell(getLevelTotalItems('biet'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('hieu'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('vanDung'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('vanDungCao'), { bold: true, align: 'center' })}`
+        : `${cell(getLevelTotalItems('biet'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('hieu'), { bold: true, align: 'center' })}${cell(getLevelTotalItems('vanDung'), { bold: true, align: 'center' })}`
+      }
       ${cell('')}
     </tr>`;
     rows += `<tr>
       ${cell('Tổng số câu', { bold: true, align: 'center', colspan: 3, bg: 'F1F5F9' })}
       ${cell(sumCount('nhieuLuaChon', 'biet'), { align: 'center' })}${cell(sumCount('nhieuLuaChon', 'hieu'), { align: 'center' })}${cell(sumCount('nhieuLuaChon', 'vanDung'), { align: 'center' })}
-      ${cell((() => { const y = sumCount('dungSai', 'biet'); if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(), { align: 'center' })}${cell((() => { const y = sumCount('dungSai', 'hieu'); if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(), { align: 'center' })}${cell((() => { const y = sumCount('dungSai', 'vanDung') + sumCount('dungSai', 'vanDungCao'); if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(), { align: 'center' })}
+      ${cell(fmtDsCauHtml(sumCount('dungSai', 'biet')), { align: 'center' })}${cell(fmtDsCauHtml(sumCount('dungSai', 'hieu')), { align: 'center' })}${cell(fmtDsCauHtml(sumCount('dungSai', 'vanDung') + sumCount('dungSai', 'vanDungCao')), { align: 'center' })}
       ${config.hasTraLoiNgan ? cell(sumCount('traLoiNgan', 'biet'), { align: 'center' }) + cell(sumCount('traLoiNgan', 'hieu'), { align: 'center' }) + cell(sumCount('traLoiNgan', 'vanDung'), { align: 'center' }) : ''}
-      ${config.hasTuLuan ? cell(getFormatTLCau(matrix, 'biet'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'hieu'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'vanDung'), { align: 'center' }) : ''}
-      ${['biet', 'hieu', 'vanDung'].map(lvl => {
+      ${config.hasTuLuan ? (isToan8_5050
+        ? cell(getFormatTLCau(matrix, 'biet'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'hieu'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'vanDung'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'vanDungCao'), { align: 'center' })
+        : cell(getFormatTLCau(matrix, 'biet'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'hieu'), { align: 'center' }) + cell(getFormatTLCau(matrix, 'vanDung'), { align: 'center' })
+      ) : ''}
+      ${(isToan8_5050 ? ['biet', 'hieu', 'vanDung', 'vanDungCao'] : ['biet', 'hieu', 'vanDung']).map(lvl => {
         const storeState = useExamStore.getState();
         const tlCau = getTuLuanCauCount(matrix, lvl, storeState?.tuLuanConfig);
-        const nlc = sumCount('nhieuLuaChon', lvl);
-        const tln = config.hasTraLoiNgan ? sumCount('traLoiNgan', lvl) : 0;
-        const c2 = nlc + tln + Math.floor(tlCau);
+        const nlc = lvl === 'vanDungCao' ? 0 : sumCount('nhieuLuaChon', lvl);
+        const tln = (config.hasTraLoiNgan && lvl !== 'vanDungCao') ? sumCount('traLoiNgan', lvl) : 0;
+        const c2 = isToan8_5050 ? Math.round((nlc + tln + tlCau) * 100) / 100 : (nlc + tln + Math.floor(tlCau));
+        const c2Str = c2 % 1 === 0 ? String(c2) : Number(c2.toFixed(2)).toString().replace('.', ',');
         const y2 = sumCount('dungSai', lvl) + (lvl === 'vanDung' ? sumCount('dungSai', 'vanDungCao') : 0);
         if (!c2 && !y2) return cell('0', { bold: true, align: 'center' });
-        if (c2 && !y2) return cell(String(c2), { bold: true, align: 'center' });
+        if (c2 && !y2) return cell(c2Str, { bold: true, align: 'center' });
         if (!c2 && y2) return cell(`${y2} ý`, { bold: true, align: 'center' });
-        return cell(`${c2}c+ ${y2} ý`, { bold: true, align: 'center' });
+        return cell(`${c2Str}c+ ${y2} ý`, { bold: true, align: 'center' });
       }).join('')}
-      ${cell(getLevelTotalQuestions('biet') + getLevelTotalQuestions('hieu') + getLevelTotalQuestions('vanDung'), { bold: true, align: 'center' })}
+      ${cell(fmtNum2Html(getLevelTotalQuestions('biet') + getLevelTotalQuestions('hieu') + getLevelTotalQuestions('vanDung') + (isToan8_5050 ? getLevelTotalQuestions('vanDungCao') : 0)), { bold: true, align: 'center' })}
     </tr>`;
     rows += `<tr>
       ${cell('Tổng điểm', { bold: true, align: 'center', colspan: 3, bg: 'CBD5E1' })}
-      ${cell(getColumnTotalPoints('nhieuLuaChon'), { bold: true, align: 'center', colspan: 3 })}
-      ${cell(getColumnTotalPoints('dungSai'), { bold: true, align: 'center', colspan: 3 })}
-      ${config.hasTraLoiNgan ? cell(getColumnTotalPoints('traLoiNgan'), { bold: true, align: 'center', colspan: 3 }) : ''}
-      ${config.hasTuLuan ? cell(getColumnTotalPoints('tuLuan'), { bold: true, align: 'center', colspan: 3 }) : ''}
-      ${cell(getLevelTotalPoints('biet'), { bold: true, align: 'center' })}${cell(getLevelTotalPoints('hieu'), { bold: true, align: 'center' })}${cell(getLevelTotalPoints('vanDung'), { bold: true, align: 'center' })}
-      ${cell(getGrandTotalPoints(), { bold: true, align: 'center' })}
+      ${cell(fmtNum2Html(getColumnTotalPoints('nhieuLuaChon')), { bold: true, align: 'center', colspan: 3 })}
+      ${cell(fmtNum2Html(getColumnTotalPoints('dungSai')), { bold: true, align: 'center', colspan: 3 })}
+      ${config.hasTraLoiNgan ? cell(fmtNum2Html(getColumnTotalPoints('traLoiNgan')), { bold: true, align: 'center', colspan: 3 }) : ''}
+      ${config.hasTuLuan ? cell(fmtNum2Html(getColumnTotalPoints('tuLuan')), { bold: true, align: 'center', colspan: tlColCount }) : ''}
+      ${isToan8_5050
+        ? `${cell(fmtNum2Html(getLevelTotalPoints('biet')), { bold: true, align: 'center' })}${cell(fmtNum2Html(getLevelTotalPoints('hieu')), { bold: true, align: 'center' })}${cell(fmtNum2Html(getLevelTotalPoints('vanDung')), { bold: true, align: 'center' })}${cell(fmtNum2Html(getLevelTotalPoints('vanDungCao')), { bold: true, align: 'center' })}`
+        : `${cell(fmtNum2Html(getLevelTotalPoints('biet')), { bold: true, align: 'center' })}${cell(fmtNum2Html(getLevelTotalPoints('hieu')), { bold: true, align: 'center' })}${cell(fmtNum2Html(getLevelTotalPoints('vanDung')), { bold: true, align: 'center' })}`
+      }
+      ${cell(fmtNum2Html(getGrandTotalPoints()), { bold: true, align: 'center' })}
     </tr>`;
     rows += `<tr>
       ${cell('Tỉ lệ %', { bold: true, align: 'center', colspan: 3, bg: 'E2E8F0' })}
       ${cell(pct(getColumnTotalPoints('nhieuLuaChon')), { bold: true, align: 'center', colspan: 3 })}
       ${cell(pct(getColumnTotalPoints('dungSai')), { bold: true, align: 'center', colspan: 3 })}
       ${config.hasTraLoiNgan ? cell(pct(getColumnTotalPoints('traLoiNgan')), { bold: true, align: 'center', colspan: 3 }) : ''}
-      ${config.hasTuLuan ? cell(pct(getColumnTotalPoints('tuLuan')), { bold: true, align: 'center', colspan: 3 }) : ''}
-      ${cell(pct(getLevelTotalPoints('biet')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('hieu')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('vanDung')), { bold: true, align: 'center' })}
+      ${config.hasTuLuan ? cell(pct(getColumnTotalPoints('tuLuan')), { bold: true, align: 'center', colspan: tlColCount }) : ''}
+      ${isToan8_5050
+        ? `${cell(pct(getLevelTotalPoints('biet')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('hieu')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('vanDung')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('vanDungCao')), { bold: true, align: 'center' })}`
+        : `${cell(pct(getLevelTotalPoints('biet')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('hieu')), { bold: true, align: 'center' })}${cell(pct(getLevelTotalPoints('vanDung')), { bold: true, align: 'center' })}`
+      }
       ${cell(pct(getGrandTotalPoints()), { bold: true, align: 'center' })}
     </tr>`;
 
@@ -1000,10 +1032,11 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
 
     const h = buildMatrixHelpers(matrix, config, examConfig, examHeader);
     const { sumCount, getColumnTotalPoints, getLevelTotalPoints, getLevelTotalQuestions, pct, fmtNLC, fmtY, getIndicatorsForCell, isToanMon, getMathIndicatorForLevel, getIndicatorForLevel, getBiologyIndicatorForLevel, isSinhMon } = h;
+    const isToan8_5050 = Boolean(examConfig.isCauTrucToan8_5050);
 
     // === TÍNH MAP CÂU SỐ TRONG KHUNG ĐỀ CHO TỪNG Ô ===
     const qMap = {};
-    const isCont = (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? false : (examConfig.isCauTrucToan3223 ? true : config.isContinuousNumbering);
+    const isCont = (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) ? false : ((examConfig.isCauTrucToan3223 || isToan8_5050) ? true : config.isContinuousNumbering);
     // Phase 1: NLC
     let nlcC = 1;
     matrix.forEach((t, ti) => {
@@ -1183,7 +1216,7 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
                 });
             });
 
-            const isKHTNMonExport = /KHTN|Khoa học tự nhiên/i.test(examHeader?.monHoc || '') || examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10;
+            const isKHTNMonExport = /KHTN|Khoa học tự nhiên/i.test(examHeader?.monHoc || '') || examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10 || isToan8_5050 || examConfig.isCauTrucToan3223;
 
             Object.keys(cellMap).forEach(key => {
                 const items = cellMap[key];
@@ -1216,6 +1249,27 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
         if (!q) return '';
         if (typeof q === 'string') {
             return `<br/><span style="font-size:9pt;color:#555;">${q}</span>`;
+        }
+        if (isToan8_5050 || examConfig.isCauTrucToan3223) {
+            const [, , type] = key.split('_');
+            if (type === 'ds') {
+                let qLabel = '';
+                if (q.s === q.e) {
+                    if (q.sy === q.ey) qLabel = `C${q.s} ý ${q.sy}`;
+                    else {
+                        const items = [];
+                        const letters = ['a','b','c','d'];
+                        for(let i = letters.indexOf(q.sy); i <= letters.indexOf(q.ey); i++) items.push(letters[i]);
+                        qLabel = `C${q.s} ý ${items.join(', ')}`;
+                    }
+                } else {
+                    qLabel = `C${q.s} ý ${q.sy} - C${q.e} ý ${q.ey}`;
+                }
+                return `<br/><span style="font-size:9pt;color:#555;">${qLabel}</span>`;
+            }
+            const items = [];
+            for (let i = q.s; i <= q.e; i++) items.push(`C${i}`);
+            return `<br/><span style="font-size:9pt;color:#555;">${items.join(', ')}</span>`;
         }
         if (examConfig.isCauTruc4213 || examConfig.isCauTrucKHTNVao10) {
             const [, , type] = key.split('_');
@@ -1256,7 +1310,7 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
         return `${base}${fmtQ(`${ti}_${di}_ds_${level}`)}`;
     };
     const fmtY_TLN = (val, level, ti, di, dv) => {
-        const base = fmtY(val, level, dv, 'traLoiNgan');
+        const base = (isToan8_5050 || examConfig.isCauTrucToan3223) ? fmtNLC(val, level, dv, 'traLoiNgan') : fmtY(val, level, dv, 'traLoiNgan');
         if (base === 0) return 0;
         return `${base}${fmtQ(`${ti}_${di}_tln_${level}`)}`;
     };
@@ -1276,24 +1330,9 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
         return `<td style="${style}"${rowspan > 1 ? ` rowspan="${rowspan}"` : ''}${colspan > 1 ? ` colspan="${colspan}"` : ''}>${bold ? `<b>${val ?? ''}</b>` : (val ?? '')}</td>`;
     };
 
-    let rows = `
-      <colgroup>
-        <col style="width: 4.5%;" />
-        <col style="width: 10.0%;" />
-        <col style="width: 16.0%;" />
-        <col style="width: 25.3%;" />
-        ${config.hasTuLuan ? `
-        <col style="width: 3.6%;" /><col style="width: 3.6%;" /><col style="width: 3.6%;" />
-        <col style="width: 3.6%;" /><col style="width: 3.6%;" /><col style="width: 3.6%;" />
-        <col style="width: 3.6%;" /><col style="width: 3.6%;" /><col style="width: 3.6%;" />
-        <col style="width: 3.6%;" /><col style="width: 3.6%;" /><col style="width: 3.6%;" />
-        ` : `
-        <col style="width: 4.8%;" /><col style="width: 4.8%;" /><col style="width: 4.8%;" />
-        <col style="width: 4.8%;" /><col style="width: 4.8%;" /><col style="width: 4.8%;" />
-        <col style="width: 4.8%;" /><col style="width: 4.8%;" /><col style="width: 4.8%;" />
-        `}
-      </colgroup>
-    `;
+    const tlColCount = config.hasTuLuan ? (isToan8_5050 ? 4 : 3) : 0;
+
+    let rows = '';
 
     // Header 4 dòng
     rows += `<tr>
@@ -1301,20 +1340,20 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
       ${cell('Chủ đề/Chương', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
       ${cell('Nội dung/Đơn vị KT', { bold: true, rowspan: 4, bg: 'E2E8F0' })}
       ${cell('Yêu cầu cần đạt', { bold: true, rowspan: 4, bg: 'FEF08A' })}
-      ${cell('Số câu hỏi ở các mức độ', { bold: true, colspan: config.hasTuLuan ? 12 : 9, bg: 'E2E8F0' })}
+      ${cell('Số câu hỏi ở các mức độ', { bold: true, colspan: 9 + tlColCount, bg: 'E2E8F0' })}
     </tr>`;
     rows += `<tr>
       ${cell('TNKQ', { bold: true, colspan: 9, bg: 'DBEAFE' })}
-      ${config.hasTuLuan ? cell('Tự luận', { bold: true, colspan: 3, bg: 'DCFCE7' }) : ''}
+      ${config.hasTuLuan ? cell('Tự luận', { bold: true, colspan: tlColCount, rowspan: 2, bg: 'DCFCE7' }) : ''}
     </tr>`;
     rows += `<tr>
       ${cell('Nhiều lựa chọn', { bold: true, colspan: 3, bg: 'BFDBFE' })}
       ${cell('Đúng - Sai (Ý)', { bold: true, colspan: 3, bg: 'BFDBFE' })}
-      ${cell('Trả lời ngắn (Ý)', { bold: true, colspan: 3, bg: 'BFDBFE' })}
+      ${cell(isToan8_5050 ? 'Trả lời ngắn' : 'Trả lời ngắn (Ý)', { bold: true, colspan: 3, bg: 'BFDBFE' })}
     </tr>`;
     rows += `<tr>
       ${['B', 'H', 'VD', 'B', 'H', 'VD', 'B', 'H', 'VD'].map(l => cell(l)).join('')}
-      ${config.hasTuLuan ? ['B', 'H', 'VD'].map(l => cell(l)).join('') : ''}
+      ${config.hasTuLuan ? (isToan8_5050 ? ['B', 'TH', 'VD', 'VDC'] : ['B', 'H', 'VD']).map(l => cell(l)).join('') : ''}
     </tr>`;
 
     // Dữ liệu từng chủ đề — tách mỗi mức độ nhận thức thành 1 dòng riêng
@@ -1324,14 +1363,14 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
         if (dvList.length === 0) return;
 
         const topicTotalRows = dvList.reduce((sum, dv) => {
-            const active = getActiveLevelsForDv(dv, false, config.hasTraLoiNgan, config.hasTuLuan);
+            const active = getActiveLevelsForDv(dv, isToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
             return sum + active.length;
         }, 0) || 1;
 
         let isFirstTopicRow = true;
 
         dvList.forEach((dv, dvIdx) => {
-            const activeLevels = getActiveLevelsForDv(dv, false, config.hasTraLoiNgan, config.hasTuLuan);
+            const activeLevels = getActiveLevelsForDv(dv, isToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
             const dvTotalRows = activeLevels.length;
             const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
 
@@ -1339,7 +1378,7 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
                 const isFirstDvRow = lvlIdx === 0;
                 rows += '<tr>';
                 if (isFirstTopicRow) {
-                    rows += cell(typeof specStt !== 'undefined' ? specStt++ : (typeof matrixStt !== 'undefined' ? matrixStt++ : index + 1), { align: 'center', rowspan: topicTotalRows });
+                    rows += cell(typeof specStt !== 'undefined' ? specStt++ : index + 1, { align: 'center', rowspan: topicTotalRows });
                     rows += cell(topic.tenChuDe || '', { align: 'left', rowspan: topicTotalRows });
                 }
                 if (isFirstDvRow) {
@@ -1370,7 +1409,12 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
                 if (config.hasTuLuan) {
                     rows += cell(lvl === 'biet' ? fmtY_TL(dv.tuLuan?.biet, 'biet', index, dvIdx, dv) : '');
                     rows += cell(lvl === 'hieu' ? fmtY_TL(dv.tuLuan?.hieu, 'hieu', index, dvIdx, dv) : '');
-                    rows += cell(lvl === 'vanDung' ? fmtY_TL((Number(dv.tuLuan?.vanDung) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0), 'vanDung', index, dvIdx, dv) : '');
+                    if (isToan8_5050) {
+                        rows += cell(lvl === 'vanDung' ? fmtY_TL(dv.tuLuan?.vanDung, 'vanDung', index, dvIdx, dv) : '');
+                        rows += cell(lvl === 'vanDungCao' ? fmtY_TL(dv.tuLuan?.vanDungCao, 'vanDungCao', index, dvIdx, dv) : '');
+                    } else {
+                        rows += cell(lvl === 'vanDung' ? fmtY_TL((Number(dv.tuLuan?.vanDung) || 0) + (Number(dv.tuLuan?.vanDungCao) || 0), 'vanDung', index, dvIdx, dv) : '');
+                    }
                 }
                 rows += '</tr>';
                 isFirstTopicRow = false;
@@ -1378,34 +1422,51 @@ const buildSpecTable = (matrix, config, examConfig, examHeader) => {
         });
     });
 
+    const fmtDsCauHtml = (y) => {
+        if (!y) return 0;
+        const c = y * 0.25;
+        return `${c % 1 === 0 ? c : Number(c.toFixed(2)).toString().replace('.', ',')} (${y} ý)`;
+    };
+
+    const fmtNum2Html = (v) => {
+        const n = Math.round((Number(v) || 0) * 100) / 100;
+        return Number(n.toFixed(2)).toString().replace('.', ',');
+    };
+
     // Dòng tổng
     rows += `<tr>
       ${cell('Tổng (Ý)', { bold: true, align: 'center', colspan: 4, bg: 'E2E8F0' })}
       ${cell(sumCount('nhieuLuaChon', 'biet'))}${cell(sumCount('nhieuLuaChon', 'hieu'))}${cell(sumCount('nhieuLuaChon', 'vanDung'))}
       ${cell(sumCount('dungSai', 'biet'))}${cell(sumCount('dungSai', 'hieu'))}${cell(sumCount('dungSai', 'vanDung'))}
       ${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)}
-      ${config.hasTuLuan ? cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung')) : ''}
+      ${config.hasTuLuan ? (isToan8_5050
+        ? cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung')) + cell(sumCount('tuLuan', 'vanDungCao'))
+        : cell(sumCount('tuLuan', 'biet')) + cell(sumCount('tuLuan', 'hieu')) + cell(sumCount('tuLuan', 'vanDung'))
+      ) : ''}
     </tr>`;
     rows += `<tr>
       ${cell('Tổng số câu', { bold: true, align: 'center', colspan: 4, bg: 'F1F5F9' })}
       ${cell(sumCount('nhieuLuaChon', 'biet'))}${cell(sumCount('nhieuLuaChon', 'hieu'))}${cell(sumCount('nhieuLuaChon', 'vanDung'))}
-      ${cell(examConfig.isCauTrucKHTNVao10 ? ((y) => { if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(sumCount('dungSai', 'biet')) : (sumCount('dungSai', 'biet') * 0.25))}${cell(examConfig.isCauTrucKHTNVao10 ? ((y) => { if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(sumCount('dungSai', 'hieu')) : (sumCount('dungSai', 'hieu') * 0.25))}${cell(examConfig.isCauTrucKHTNVao10 ? ((y) => { if (!y) return 0; const c = y * 0.25; return `${c % 1 === 0 ? c : c.toFixed(1).replace('.', ',')} (${y} ý)`; })(sumCount('dungSai', 'vanDung')) : (sumCount('dungSai', 'vanDung') * 0.25))}
+      ${cell(fmtDsCauHtml(sumCount('dungSai', 'biet')))}${cell(fmtDsCauHtml(sumCount('dungSai', 'hieu')))}${cell(fmtDsCauHtml(sumCount('dungSai', 'vanDung')))}
       ${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'biet') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'hieu') : 0)}${cell(config.hasTraLoiNgan ? sumCount('traLoiNgan', 'vanDung') : 0)}
-      ${config.hasTuLuan ? cell(getFormatTLCau(matrix, 'biet')) + cell(getFormatTLCau(matrix, 'hieu')) + cell(getFormatTLCau(matrix, 'vanDung')) : ''}
+      ${config.hasTuLuan ? (isToan8_5050
+        ? cell(getFormatTLCau(matrix, 'biet')) + cell(getFormatTLCau(matrix, 'hieu')) + cell(getFormatTLCau(matrix, 'vanDung')) + cell(getFormatTLCau(matrix, 'vanDungCao'))
+        : cell(getFormatTLCau(matrix, 'biet')) + cell(getFormatTLCau(matrix, 'hieu')) + cell(getFormatTLCau(matrix, 'vanDung'))
+      ) : ''}
     </tr>`;
     rows += `<tr>
       ${cell('Tổng điểm', { bold: true, align: 'center', colspan: 4, bg: 'CBD5E1' })}
-      ${cell(getColumnTotalPoints('nhieuLuaChon'), { bold: true, align: 'center', colspan: 3 })}
-      ${cell(getColumnTotalPoints('dungSai'), { bold: true, align: 'center', colspan: 3 })}
-      ${cell(config.hasTraLoiNgan ? getColumnTotalPoints('traLoiNgan') : 0, { bold: true, align: 'center', colspan: 3 })}
-      ${config.hasTuLuan ? cell(getColumnTotalPoints('tuLuan'), { bold: true, align: 'center', colspan: 3 }) : ''}
+      ${cell(fmtNum2Html(getColumnTotalPoints('nhieuLuaChon')), { bold: true, align: 'center', colspan: 3 })}
+      ${cell(fmtNum2Html(getColumnTotalPoints('dungSai')), { bold: true, align: 'center', colspan: 3 })}
+      ${cell(config.hasTraLoiNgan ? fmtNum2Html(getColumnTotalPoints('traLoiNgan')) : 0, { bold: true, align: 'center', colspan: 3 })}
+      ${config.hasTuLuan ? cell(fmtNum2Html(getColumnTotalPoints('tuLuan')), { bold: true, align: 'center', colspan: tlColCount }) : ''}
     </tr>`;
     rows += `<tr>
       ${cell('Tỉ lệ %', { bold: true, align: 'center', colspan: 4, bg: 'E2E8F0' })}
       ${cell(pct(getColumnTotalPoints('nhieuLuaChon')), { bold: true, align: 'center', colspan: 3 })}
       ${cell(pct(getColumnTotalPoints('dungSai')), { bold: true, align: 'center', colspan: 3 })}
       ${cell(config.hasTraLoiNgan ? pct(getColumnTotalPoints('traLoiNgan')) : '0%', { bold: true, align: 'center', colspan: 3 })}
-      ${config.hasTuLuan ? cell(pct(getColumnTotalPoints('tuLuan')), { bold: true, align: 'center', colspan: 3 }) : ''}
+      ${config.hasTuLuan ? cell(pct(getColumnTotalPoints('tuLuan')), { bold: true, align: 'center', colspan: tlColCount }) : ''}
     </tr>`;
 
     return `<table border="1" style="border-collapse:collapse;width:100%;font-size:13pt;">${rows}</table>`;

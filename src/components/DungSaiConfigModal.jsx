@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Settings2, X, CheckCircle2, AlertTriangle, Sparkles, BookOpen, Layers, RotateCcw } from 'lucide-react';
 
-export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSaiConfig = {}, setDungSaiConfig, isKHTN = true, isCauTrucToan3223 = false }) {
-  const defaultLabel1 = isCauTrucToan3223 ? 'Câu 13' : 'Câu 1';
+export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSaiConfig = {}, setDungSaiConfig, isKHTN = true, isCauTrucToan3223 = false, isCauTrucToan8_5050 = false }) {
+  const defaultLabel1 = (isCauTrucToan3223 || isCauTrucToan8_5050) ? 'Câu 13' : 'Câu 1';
   const defaultLabel2 = isCauTrucToan3223 ? 'Câu 14' : 'Câu 2';
 
   const [localConfig, setLocalConfig] = useState({
     enabled: false,
-    mode: 'phan_tan_chu_de',
-    questions: [
+    mode: isCauTrucToan8_5050 ? 'cung_bai' : 'phan_tan_chu_de',
+    questions: isCauTrucToan8_5050 ? [
+      { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+    ] : [
       { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
       { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
     ]
@@ -20,14 +22,16 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
     } else {
       setLocalConfig({
         enabled: false,
-        mode: 'phan_tan_chu_de',
-        questions: [
+        mode: isCauTrucToan8_5050 ? 'cung_bai' : 'phan_tan_chu_de',
+        questions: isCauTrucToan8_5050 ? [
+          { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+        ] : [
           { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
           { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
         ]
       });
     }
-  }, [show, dungSaiConfig, isCauTrucToan3223]);
+  }, [show, dungSaiConfig, isCauTrucToan3223, isCauTrucToan8_5050]);
 
   if (!show) return null;
 
@@ -221,9 +225,9 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
             </label>
           </div>
 
-          {/* DANH SÁCH 2 CÂU HỎI ĐÚNG / SAI */}
+          {/* DANH SÁCH CÂU HỎI ĐÚNG / SAI */}
           <div className="flex flex-col gap-3">
-            {[q1, q2].map((q, idx) => {
+            {(isCauTrucToan8_5050 ? [q1] : [q1, q2]).map((q, idx) => {
               const selectedTopic = q.topicIndex !== null && q.topicIndex !== undefined && topics[q.topicIndex] ? topics[q.topicIndex] : null;
               const dvList = selectedTopic?.donViKienThuc || [];
 
@@ -252,7 +256,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
                     {/* Badge trạng thái */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                        {(isKHTN || isCauTrucToan3223) ? '2 Biết · 1 Hiểu · 1 VD' : '1 Biết · 1 Hiểu · 2 VD'}
+                        {(isKHTN || isCauTrucToan3223 || isCauTrucToan8_5050) ? '2 Biết · 1 Hiểu · 1 VD' : '1 Biết · 1 Hiểu · 2 VD'}
                       </span>
                     </div>
                   </div>
@@ -343,7 +347,14 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
           </div>
 
           {/* CẢNH BÁO HOẶC XÁC NHẬN SƯ PHẠM */}
-          {isSameTopicSelected ? (
+          {isCauTrucToan8_5050 ? (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs">
+              <CheckCircle2 size={16} className="shrink-0 text-indigo-600 mt-0.5" />
+              <div>
+                <strong>Cấu trúc Toán 8:</strong> Đề thi gồm duy nhất <strong>1 câu Đúng/Sai ({q1.label || 'Câu 13'})</strong> với 4 ý a, b, c, d (2 Biết + 1 Hiểu + 1 VD = 1,0 điểm).
+              </div>
+            </div>
+          ) : isSameTopicSelected ? (
             <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
               <AlertTriangle size={16} className="shrink-0 text-amber-600 mt-0.5" />
               <div>

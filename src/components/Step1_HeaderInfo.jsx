@@ -14,7 +14,7 @@ const DEFAULT_HEADER = {
 const isMojibake = (str) => typeof str === 'string' && (/[├┤╖ñ£—ÉÇÈÍ¿»]/.test(str) || /SB╖|TR\s*├|l\s*├ím/i.test(str));
 
 export default function Step1_HeaderInfo() {
-  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe, setCauTrucToan3223 } = useExamStore();
+  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe, setCauTrucToan3223, setCauTrucToan8_5050 } = useExamStore();
 
   // Tự động kiểm tra và dọn dẹp ký tự lỗi font (mojibake) từ localStorage cũ
   useEffect(() => {
@@ -195,7 +195,7 @@ export default function Step1_HeaderInfo() {
                     <span className="text-[10px] text-purple-600 italic">Chọn cấu trúc chuẩn GDPT 2018</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {/* Nút Cấu trúc Toán Khánh Hòa (3-2-2-3) */}
                     <button
                       type="button"
@@ -222,12 +222,38 @@ export default function Step1_HeaderInfo() {
                       </span>
                     </button>
 
+                    {/* Nút Cấu trúc Toán 8 (50% TN - 50% TL) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCauTrucToan8_5050();
+                        if (!examHeader.thoiGian || examHeader.thoiGian.includes('45')) {
+                          updateExamHeader('thoiGian', 'làm bài: 90 phút');
+                        }
+                      }}
+                      className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
+                        examConfig.isCauTrucToan8_5050
+                          ? 'bg-indigo-100/80 border-indigo-500 text-indigo-900 ring-2 ring-indigo-300 font-bold'
+                          : 'bg-white border-indigo-200 text-indigo-800 hover:bg-indigo-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          📐 Toán 8 (50% TN - 50% TL)
+                        </span>
+                        {examConfig.isCauTrucToan8_5050 && <span className="text-indigo-700 text-[10px] bg-indigo-200 px-1.5 py-0.5 rounded font-bold">Đang chọn</span>}
+                      </div>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        12 TN + 1 Đ/S + 4 TLN + 5 TL (3-1-1-5đ · 22 câu)
+                      </span>
+                    </button>
+
                     {/* Nút Cấu trúc Khác / Tự do */}
                     <button
                       type="button"
                       onClick={() => setCauTrucDe('3')}
                       className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
-                        !examConfig.isCauTrucToan3223 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10
+                        !examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10
                           ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-bold'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
@@ -236,7 +262,7 @@ export default function Step1_HeaderInfo() {
                         <span className="font-bold flex items-center gap-1">
                           ⚙️ Cấu trúc khác / Tự do
                         </span>
-                        {!examConfig.isCauTrucToan3223 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
+                        {!examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
                       </div>
                       <span className="text-[10px] font-normal text-slate-500">
                         Cấu trúc theo Bộ GDĐT hoặc tự do tùy chỉnh điểm

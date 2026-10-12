@@ -9,6 +9,12 @@ import { geographyIndicators } from '../components/data/geographyIndicators';
 import { khtnAllIndicators } from '../components/data/khtnIndicators';
 import { suggestKhtnCode, getRowKhtnCode, detectPhanMon } from '../data/khtnCompetencyData';
 import { generateKhtnVao10Matrix, KHTN_VAO10_CONFIG, KHTN_VAO10_SAMPLE_TOPICS } from '../data/khtnVao10Data';
+import {
+  isTheoryOrRecognitionOnlyLesson,
+  isBasicTheoryNoVanDung,
+  detectToanMach,
+  getTuLuanSuitabilityTier,
+} from '../utils/specTableHelper';
 
 // =============================================================================
 // HELPER: Ph├ít hiß╗çn m├┤n hß╗ìc hiß╗çn tß║íi
@@ -315,6 +321,7 @@ export const useExamStore = create(
         isCauTruc4213: false,
         isCauTrucKHTNVao10: false,
         isCauTrucToan3223: false,
+        isCauTrucToan8_5050: false,
         tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 }
       },
 
@@ -431,6 +438,7 @@ export const useExamStore = create(
               isCauTruc4213: true,
               isCauTrucKHTNVao10: false,
               isCauTrucToan3223: false,
+              isCauTrucToan8_5050: false,
               tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
             }
           };
@@ -438,7 +446,7 @@ export const useExamStore = create(
 
         // 3. Các cấu trúc khác (Toán, 100% TN khác...)
         const p1 = Number(tongDiemP1) || 3.0;
-        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false, isCauTrucToan3223: false };
+        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false, isCauTrucToan3223: false, isCauTrucToan8_5050: false };
         const hasTLN = state.config.hasTraLoiNgan !== false;
         const hasTL = state.config.hasTuLuan;
 
@@ -555,6 +563,7 @@ export const useExamStore = create(
             isCauTruc4213: false,
             isCauTrucKHTNVao10: true,
             isCauTrucToan3223: false,
+            isCauTrucToan8_5050: false,
             tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
           }
         };
@@ -597,6 +606,7 @@ export const useExamStore = create(
           isCauTruc4213: false,
           isCauTrucKHTNVao10: true,
           isCauTrucToan3223: false,
+          isCauTrucToan8_5050: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
         }
       })),
@@ -621,6 +631,7 @@ export const useExamStore = create(
           isCauTruc4213: true,
           isCauTrucKHTNVao10: false,
           isCauTrucToan3223: false,
+          isCauTrucToan8_5050: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
         }
       })),
@@ -655,6 +666,7 @@ export const useExamStore = create(
           isCauTruc4213: false,
           isCauTrucKHTNVao10: false,
           isCauTrucToan3223: true,
+          isCauTrucToan8_5050: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 },
         },
         tuLuanConfig: {
@@ -680,6 +692,65 @@ export const useExamStore = create(
         },
       })),
       setCauTrucToanKhanhHoa: () => get().setCauTrucToan3223(),
+
+      // Action chuyển nhanh sang Cấu trúc Toán 8 (50% Trắc nghiệm - 50% Tự luận)
+      // Tổng 10.0đ (22 câu) - Tỉ lệ nhận thức: 30% Biết - 40% Hiểu - 20% Vận dụng - 10% Vận dụng cao
+      // P.I  (3,0đ): 12 câu NLC x 0,25đ (10 Biết + 2 Hiểu)
+      // P.II (1,0đ): 1 câu Đúng/Sai x 4 ý x 0,25đ (2 Biết + 1 Hiểu + 1 VD)
+      // P.III(1,0đ): 4 câu Trả lời ngắn x 0,25đ (3 Hiểu + 1 VD)
+      // P.IV (5,0đ): 5 câu Tự luận x 2 phần (a, b) x 0,5đ = 10 phần (5 Hiểu + 3 VD + 2 VDC)
+      setCauTrucToan8_5050: () => set(() => ({
+        config: {
+          hasTuLuan: true,
+          hasTraLoiNgan: true,
+          diemNhieuLuaChon: 0.25,
+          diemDungSai: 0.25,
+          diemTraLoiNgan: 0.25,
+          diemTuLuan: 0.5,
+          isCuoiKi: false,
+          isContinuousNumbering: true,
+          exportTemplate: 'ministry',
+          showCompetencySymbol: true,
+          showCompetencyCode: true,
+          showExamRedMetadata: true,
+          showExamAnswerUnderline: true,
+          groupTfByTopic: false,
+        },
+        examConfig: {
+          tongDiem: 10.0,
+          tongDiemP1: 3.0,   diemMoiCauP1: 0.25,  // P.I:  12 câu × 0,25đ = 3,0đ
+          tongDiemP2: 1.0,   diemMoiYP2: 0.25,    // P.II:  1 câu × 4 ý × 0,25đ = 1,0đ
+          tongDiemP3: 1.0,   diemMoiYP3: 0.25,    // P.III: 4 câu × 0,25đ = 1,0đ
+          diemMoiYTuLuan: 0.5,                    // P.IV:  5 câu × 2 ý × 0,5đ = 5,0đ
+          isCauTruc4213: false,
+          isCauTrucKHTNVao10: false,
+          isCauTrucToan3223: false,
+          isCauTrucToan8_5050: true,
+          tiLeNhanThuc: { biet: 30, hieu: 40, vanDung: 20, vanDungCao: 10 },
+        },
+        tuLuanConfig: {
+          enabled: false,
+          questions: [
+            { id: 'tl_q1', label: 'Câu 18', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'hieu' }] },
+            { id: 'tl_q2', label: 'Câu 19', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'hieu' }] },
+            { id: 'tl_q3', label: 'Câu 20', kienThuc: 'hinh_hoc', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'vanDung' }] },
+            { id: 'tl_q4', label: 'Câu 21', kienThuc: 'hinh_hoc', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 0.5, level: 'vanDung' }, { diem: 0.5, level: 'vanDung' }] },
+            { id: 'tl_q5', label: 'Câu 22', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [{ diem: 0.5, level: 'vanDungCao' }, { diem: 0.5, level: 'vanDungCao' }] },
+          ],
+        },
+        dungSaiConfig: {
+          enabled: false,
+          mode: 'cung_bai',
+          questions: [
+            { id: 'ds_q1', label: 'Câu 13', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          ]
+        },
+      })),
 
       // Toggle Trß║ú lß╗¥i ngß║»n - xß╗¡ l├╜ trong 1 lß║ºn set ─æß╗â tr├ính race condition
       toggleTraLoiNgan: (val) => set((state) => {
@@ -1257,13 +1328,23 @@ export const useExamStore = create(
 
           if (allDvs.length > 0) {
             const tongSoTiet = allDvs.reduce((s, d) => s + d.soTiet, 0);
+            const monHocVao10 = state.examHeader?.monHoc || 'Khoa học tự nhiên';
+            const lopVao10 = state.examHeader?.lop || '9';
             const flat = allDvs.map(d => ({
               ...d,
               target: (d.soTiet / tongSoTiet) * 10.0,
               current: 0,
               hasDungSai: false,
-              hasTraLoiNgan: false
+              hasTraLoiNgan: false,
+              isTheoryOnly: isTheoryOrRecognitionOnlyLesson(d.dv, monHocVao10, lopVao10),
+              isNoVanDung: isBasicTheoryNoVanDung(d.dv, monHocVao10, lopVao10),
             }));
+
+            // Tập ứng viên loại trừ bài thuần lý thuyết / chỉ Nhận biết
+            const nonTheoryFlat = flat.filter(f => !f.isTheoryOnly);
+            const vdCapableFlat = nonTheoryFlat.filter(f => !f.isNoVanDung);
+            const baseFlatVD = vdCapableFlat.length > 0 ? vdCapableFlat : (nonTheoryFlat.length > 0 ? nonTheoryFlat : flat);
+            const baseFlatHieu = nonTheoryFlat.length > 0 ? nonTheoryFlat : flat;
 
             // Reset dữ liệu các câu
             allDvs.forEach(d => {
@@ -1278,6 +1359,7 @@ export const useExamStore = create(
             // 1. Phân bổ CHÍNH XÁC 3 câu Đúng/Sai (12 ý = 3.0đ).
             // Mỗi câu 4 ý: 2 Hiểu (0.5đ) + 2 Vận dụng (0.5đ).
             // Theo chuẩn QĐ 1038 Hải Phòng: 1 câu Vật lí, 1 câu Hóa học, 1 câu Sinh học.
+            // Tuyệt đối tránh các bài mở đầu thuần Nhận biết (isTheoryOnly) và bài không có Vận dụng (isNoVanDung).
             const lopNum = Number(state.examHeader?.lop) || 9;
             const isMatchBranch = (target, actual) => {
               if (!target || !actual) return false;
@@ -1290,22 +1372,35 @@ export const useExamStore = create(
               if (t.includes('sinhhoc') && a.includes('sinhhoc')) return true;
               return false;
             };
+            const isDvMatchBranch = (f, pmTarget) => (
+              isMatchBranch(pmTarget, f.dv.phanMon) ||
+              isMatchBranch(pmTarget, detectPhanMon(f.dv.noiDung, lopNum)) ||
+              isMatchBranch(pmTarget, detectPhanMon(f.topic?.tenChuDe || '', lopNum))
+            );
             const phanMonOrder = ['vatli', 'hoahoc', 'sinhhoc'];
 
             for (let qNo = 1; qNo <= 3; qNo++) {
               const pmTarget = phanMonOrder[qNo - 1]; // qNo 1: vatli, 2: hoahoc, 3: sinhhoc
 
-              // Ưu tiên 1: Bài chưa có ĐS, khớp đúng phân môn pmTarget
-              let candidatePool = flat.filter(f => !f.hasDungSai && (isMatchBranch(pmTarget, f.dv.phanMon) || isMatchBranch(pmTarget, detectPhanMon(f.dv.noiDung, lopNum))));
+              // Ưu tiên 1: Bài hợp lệ (không thuần NB, có VD), chưa có ĐS, khớp đúng phân môn pmTarget
+              let candidatePool = baseFlatVD.filter(f => !f.hasDungSai && isDvMatchBranch(f, pmTarget));
 
-              // Ưu tiên 2: Nếu không tìm thấy bài đúng phân môn, lấy bài chưa có ĐS (ưu tiên số tiết lớn)
+              // Ưu tiên 2: Bài không thuần NB, chưa có ĐS, khớp đúng phân môn pmTarget
               if (candidatePool.length === 0) {
-                candidatePool = flat.filter(f => !f.hasDungSai);
+                candidatePool = baseFlatHieu.filter(f => !f.hasDungSai && isDvMatchBranch(f, pmTarget));
               }
 
-              // Ưu tiên 3 (fallback nếu số bài < 3): cho phép chọn lại bài có gap lớn nhất
+              // Ưu tiên 3: Nếu không tìm thấy bài đúng phân môn, lấy bài hợp lệ chưa có ĐS
               if (candidatePool.length === 0) {
-                candidatePool = flat;
+                candidatePool = baseFlatVD.filter(f => !f.hasDungSai);
+              }
+              if (candidatePool.length === 0) {
+                candidatePool = baseFlatHieu.filter(f => !f.hasDungSai);
+              }
+
+              // Ưu tiên 4 (fallback nếu số bài < 3): cho phép chọn lại bài hợp lệ có gap lớn nhất
+              if (candidatePool.length === 0) {
+                candidatePool = baseFlatVD;
               }
 
               // Sắp xếp: Ưu tiên số tiết lớn nhất, sau đó đến chênh lệch (target - current)
@@ -1331,19 +1426,26 @@ export const useExamStore = create(
 
             // 2. Phân bổ 6 câu Trả lời ngắn (6 câu Vận dụng = 1.5đ)
             // Theo chuẩn QĐ 1038 Hải Phòng: 2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học
+            // Tuyệt đối tránh bài thuần Nhận biết (isTheoryOnly) và bài không có Vận dụng (isNoVanDung)
             const pmP3Targets = ['vatli', 'vatli', 'hoahoc', 'hoahoc', 'sinhhoc', 'sinhhoc'];
             for (let i = 0; i < 6; i++) {
               const pmTarget = pmP3Targets[i];
-              // Ưu tiên bài thuộc phân môn pmTarget, chưa có ĐS và chưa có TLN
-              let pool = flat.filter(f => !f.hasDungSai && !f.hasTraLoiNgan && (isMatchBranch(pmTarget, f.dv.phanMon) || isMatchBranch(pmTarget, detectPhanMon(f.dv.noiDung, lopNum))));
+              // Ưu tiên bài thuộc phân môn pmTarget, có khả năng VD, chưa có ĐS và chưa có TLN
+              let pool = baseFlatVD.filter(f => !f.hasDungSai && !f.hasTraLoiNgan && isDvMatchBranch(f, pmTarget));
               if (pool.length === 0) {
-                pool = flat.filter(f => !f.hasDungSai && !f.hasTraLoiNgan);
+                pool = baseFlatHieu.filter(f => !f.hasDungSai && !f.hasTraLoiNgan && isDvMatchBranch(f, pmTarget));
               }
               if (pool.length === 0) {
-                pool = flat.filter(f => !f.hasDungSai);
+                pool = baseFlatVD.filter(f => !f.hasDungSai && !f.hasTraLoiNgan);
               }
               if (pool.length === 0) {
-                pool = flat;
+                pool = baseFlatHieu.filter(f => !f.hasDungSai && !f.hasTraLoiNgan);
+              }
+              if (pool.length === 0) {
+                pool = baseFlatVD.filter(f => !f.hasDungSai);
+              }
+              if (pool.length === 0) {
+                pool = baseFlatVD;
               }
               const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
               if (chosen) {
@@ -1354,7 +1456,7 @@ export const useExamStore = create(
             }
 
             // 3. Phân bổ Phần I: 22 câu TN nhiều lựa chọn (16 Biết + 6 Hiểu = 5.5đ)
-            // 3.1. 16 câu Biết: Rải đều theo số tiết
+            // 3.1. 16 câu Biết: Rải đều theo số tiết (bao gồm cả các bài lý thuyết mở đầu Nhận biết)
             const weights = flat.map(f => f.soTiet);
             const bietCounts = distributeLargestRemainder(16, weights);
             flat.forEach((f, idx) => {
@@ -1363,9 +1465,9 @@ export const useExamStore = create(
               f.current += cnt * 0.25;
             });
 
-            // 3.2. 6 câu Hiểu: Cấp cho các bài có khoảng cách (target - current) lớn nhất
+            // 3.2. 6 câu Hiểu: Cấp cho các bài không thuần Nhận biết có khoảng cách (target - current) lớn nhất
             for (let i = 0; i < 6; i++) {
-              const chosen = flat.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+              const chosen = baseFlatHieu.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
               if (chosen) {
                 chosen.dv.nhieuLuaChon.hieu += 1;
                 chosen.current += 0.25;
@@ -1467,7 +1569,10 @@ export const useExamStore = create(
             const sumTietDau = allDvs.filter(d => d.dv.isNuaDauKi).reduce((s, d) => s + d.soTiet, 0);
             const sumTietSau = allDvs.filter(d => !d.dv.isNuaDauKi).reduce((s, d) => s + d.soTiet, 0);
 
-            // Xây dựng flatKHTN theo dõi target, current và hasTuLuan
+            const monHocKHTN = state.examHeader?.monHoc || 'Khoa học tự nhiên';
+            const lopKHTN = state.examHeader?.lop || '';
+
+            // Xây dựng flatKHTN theo dõi target, current, hasTuLuan và phân loại bài lý thuyết / Nhận biết
             const flatKHTN = allDvs.map(d => {
               let target = (d.soTiet / tongSoTiet_KHTN) * 10.0;
               if (hasBothPhases) {
@@ -1486,7 +1591,9 @@ export const useExamStore = create(
                 target,
                 current: 0, // Điểm thực tế tích lũy
                 hasTuLuan: false, // Đánh dấu bài đã nhận câu Tự luận
-                hasDungSai: false // Đánh dấu bài đã nhận câu Đúng/Sai
+                hasDungSai: false, // Đánh dấu bài đã nhận câu Đúng/Sai
+                isTheoryOnly: isTheoryOrRecognitionOnlyLesson(d.dv, monHocKHTN, lopKHTN),
+                isNoVanDung: isBasicTheoryNoVanDung(d.dv, monHocKHTN, lopKHTN),
               };
             });
 
@@ -1505,29 +1612,92 @@ export const useExamStore = create(
 
             // =====================================================================
             // [CƠ CHẾ 1] BƯỚC 1: PHÂN BỔ TỰ LUẬN TRƯỚC (3.0đ) — "TẢNG ĐÁ LỚN NHẤT"
-            // Mỗi bài nhiều tiết chỉ nhận tối đa 1 câu TL (hoặc 1 cụm ý) để không bị quá tải điểm
+            // - Tuyệt đối tránh các bài chỉ lý thuyết / chỉ ở mức Nhận biết (isTheoryOnly)
+            // - Ưu tiên bài có số tiết >= 2, có khả năng ra câu Thông hiểu / Vận dụng / VDC
+            // - Mỗi bài nhiều tiết chỉ nhận tối đa 1 câu TL (hoặc 1 cụm ý) để không bị quá tải điểm
             // =====================================================================
-            const topicsByTotalTiet = topics
+            const allTopicsByTotalTiet = topics
               .map((t, ti) => ({
                 ti,
-                totalTiet: flatKHTN.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0)
+                totalTiet: flatKHTN.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0),
+                hasEligibleTL: flatKHTN.some(d => d.ti === ti && !d.isTheoryOnly)
               }))
               .sort((a, b) => b.totalTiet - a.totalTiet);
+            const eligibleTopicsByTotalTiet = allTopicsByTotalTiet.filter(t => t.hasEligibleTL);
+            const topicsByTotalTiet = eligibleTopicsByTotalTiet.length > 0 ? eligibleTopicsByTotalTiet : allTopicsByTotalTiet;
 
             // Hàm helper chọn bài tối ưu cho Tự luận trong 1 danh sách ứng viên:
-            // 1. Ưu tiên bài CHƯA CÓ TỰ LUẬN (!hasTuLuan) và có số tiết lớn nhất
-            // 2. Nếu bằng số tiết thì bài có gap (target - current) lớn hơn
-            const findBestDvForTuLuan = (candidates) => {
+            // 1. Loại bỏ các bài chỉ lý thuyết / chỉ Nhận biết (!isTheoryOnly)
+            // 2. Với mức VD / VDC: ưu tiên bài có khả năng Vận dụng (!isNoVanDung)
+            // 3. Ưu tiên bài có soTiet >= 2 và CHƯA CÓ TỰ LUẬN (!hasTuLuan)
+            // 4. Sắp xếp theo độ phù hợp, số tiết giảm dần, và gap (target - current) lớn hơn
+            const findBestDvForTuLuan = (candidates, targetLevel = 'hieu') => {
               if (!candidates || candidates.length === 0) return null;
-              const notHasTL = candidates.filter(c => !c.hasTuLuan);
+
+              let pool = candidates;
+              const nonTheory = pool.filter(c => !c.isTheoryOnly);
+              if (nonTheory.length > 0) pool = nonTheory;
+
+              if (targetLevel === 'vanDung' || targetLevel === 'vanDungCao') {
+                const vdCapable = pool.filter(c => !c.isNoVanDung);
+                if (vdCapable.length > 0) pool = vdCapable;
+              }
+
+              const multiTiet = pool.filter(c => c.soTiet >= 2);
+              if (multiTiet.length > 0) pool = multiTiet;
+
+              const notHasTL = pool.filter(c => !c.hasTuLuan);
               if (notHasTL.length > 0) {
                 return notHasTL.slice().sort((a, b) => {
+                  if (a.isNoVanDung !== b.isNoVanDung) return a.isNoVanDung ? 1 : -1;
+                  const tierA = getTuLuanSuitabilityTier(a.dv, targetLevel, monHocKHTN, lopKHTN, topics[a.ti]?.tenChuDe);
+                  const tierB = getTuLuanSuitabilityTier(b.dv, targetLevel, monHocKHTN, lopKHTN, topics[b.ti]?.tenChuDe);
+                  if (tierB !== tierA && b.soTiet === a.soTiet) return tierB - tierA;
                   if (b.soTiet !== a.soTiet) return b.soTiet - a.soTiet;
                   return (b.target - b.current) - (a.target - a.current);
                 })[0];
               }
-              // Fallback: nếu tất cả đều đã có TL thì chọn bài có gap lớn nhất
-              return candidates.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+              // Fallback: nếu tất cả đều đã có TL thì chọn bài có gap lớn nhất trong pool hợp lệ
+              return pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
+            };
+
+            // Chọn ứng viên Tự luận từ chủ đề mục tiêu, tự động chuyển sang chủ đề khác nếu chủ đề hiện tại chỉ còn bài lý thuyết Nhận biết
+            const pickBestKhtnDvForTuLuan = (dvsInTopic, allCandidatePool, targetLevel = 'hieu') => {
+              const eligInTopic = (dvsInTopic || []).filter(d => !d.isTheoryOnly);
+              const eligInAll = (allCandidatePool || []).filter(d => !d.isTheoryOnly);
+
+              const filterByLevel = (list) => {
+                if (targetLevel === 'vanDung' || targetLevel === 'vanDungCao') {
+                  const vdList = list.filter(d => !d.isNoVanDung);
+                  if (vdList.length > 0) return vdList;
+                }
+                return list;
+              };
+
+              const lvlInTopic = filterByLevel(eligInTopic);
+              const lvlInAll = filterByLevel(eligInAll);
+
+              const unassignedInTopic = lvlInTopic.filter(d => !d.hasTuLuan);
+              const unassignedInAll = lvlInAll.filter(d => !d.hasTuLuan);
+              const unassignedEligTopic = eligInTopic.filter(d => !d.hasTuLuan);
+              const unassignedEligAll = eligInAll.filter(d => !d.hasTuLuan);
+
+              // Nếu trong chủ đề có bài >= 2 tiết chưa có TL thì ưu tiên; nếu chỉ còn bài 1 tiết mà chủ đề khác có bài >= 2 tiết chưa có TL thì ưu tiên bài >= 2 tiết
+              const unassignedMultiInTopic = unassignedInTopic.filter(d => d.soTiet >= 2);
+              const unassignedMultiInAll = unassignedInAll.filter(d => d.soTiet >= 2);
+
+              let chosenPool = [];
+              if (unassignedMultiInTopic.length > 0) chosenPool = unassignedMultiInTopic;
+              else if (unassignedMultiInAll.length > 0) chosenPool = unassignedMultiInAll;
+              else if (unassignedInTopic.length > 0) chosenPool = unassignedInTopic;
+              else if (unassignedInAll.length > 0) chosenPool = unassignedInAll;
+              else if (unassignedEligTopic.length > 0) chosenPool = unassignedEligTopic;
+              else if (unassignedEligAll.length > 0) chosenPool = unassignedEligAll;
+              else if (eligInTopic.length > 0) chosenPool = eligInTopic;
+              else if (eligInAll.length > 0) chosenPool = eligInAll;
+              else chosenPool = (dvsInTopic && dvsInTopic.length > 0) ? dvsInTopic : allCandidatePool;
+
+              return findBestDvForTuLuan(chosenPool, targetLevel);
             };
 
             const assignSubItemToKhtnDv = (targetFlat, subItem, lvl, label, qId = '', qLabel = '') => {
@@ -1586,13 +1756,16 @@ export const useExamStore = create(
 
               // Trong chế độ Cuối kì: Tuyệt đối chỉ phân bổ Tự luận vào các bài thuộc Nửa sau kì
               const candidateFlatTL = hasBothPhases ? flatKHTN.filter(d => !d.dv.isNuaDauKi) : flatKHTN;
-              const candidateTopicsTL = topics
+              const allCandidateTopicsTL = topics
                 .map((t, ti) => ({
                   ti,
-                  totalTiet: candidateFlatTL.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0)
+                  totalTiet: candidateFlatTL.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0),
+                  hasEligibleTL: candidateFlatTL.some(d => d.ti === ti && !d.isTheoryOnly)
                 }))
                 .filter(t => t.totalTiet > 0)
                 .sort((a, b) => b.totalTiet - a.totalTiet);
+              const eligCandidateTopicsTL = allCandidateTopicsTL.filter(t => t.hasEligibleTL);
+              const candidateTopicsTL = eligCandidateTopicsTL.length > 0 ? eligCandidateTopicsTL : allCandidateTopicsTL;
               const topicsForTL = candidateTopicsTL.length > 0 ? candidateTopicsTL : topicsByTotalTiet;
 
               existingTLConfig.questions.forEach((q, qIdx) => {
@@ -1600,16 +1773,14 @@ export const useExamStore = create(
                 const kieuYQ = q.kieuY || 'chung';
                 const phamVi = q.phamVi || (kieuYQ === 'doc_lap' ? 'cung_bai' : 'cung_dvkt');
                 const curQLabel = q.label || `Câu ${qIdx + 1}`;
+                const qMaxLvl = (q.subItems || []).some(s => s.level === 'vanDungCao')
+                  ? 'vanDungCao'
+                  : ((q.subItems || []).some(s => s.level === 'vanDung') ? 'vanDung' : 'hieu');
 
                 if (nY === 1 || phamVi === 'cung_dvkt' || phamVi === 'cung_bai') {
                   const topicEntry = topicsForTL[qIdx % topicsForTL.length];
                   const dvsInTopic = candidateFlatTL.filter(d => d.ti === topicEntry.ti);
-                  const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
-                  const unassignedInAll = candidateFlatTL.filter(d => !d.hasTuLuan);
-                  const chosenPool = unassignedInTopic.length > 0 
-                    ? unassignedInTopic 
-                    : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : candidateFlatTL));
-                  const bestDv = findBestDvForTuLuan(chosenPool);
+                  const bestDv = pickBestKhtnDvForTuLuan(dvsInTopic, candidateFlatTL, qMaxLvl);
                   if (bestDv) {
                     q.subItems.forEach((sub, sIdx) => {
                       const lvl = getKhtnLvl(sub);
@@ -1619,6 +1790,7 @@ export const useExamStore = create(
                 } else if (phamVi === 'cac_dvkt_cung_chu_de' || phamVi === 'cac_bai_cung_chu_de') {
                   const topicGapMap = {};
                   candidateFlatTL.forEach(f => {
+                    if (f.isTheoryOnly) return;
                     if (topicGapMap[f.ti] === undefined) topicGapMap[f.ti] = 0;
                     topicGapMap[f.ti] += (f.target - f.current);
                   });
@@ -1630,27 +1802,21 @@ export const useExamStore = create(
                   const dvsInTopic = candidateFlatTL.filter(d => d.ti === bestTi);
                   const usedDvIds = new Set();
                   q.subItems.forEach((sub, sIdx) => {
-                    const available = dvsInTopic.filter(d => !usedDvIds.has(d.di) && !d.hasTuLuan);
-                    const fallbackAvail = dvsInTopic.filter(d => !usedDvIds.has(d.di));
-                    const chosenDv = findBestDvForTuLuan(available.length > 0 ? available : (fallbackAvail.length > 0 ? fallbackAvail : dvsInTopic)) || findBestDvForTuLuan(candidateFlatTL);
+                    const lvl = getKhtnLvl(sub);
+                    const notUsedInTopic = dvsInTopic.filter(d => !usedDvIds.has(d.di));
+                    const chosenDv = pickBestKhtnDvForTuLuan(notUsedInTopic, candidateFlatTL, lvl);
                     if (chosenDv) {
                       usedDvIds.add(chosenDv.di);
-                      const lvl = getKhtnLvl(sub);
                       assignSubItemToKhtnDv(chosenDv, sub, lvl, `${curQLabel}${String.fromCharCode(97 + sIdx)}`, q.id, curQLabel);
                     }
                   });
                 } else if (phamVi === 'cac_chu_de_khac_nhau') {
                   q.subItems.forEach((sub, sIdx) => {
+                    const lvl = getKhtnLvl(sub);
                     const topicEntry = topicsForTL[sIdx % topicsForTL.length];
                     const dvsInTopic = candidateFlatTL.filter(d => d.ti === topicEntry.ti);
-                    const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
-                    const unassignedInAll = candidateFlatTL.filter(d => !d.hasTuLuan);
-                    const chosenPool = unassignedInTopic.length > 0 
-                      ? unassignedInTopic 
-                      : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : candidateFlatTL));
-                    const chosenDv = findBestDvForTuLuan(chosenPool);
+                    const chosenDv = pickBestKhtnDvForTuLuan(dvsInTopic, candidateFlatTL, lvl);
                     if (chosenDv) {
-                      const lvl = getKhtnLvl(sub);
                       assignSubItemToKhtnDv(chosenDv, sub, lvl, `${curQLabel}${String.fromCharCode(97 + sIdx)}`, q.id, curQLabel);
                     }
                   });
@@ -1661,13 +1827,16 @@ export const useExamStore = create(
               if (hasBothPhases) {
                 // CHẾ ĐỘ CUỐI KÌ 25-75: Toàn bộ 3 câu Tự luận dồn vào Nửa sau kì (kiến thức trọng tâm mới học)
                 const poolSau = flatKHTN.filter(d => !d.dv.isNuaDauKi);
-                const sauTopics = topics
+                const allSauTopics = topics
                   .map((t, ti) => ({
                     ti,
-                    totalTiet: poolSau.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0)
+                    totalTiet: poolSau.filter(d => d.ti === ti).reduce((s, d) => s + d.soTiet, 0),
+                    hasEligibleTL: poolSau.some(d => d.ti === ti && !d.isTheoryOnly)
                   }))
                   .filter(t => t.totalTiet > 0)
                   .sort((a, b) => b.totalTiet - a.totalTiet);
+                const eligSauTopics = allSauTopics.filter(t => t.hasEligibleTL);
+                const sauTopics = eligSauTopics.length > 0 ? eligSauTopics : allSauTopics;
                 const topicsToUse = sauTopics.length > 0 ? sauTopics : topicsByTotalTiet;
 
                 [
@@ -1677,12 +1846,7 @@ export const useExamStore = create(
                 ].forEach(({ level, label }, qIdx) => {
                   const topicEntry = topicsToUse[qIdx % topicsToUse.length];
                   const dvsInTopic = topicEntry ? poolSau.filter(d => d.ti === topicEntry.ti) : [];
-                  const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
-                  const unassignedInSau = poolSau.filter(d => !d.hasTuLuan);
-                  const chosenPool = unassignedInTopic.length > 0
-                    ? unassignedInTopic
-                    : (unassignedInSau.length > 0 ? unassignedInSau : (dvsInTopic.length > 0 ? dvsInTopic : poolSau));
-                  const bestDv = findBestDvForTuLuan(chosenPool);
+                  const bestDv = pickBestKhtnDvForTuLuan(dvsInTopic, poolSau, level);
                   if (bestDv) {
                     assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
                   }
@@ -1696,12 +1860,7 @@ export const useExamStore = create(
                   const topicEntry = topicsByTotalTiet[qIdx % topicsByTotalTiet.length];
                   if (!topicEntry) return;
                   const dvsInTopic = flatKHTN.filter(d => d.ti === topicEntry.ti);
-                  const unassignedInTopic = dvsInTopic.filter(d => !d.hasTuLuan);
-                  const unassignedAll = flatKHTN.filter(d => !d.hasTuLuan);
-                  const chosenPool = unassignedInTopic.length > 0
-                    ? unassignedInTopic
-                    : (unassignedAll.length > 0 ? unassignedAll : (dvsInTopic.length > 0 ? dvsInTopic : flatKHTN));
-                  const bestDv = findBestDvForTuLuan(chosenPool);
+                  const bestDv = pickBestKhtnDvForTuLuan(dvsInTopic, flatKHTN, level);
                   if (bestDv) {
                     assignSubItemToKhtnDv(bestDv, { diem: 1.0 }, level, label, `tl_q${qIdx + 1}`, label);
                   }
@@ -1713,7 +1872,7 @@ export const useExamStore = create(
             // [CƠ CHẾ 1] BƯỚC 2: PHÂN BỔ ĐÚNG/SAI (2.0đ = 2 CÂU) & TRẢ LỜI NGẮN (1.0đ)
             // - Đảm bảo phân tán chủ đề: Câu 1 và Câu 2 nằm ở 2 Chủ đề KHÁC NHAU (nếu >= 2 CĐ)
             // - Mỗi bài học nhận tối đa 1 câu Đúng/Sai (1.0đ)
-            // - Ưu tiên bài có số tiết >= 2, chưa có Tự luận (!hasTuLuan), chưa có Đúng/Sai (!hasDungSai)
+            // - Ưu tiên bài có số tiết >= 2, không phải bài thuần Nhận biết (!isTheoryOnly), chưa có Tự luận (!hasTuLuan), chưa có Đúng/Sai (!hasDungSai)
             // - Hỗ trợ cấu hình dungSaiConfig tùy chỉnh nếu người dùng thiết lập
             // =====================================================================
             const existingDSConfig = state.dungSaiConfig;
@@ -1738,7 +1897,8 @@ export const useExamStore = create(
                 const phaseCandidateTopics = hasBothPhases
                   ? allTopicIndices.filter(ti => flatKHTN.some(f => f.ti === ti && !f.dv.isNuaDauKi))
                   : allTopicIndices;
-                const poolTopics = phaseCandidateTopics.length > 0 ? phaseCandidateTopics : allTopicIndices;
+                const nonTheoryTopics = phaseCandidateTopics.filter(ti => flatKHTN.some(f => f.ti === ti && !f.isTheoryOnly));
+                const poolTopics = nonTheoryTopics.length > 0 ? nonTheoryTopics : (phaseCandidateTopics.length > 0 ? phaseCandidateTopics : allTopicIndices);
 
                 const unusedTopics = poolTopics.filter(ti => !usedTfTopics.has(ti));
                 const candidateTopics = (unusedTopics.length > 0 && poolTopics.length >= 2) ? unusedTopics : poolTopics;
@@ -1768,11 +1928,14 @@ export const useExamStore = create(
                 if (qCfg && qCfg.dvktIndex !== null && qCfg.dvktIndex !== undefined && qCfg.dvktIndex >= 0) {
                   chosenDv = topicDvsKHTN.find(f => f.di === Number(qCfg.dvktIndex)) || topicDvsKHTN[0];
                 } else {
-                  // Ưu tiên bài: Chưa có Tự luận + Chưa có Đúng/Sai + Số tiết >= 2 + Gap lớn nhất
-                  const pool1 = topicDvsKHTN.filter(f => !f.hasTuLuan && !f.hasDungSai && f.soTiet >= 2);
-                  const pool2 = topicDvsKHTN.filter(f => !f.hasTuLuan && !f.hasDungSai);
-                  const pool3 = topicDvsKHTN.filter(f => !f.hasDungSai);
-                  const pool = pool1.length > 0 ? pool1 : pool2.length > 0 ? pool2 : pool3.length > 0 ? pool3 : topicDvsKHTN;
+                  // Ưu tiên bài: Không phải thuần Nhận biết + Chưa có Tự luận + Chưa có Đúng/Sai + Số tiết >= 2 + Gap lớn nhất
+                  const pool0 = topicDvsKHTN.filter(f => !f.isTheoryOnly && !f.hasTuLuan && !f.hasDungSai && f.soTiet >= 2);
+                  const pool1 = topicDvsKHTN.filter(f => !f.isTheoryOnly && !f.hasTuLuan && !f.hasDungSai);
+                  const pool2 = topicDvsKHTN.filter(f => !f.hasTuLuan && !f.hasDungSai && f.soTiet >= 2);
+                  const pool3 = topicDvsKHTN.filter(f => !f.hasTuLuan && !f.hasDungSai);
+                  const pool4 = topicDvsKHTN.filter(f => !f.isTheoryOnly && !f.hasDungSai);
+                  const pool5 = topicDvsKHTN.filter(f => !f.hasDungSai);
+                  const pool = pool0.length > 0 ? pool0 : pool1.length > 0 ? pool1 : pool2.length > 0 ? pool2 : pool3.length > 0 ? pool3 : pool4.length > 0 ? pool4 : pool5.length > 0 ? pool5 : topicDvsKHTN;
                   chosenDv = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                 }
 
@@ -1801,9 +1964,12 @@ export const useExamStore = create(
                 const usedInQuestion = new Set();
                 tfSubDefs.forEach(subDef => {
                   const notUsed = topicDvsKHTN.filter(f => !usedInQuestion.has(f.di));
-                  const p1 = notUsed.filter(f => !f.hasTuLuan && !f.hasDungSai);
-                  const p2 = notUsed.filter(f => !f.hasTuLuan);
-                  const p3 = notUsed.length > 0 ? notUsed : topicDvsKHTN;
+                  const levelFiltered = subDef.lvl === 'biet'
+                    ? notUsed
+                    : (notUsed.some(f => !f.isTheoryOnly) ? notUsed.filter(f => !f.isTheoryOnly) : notUsed);
+                  const p1 = levelFiltered.filter(f => !f.hasTuLuan && !f.hasDungSai);
+                  const p2 = levelFiltered.filter(f => !f.hasTuLuan);
+                  const p3 = levelFiltered.length > 0 ? levelFiltered : topicDvsKHTN;
                   const pool = p1.length > 0 ? p1 : p2.length > 0 ? p2 : p3;
                   const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                   if (chosen) {
@@ -1832,8 +1998,13 @@ export const useExamStore = create(
               // Nửa đầu: 1 Hiểu (0.25đ) + 1 VD (0.25đ) = 0.50đ
               // Nửa sau: 1 Hiểu (0.25đ) + 1 VD (0.25đ) = 0.50đ
               const pickTln = (poolList, lvl) => {
-                const notTL = poolList.filter(f => !f.hasTuLuan);
-                const p = notTL.length > 0 ? notTL : poolList;
+                const nonTheory = poolList.filter(f => !f.isTheoryOnly);
+                const basePool = nonTheory.length > 0 ? nonTheory : poolList;
+                const lvlPool = (lvl === 'vanDung' && basePool.some(f => !f.isNoVanDung))
+                  ? basePool.filter(f => !f.isNoVanDung)
+                  : basePool;
+                const notTL = lvlPool.filter(f => !f.hasTuLuan);
+                const p = notTL.length > 0 ? notTL : lvlPool;
                 const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                 if (chosen) {
                   chosen.dv.traLoiNgan[lvl]++;
@@ -1854,8 +2025,13 @@ export const useExamStore = create(
             } else {
               // Mặc định: 4 câu Trả lời ngắn (2 Hiểu, 2 VD, mỗi câu 0.25đ)
               ['hieu', 'hieu', 'vanDung', 'vanDung'].forEach(lvl => {
-                const notTL = flatKHTN.filter(f => !f.hasTuLuan);
-                const pool = notTL.length > 0 ? notTL : flatKHTN;
+                const nonTheory = flatKHTN.filter(f => !f.isTheoryOnly);
+                const basePool = nonTheory.length > 0 ? nonTheory : flatKHTN;
+                const lvlPool = (lvl === 'vanDung' && basePool.some(f => !f.isNoVanDung))
+                  ? basePool.filter(f => !f.isNoVanDung)
+                  : basePool;
+                const notTL = lvlPool.filter(f => !f.hasTuLuan);
+                const pool = notTL.length > 0 ? notTL : lvlPool;
                 const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                 if (chosen) {
                   chosen.dv.traLoiNgan[lvl]++;
@@ -1866,7 +2042,7 @@ export const useExamStore = create(
 
             // =====================================================================
             // [CƠ CHẾ 1] BƯỚC 4: PHÂN BỔ NHIỀU LỰA CHỌN (4.0đ = 16 CÂU) ĐỂ "LẤP HỔNG"
-            // 1. BẢO ĐẢM ĐỘ PHỦ 100%: Bài nào current === 0 (như Bài 1 - 1 tiết)
+            // 1. BẢO ĐẢM ĐỘ PHỦ 100%: Bài nào current === 0 (như Bài 1 - 1 tiết / Bài lý thuyết NB)
             //    BẮT BUỘC NHẬN NGAY 1 CÂU BIẾT (0.25đ)!
             // 2. Số câu Biết và Hiểu còn lại chia cho các bài thiếu điểm theo gap!
             // =====================================================================
@@ -1907,9 +2083,13 @@ export const useExamStore = create(
                 chosen.current += 0.25;
                 bietDau--;
               }
-              // 1c. Số câu Hiểu cho Nửa đầu
+              // 1c. Số câu Hiểu cho Nửa đầu (tránh bài chỉ Nhận biết isTheoryOnly)
               while (hieuDau > 0) {
-                const candidates = poolDau.filter(f => !f.hasTuLuan && f.soTiet >= 2);
+                const nonTheoryCandidates = poolDau.filter(f => !f.isTheoryOnly && !f.hasTuLuan && f.soTiet >= 2);
+                const fallbackNonTheory = poolDau.filter(f => !f.isTheoryOnly && !f.hasTuLuan);
+                const candidates = nonTheoryCandidates.length > 0
+                  ? nonTheoryCandidates
+                  : (fallbackNonTheory.length > 0 ? fallbackNonTheory : poolDau.filter(f => !f.hasTuLuan && f.soTiet >= 2));
                 const p = candidates.length > 0 ? candidates : poolDau;
                 const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                 if (!chosen) break;
@@ -1937,9 +2117,13 @@ export const useExamStore = create(
                 chosen.current += 0.25;
                 bietSau--;
               }
-              // 2c. Số câu Hiểu cho Nửa sau
+              // 2c. Số câu Hiểu cho Nửa sau (tránh bài chỉ Nhận biết isTheoryOnly)
               while (hieuSau > 0) {
-                const candidates = poolSau.filter(f => !f.hasTuLuan && f.soTiet >= 2);
+                const nonTheoryCandidates = poolSau.filter(f => !f.isTheoryOnly && !f.hasTuLuan && f.soTiet >= 2);
+                const fallbackNonTheory = poolSau.filter(f => !f.isTheoryOnly && !f.hasTuLuan);
+                const candidates = nonTheoryCandidates.length > 0
+                  ? nonTheoryCandidates
+                  : (fallbackNonTheory.length > 0 ? fallbackNonTheory : poolSau.filter(f => !f.hasTuLuan && f.soTiet >= 2));
                 const p = candidates.length > 0 ? candidates : poolSau;
                 const chosen = p.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                 if (!chosen) break;
@@ -1973,8 +2157,12 @@ export const useExamStore = create(
 
               // 3. Phân phối 4 câu Hiểu (1.0đ = 4 × 0.25đ):
               for (let i = 0; i < 4; i++) {
-                // Ưu tiên các bài có số tiết >= 2, chưa có Tự luận và đang có gap lớn nhất
-                const candidates = flatKHTN.filter(f => !f.hasTuLuan && f.soTiet >= 2);
+                // Ưu tiên các bài không phải thuần Nhận biết (!isTheoryOnly), có số tiết >= 2, chưa có Tự luận và đang có gap lớn nhất
+                const nonTheoryCandidates = flatKHTN.filter(f => !f.isTheoryOnly && !f.hasTuLuan && f.soTiet >= 2);
+                const fallbackNonTheory = flatKHTN.filter(f => !f.isTheoryOnly && !f.hasTuLuan);
+                const candidates = nonTheoryCandidates.length > 0
+                  ? nonTheoryCandidates
+                  : (fallbackNonTheory.length > 0 ? fallbackNonTheory : flatKHTN.filter(f => !f.hasTuLuan && f.soTiet >= 2));
                 const pool = candidates.length > 0 ? candidates : flatKHTN;
                 const chosen = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0];
                 if (chosen) {
@@ -2089,6 +2277,9 @@ export const useExamStore = create(
         // ╚══════════════════════════════════════════════════════════════════════╝
         if (state.examConfig.isCauTrucToan3223) {
           console.log('⚡ AutoFill: Cấu trúc Toán Khánh Hòa (3-2-2-3 - GDPT 2018)');
+          const monHocToan = state.examHeader?.monHoc || 'Toán';
+          const lopToan = state.examHeader?.lop || '';
+
           const topics = state.matrix.map(t => ({
             ...t,
             donViKienThuc: (t.donViKienThuc || []).map(dv => ({
@@ -2102,11 +2293,20 @@ export const useExamStore = create(
             })),
           }));
 
-          // Danh sách phẳng tất cả ĐVKT kèm vị trí ti, di
+          // Danh sách phẳng tất cả ĐVKT kèm vị trí ti, di và phân loại bài lý thuyết / Nhận biết
           const flatDvs = [];
           topics.forEach((t, ti) => {
             (t.donViKienThuc || []).forEach((dv, di) => {
-              flatDvs.push({ t: topics[ti], dv: topics[ti].donViKienThuc[di], soTiet: Number(dv.soTiet) || 1, ti, di });
+              flatDvs.push({
+                t: topics[ti],
+                dv: topics[ti].donViKienThuc[di],
+                soTiet: Number(dv.soTiet) || 1,
+                ti,
+                di,
+                isTheoryOnly: isTheoryOrRecognitionOnlyLesson(dv, monHocToan, lopToan),
+                isNoVanDung: isBasicTheoryNoVanDung(dv, monHocToan, lopToan),
+                mach: detectToanMach(topics[ti]?.tenChuDe || '', dv.noiDung || ''),
+              });
             });
           });
 
@@ -2137,9 +2337,12 @@ export const useExamStore = create(
             if (qCfg && qCfg.topicIndex !== null && qCfg.topicIndex !== undefined && qCfg.topicIndex >= 0 && qCfg.topicIndex < topics.length) {
               chosenTi = Number(qCfg.topicIndex);
             } else {
-              // Ưu tiên chọn chủ đề chưa dùng nếu có >= 2 chủ đề
-              const unusedTopics = topics.map((_, ti) => ti).filter(ti => !usedDsTopics.has(ti));
-              const candTopics = (unusedTopics.length > 0 && topics.length >= 2) ? unusedTopics : topics.map((_, ti) => ti);
+              // Ưu tiên chọn chủ đề chưa dùng nếu có >= 2 chủ đề (ưu tiên chủ đề có bài không thuần Nhận biết)
+              const allTopicIndices = topics.map((_, ti) => ti);
+              const nonTheoryTopics = allTopicIndices.filter(ti => flatDvs.some(f => f.ti === ti && !f.isTheoryOnly));
+              const baseTopics = nonTheoryTopics.length > 0 ? nonTheoryTopics : allTopicIndices;
+              const unusedTopics = baseTopics.filter(ti => !usedDsTopics.has(ti));
+              const candTopics = (unusedTopics.length > 0 && baseTopics.length >= 2) ? unusedTopics : baseTopics;
               let maxTiet = -1;
               candTopics.forEach(ti => {
                 const totalT = (topics[ti].donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0);
@@ -2161,8 +2364,9 @@ export const useExamStore = create(
               if (qCfg && qCfg.dvktIndex !== null && qCfg.dvktIndex !== undefined && topicDvs[qCfg.dvktIndex]) {
                 chosenDv = topicDvs[qCfg.dvktIndex];
               } else {
-                // Ưu tiên bài chưa có DS, có số tiết lớn nhất
-                const poolNoDS = topicDvs.filter(dv => (dv.dungSaiSubItems || []).length === 0);
+                // Ưu tiên bài không thuần Nhận biết, chưa có DS, có số tiết lớn nhất
+                const nonTheoryNoDS = topicDvs.filter(dv => !isTheoryOrRecognitionOnlyLesson(dv, monHocToan, lopToan) && (dv.dungSaiSubItems || []).length === 0);
+                const poolNoDS = nonTheoryNoDS.length > 0 ? nonTheoryNoDS : topicDvs.filter(dv => (dv.dungSaiSubItems || []).length === 0);
                 const pool = poolNoDS.length > 0 ? poolNoDS : topicDvs;
                 chosenDv = pool.slice().sort((a, b) => (Number(b.soTiet) || 1) - (Number(a.soTiet) || 1))[0] || topicDvs[0];
               }
@@ -2198,8 +2402,13 @@ export const useExamStore = create(
               const usedInQ = new Set();
               tfSubDefs.forEach(subDef => {
                 const notUsed = topicDvs.filter((_, di) => !usedInQ.has(di));
-                const poolNoDS = notUsed.filter(dv => (dv.dungSaiSubItems || []).length === 0);
-                const pool = poolNoDS.length > 0 ? poolNoDS : (notUsed.length > 0 ? notUsed : topicDvs);
+                const levelFiltered = subDef.lvl === 'biet'
+                  ? notUsed
+                  : (notUsed.some(dv => !isTheoryOrRecognitionOnlyLesson(dv, monHocToan, lopToan))
+                      ? notUsed.filter(dv => !isTheoryOrRecognitionOnlyLesson(dv, monHocToan, lopToan))
+                      : notUsed);
+                const poolNoDS = levelFiltered.filter(dv => (dv.dungSaiSubItems || []).length === 0);
+                const pool = poolNoDS.length > 0 ? poolNoDS : (levelFiltered.length > 0 ? levelFiltered : topicDvs);
                 const chosenDv = pool.slice().sort((a, b) => (Number(b.soTiet) || 1) - (Number(a.soTiet) || 1))[0] || topicDvs[0];
                 if (chosenDv) {
                   const dIdx = topicDvs.indexOf(chosenDv);
@@ -2222,13 +2431,18 @@ export const useExamStore = create(
           }
 
           // ─── P.III: 4 câu Trả lời ngắn (2H + 2VD) × 0,50đ = 2,0đ ───
-          // 2 câu Thông hiểu (1,0đ) + 2 câu Vận dụng (1,0đ)
+          // 2 câu Thông hiểu (1,0đ) + 2 câu Vận dụng (1,0đ) — Tránh bài chỉ Nhận biết (isTheoryOnly)
           const soCauP3 = 4;
-          const sortedByTiet = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
+          const nonTheoryP3 = flatDvs.filter(f => !f.isTheoryOnly);
+          const basePoolP3 = nonTheoryP3.length > 0 ? nonTheoryP3 : flatDvs;
+          const sortedByTiet = [...basePoolP3].sort((a, b) => b.soTiet - a.soTiet);
           let hieuP3Left = 2, vdP3Left = 2;
           sortedByTiet.forEach(f => {
             if (hieuP3Left > 0) { f.dv.traLoiNgan.hieu += 1; hieuP3Left--; }
-            else if (vdP3Left > 0) { f.dv.traLoiNgan.vanDung += 1; vdP3Left--; }
+            else if (vdP3Left > 0 && (!f.isNoVanDung || !sortedByTiet.some(x => !x.isNoVanDung))) {
+              f.dv.traLoiNgan.vanDung += 1;
+              vdP3Left--;
+            }
           });
           if (hieuP3Left > 0 || vdP3Left > 0) {
             sortedByTiet.forEach(f => {
@@ -2269,14 +2483,77 @@ export const useExamStore = create(
             ];
           }
 
-          // Xếp hạng chủ đề theo tổng tiết giảm dần
-          const topicsRankedTL = topics
+          // Xếp hạng chủ đề theo tổng tiết giảm dần (loại trừ chủ đề chỉ toàn bài Nhận biết)
+          const allTopicsRankedTL = topics
             .map((t, ti) => ({
               ti,
               t,
-              totalTiet: (t.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0)
+              totalTiet: (t.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0),
+              hasEligibleTL: flatDvs.some(f => f.ti === ti && !f.isTheoryOnly),
             }))
             .sort((a, b) => b.totalTiet - a.totalTiet);
+          const eligTopicsRankedTL = allTopicsRankedTL.filter(x => x.hasEligibleTL);
+          const topicsRankedTL = eligTopicsRankedTL.length > 0 ? eligTopicsRankedTL : allTopicsRankedTL;
+
+          // Helper chọn ĐVKT tối ưu cho Tự luận Toán (loại bỏ bài lý thuyết chỉ Nhận biết & bài 1 tiết khi có bài >= 2 tiết)
+          const pickBestToanDvForTL = (dvsInTopic, allPool, targetLevel = 'hieu', reqKienThuc = '', usedDvKeySet = null) => {
+            const filterUsed = (list) => {
+              if (!usedDvKeySet) return list;
+              const notUsed = list.filter(f => !usedDvKeySet.has(`${f.ti}_${f.di}`));
+              return notUsed.length > 0 ? notUsed : list;
+            };
+
+            let eligTopic = filterUsed(dvsInTopic || []).filter(f => !f.isTheoryOnly);
+            let eligAll = filterUsed(allPool || []).filter(f => !f.isTheoryOnly);
+
+            if (targetLevel === 'vanDung' || targetLevel === 'vanDungCao') {
+              if (eligTopic.some(f => !f.isNoVanDung)) {
+                eligTopic = eligTopic.filter(f => !f.isNoVanDung);
+              } else if (eligAll.some(f => !f.isNoVanDung)) {
+                eligTopic = [];
+              }
+              if (eligAll.some(f => !f.isNoVanDung)) {
+                eligAll = eligAll.filter(f => !f.isNoVanDung);
+              }
+            }
+
+            if (eligAll.some(f => f.soTiet >= 2)) {
+              eligTopic = eligTopic.filter(f => f.soTiet >= 2);
+              eligAll = eligAll.filter(f => f.soTiet >= 2);
+            }
+
+            if (reqKienThuc === 'hinh_hoc' && eligAll.some(f => f.mach === 'hinh_hoc')) {
+              eligTopic = eligTopic.filter(f => f.mach === 'hinh_hoc');
+              eligAll = eligAll.filter(f => f.mach === 'hinh_hoc');
+            } else if (reqKienThuc === 'dai_so' && eligAll.some(f => f.mach === 'dai_so')) {
+              eligTopic = eligTopic.filter(f => f.mach === 'dai_so');
+              eligAll = eligAll.filter(f => f.mach === 'dai_so');
+            } else if (targetLevel === 'vanDungCao' && eligAll.some(f => f.mach !== 'thong_ke')) {
+              eligTopic = eligTopic.filter(f => f.mach !== 'thong_ke');
+              eligAll = eligAll.filter(f => f.mach !== 'thong_ke');
+            }
+
+            const unassignedTopic = eligTopic.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+            const unassignedAll = eligAll.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+
+            const chosenPool = unassignedTopic.length > 0
+              ? unassignedTopic
+              : (unassignedAll.length > 0
+                  ? unassignedAll
+                  : (eligTopic.length > 0 ? eligTopic : (eligAll.length > 0 ? eligAll : (dvsInTopic?.length > 0 ? dvsInTopic : allPool))));
+
+            return chosenPool.slice().sort((a, b) => {
+              const lenA = (a.dv.tuLuan?.subItems || []).length;
+              const lenB = (b.dv.tuLuan?.subItems || []).length;
+              if (lenA !== lenB) return lenA - lenB;
+              if (a.isNoVanDung !== b.isNoVanDung) return a.isNoVanDung ? 1 : -1;
+              const tierA = getTuLuanSuitabilityTier(a.dv, targetLevel, monHocToan, lopToan, a.t?.tenChuDe, reqKienThuc);
+              const tierB = getTuLuanSuitabilityTier(b.dv, targetLevel, monHocToan, lopToan, b.t?.tenChuDe, reqKienThuc);
+              if (Math.abs(tierB - tierA) >= 40) return tierB - tierA;
+              if (b.soTiet !== a.soTiet) return b.soTiet - a.soTiet;
+              return tierB - tierA;
+            })[0] || allPool[0];
+          };
 
           const assignSubItemToTargetDv = (targetDv, subItem, lvl, label, qId, qLabel) => {
             if (!Array.isArray(targetDv.tuLuan.subItems)) {
@@ -2298,17 +2575,17 @@ export const useExamStore = create(
             const curQLabel = q.label || `Câu ${19 + qIdx}`;
             const kieuYQ = q.kieuY || 'doc_lap';
             const phamVi = q.phamVi || (kieuYQ === 'doc_lap' ? 'cac_chu_de_khac_nhau' : 'cung_dvkt');
+            const reqKienThuc = q.kienThuc || '';
+            const qMaxLvl = (q.subItems || []).some(s => s.level === 'vanDungCao')
+              ? 'vanDungCao'
+              : ((q.subItems || []).some(s => s.level === 'vanDung') ? 'vanDung' : 'hieu');
 
             if (nY === 1 || phamVi === 'cung_dvkt' || phamVi === 'cung_bai') {
               // Cả câu nằm trong 1 ĐVKT
               const topicEntry = topicsRankedTL[qIdx % topicsRankedTL.length];
               const dvsInTopic = flatDvs.filter(f => f.ti === topicEntry.ti);
-              const unassignedInTopic = dvsInTopic.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
-              const unassignedInAll = flatDvs.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
-              const chosenPool = unassignedInTopic.length > 0
-                ? unassignedInTopic
-                : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : flatDvs));
-              const bestDv = chosenPool.slice().sort((a, b) => b.soTiet - a.soTiet)[0]?.dv || flatDvs[0].dv;
+              const bestF = pickBestToanDvForTL(dvsInTopic, flatDvs, qMaxLvl, reqKienThuc);
+              const bestDv = bestF?.dv || flatDvs[0].dv;
 
               q.subItems.forEach((sub, sIdx) => {
                 const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
@@ -2322,29 +2599,23 @@ export const useExamStore = create(
               const usedDvKeys = new Set();
 
               q.subItems.forEach((sub, sIdx) => {
-                const available = dvsInTopic.filter(f => !usedDvKeys.has(f.di) && (f.dv.tuLuan?.subItems || []).length === 0);
-                const fallbackAvail = dvsInTopic.filter(f => !usedDvKeys.has(f.di));
-                const pool = available.length > 0 ? available : (fallbackAvail.length > 0 ? fallbackAvail : dvsInTopic);
-                const bestF = pool.slice().sort((a, b) => b.soTiet - a.soTiet)[0] || flatDvs[0];
-                usedDvKeys.add(bestF.di);
-
                 const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
-                const label = `${curQLabel}${String.fromCharCode(97 + sIdx)}`;
-                assignSubItemToTargetDv(bestF.dv, sub, lvl, label, q.id, curQLabel);
+                const bestF = pickBestToanDvForTL(dvsInTopic, flatDvs, lvl, reqKienThuc, usedDvKeys);
+                if (bestF) {
+                  usedDvKeys.add(`${bestF.ti}_${bestF.di}`);
+                  const label = `${curQLabel}${String.fromCharCode(97 + sIdx)}`;
+                  assignSubItemToTargetDv(bestF.dv, sub, lvl, label, q.id, curQLabel);
+                }
               });
             } else {
               // phamVi === 'cac_chu_de_khac_nhau'
               q.subItems.forEach((sub, sIdx) => {
+                const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
                 const topicEntry = topicsRankedTL[(qIdx + sIdx) % topicsRankedTL.length];
                 const dvsInTopic = flatDvs.filter(f => f.ti === topicEntry.ti);
-                const unassignedInTopic = dvsInTopic.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
-                const unassignedInAll = flatDvs.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
-                const chosenPool = unassignedInTopic.length > 0
-                  ? unassignedInTopic
-                  : (unassignedInAll.length > 0 ? unassignedInAll : (dvsInTopic.length > 0 ? dvsInTopic : flatDvs));
-                const bestDv = chosenPool.slice().sort((a, b) => b.soTiet - a.soTiet)[0]?.dv || flatDvs[0].dv;
+                const bestF = pickBestToanDvForTL(dvsInTopic, flatDvs, lvl, reqKienThuc);
+                const bestDv = bestF?.dv || flatDvs[0].dv;
 
-                const lvl = sub.level || (sIdx === 0 ? 'hieu' : 'vanDung');
                 const label = nY > 1 ? `${curQLabel}${String.fromCharCode(97 + sIdx)}` : curQLabel;
                 assignSubItemToTargetDv(bestDv, sub, lvl, label, q.id, curQLabel);
               });
@@ -2408,6 +2679,386 @@ export const useExamStore = create(
 
           console.log(`✅ Toán Khánh Hòa (3-2-2-3): P.I=${soCauP1}B, P.II=2câu DS (custom=${hasCustomDS}), P.III=${soCauP3}câu(2H+2VD), P.IV=TL(2H:1.5đ+2VD:1.5đ, custom=${hasCustomTL})`);
           return { matrix: topics, tuLuanConfig: finalTuLuanConfig3223, dungSaiConfig: finalDungSaiConfig3223 };
+        }
+
+        // ╔══════════════════════════════════════════════════════════════════════╗
+        // ║  CẤU TRÚC TOÁN 8 (50% TRẮC NGHIỆM — 50% TỰ LUẬN)                     ║
+        // ║  Phần I   (NLC = 3.0đ): 12 câu x 0.25đ (10 Biết [2.5đ] + 2 Hiểu [0.5đ])║
+        // ║  Phần II  (ĐS  = 1.0đ): 1 câu = 4 ý x 0.25đ (2 Biết + 1 Hiểu + 1 VD)║
+        // ║  Phần III (TLN = 1.0đ): 4 câu x 0.25đ (3 Hiểu [0.75đ] + 1 VD [0.25đ])║
+        // ║  Phần IV  (TL  = 5.0đ): 5 câu x 2 ý a, b x 0.5đ = 10 ý                ║
+        // ║    5 ý Hiểu (2.5đ) + 3 ý VD (1.5đ) + 2 ý VDC (1.0đ)                   ║
+        // ║  TỔNG: 10.0đ (30% Biết - 40% Hiểu - 20% Vận dụng - 10% Vận dụng cao) ║
+        // ╚══════════════════════════════════════════════════════════════════════╝
+        if (state.examConfig.isCauTrucToan8_5050) {
+          console.log('⚡ AutoFill: Cấu trúc Toán 8 (50% TN - 50% TL)');
+          const monHocToan8 = state.examHeader?.monHoc || 'Toán';
+          const lopToan8 = state.examHeader?.lop || 8;
+
+          const topics = state.matrix.map(t => ({
+            ...t,
+            donViKienThuc: (t.donViKienThuc || []).map(dv => ({
+              ...dv,
+              nhieuLuaChon: { biet: 0, hieu: 0, vanDung: 0 },
+              dungSai: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              dungSaiSubItems: [],
+              traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              tuLuan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, diemVanDungCao: 0, subItems: [] },
+              indicatorMap: {},
+            })),
+          }));
+
+          // Danh sách phẳng tất cả ĐVKT kèm vị trí ti, di và phân loại bài lý thuyết / Nhận biết
+          const flatDvs = [];
+          topics.forEach((t, ti) => {
+            (t.donViKienThuc || []).forEach((dv, di) => {
+              flatDvs.push({
+                t: topics[ti],
+                dv: topics[ti].donViKienThuc[di],
+                soTiet: Number(dv.soTiet) || 1,
+                ti,
+                di,
+                isTheoryOnly: isTheoryOrRecognitionOnlyLesson(dv, monHocToan8, lopToan8),
+                isNoVanDung: isBasicTheoryNoVanDung(dv, monHocToan8, lopToan8),
+                mach: detectToanMach(topics[ti]?.tenChuDe || '', dv.noiDung || ''),
+              });
+            });
+          });
+
+          if (flatDvs.length === 0) return { matrix: topics };
+
+          // ─── P.I: 12 câu Nhiều lựa chọn (10 Biết + 2 Hiểu) = 3,0đ ───
+          // 1. Phân bổ 10 câu Biết
+          const p1BietCounts = distributeLargestRemainder(10, flatDvs.map(f => f.soTiet));
+          p1BietCounts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.biet += cnt; });
+
+          // 2. Phân bổ 2 câu Hiểu vào 2 ĐVKT có số tiết lớn nhất (ưu tiên bài không thuần Nhận biết)
+          const sortedByTietAll = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
+          const sortedNonTheory = sortedByTietAll.filter(f => !f.isTheoryOnly);
+          const sortedByTiet = sortedNonTheory.length > 0 ? sortedNonTheory : sortedByTietAll;
+          let hieuP1Left = 2;
+          for (let f of sortedByTiet) {
+            if (hieuP1Left <= 0) break;
+            f.dv.nhieuLuaChon.hieu += 1;
+            hieuP1Left--;
+          }
+          if (hieuP1Left > 0) {
+            for (let f of sortedByTietAll) {
+              if (hieuP1Left <= 0) break;
+              f.dv.nhieuLuaChon.hieu += 1;
+              hieuP1Left--;
+            }
+          }
+
+          // Gán indicatorMap cho P.I: Câu 1 đến Câu 12
+          let p1Counter = 1;
+          flatDvs.forEach(f => {
+            for (let i = 0; i < (f.dv.nhieuLuaChon?.biet || 0); i++) {
+              f.dv.indicatorMap[`nhieuLuaChon_biet_${i}`] = { label: `Câu ${p1Counter++}`, code: 'NB' };
+            }
+            for (let i = 0; i < (f.dv.nhieuLuaChon?.hieu || 0); i++) {
+              f.dv.indicatorMap[`nhieuLuaChon_hieu_${i}`] = { label: `Câu ${p1Counter++}`, code: 'TH' };
+            }
+          });
+
+          // ─── P.II: 1 câu Đúng/Sai (1.0đ, gồm 4 lệnh hỏi: 2 Biết + 1 Hiểu + 1 Vận dụng) ───
+          const dsCfg = state.dungSaiConfig;
+          const hasCustomDS = Boolean(dsCfg?.enabled) && Array.isArray(dsCfg?.questions) && dsCfg.questions.length > 0;
+          const qCfg = hasCustomDS ? dsCfg.questions[0] : null;
+          const qLabel = qCfg?.label || 'Câu 13';
+
+          let chosenDv = null;
+          if (qCfg && qCfg.topicIndex !== null && qCfg.topicIndex !== undefined && topics[qCfg.topicIndex]) {
+            const topicDvs = topics[Number(qCfg.topicIndex)]?.donViKienThuc || [];
+            if (qCfg.dvktIndex !== null && qCfg.dvktIndex !== undefined && topicDvs[qCfg.dvktIndex]) {
+              chosenDv = topicDvs[qCfg.dvktIndex];
+            } else {
+              const nonTheoryInTopic = topicDvs.filter(dv => !isTheoryOrRecognitionOnlyLesson(dv, monHocToan8, lopToan8));
+              chosenDv = (nonTheoryInTopic.length > 0 ? nonTheoryInTopic[0] : topicDvs[0]) || flatDvs[0].dv;
+            }
+          } else {
+            const vdCapableSorted = sortedByTiet.filter(f => !f.isNoVanDung);
+            chosenDv = (vdCapableSorted.length > 0 ? vdCapableSorted[0]?.dv : sortedByTiet[0]?.dv) || flatDvs[0].dv;
+          }
+
+          if (chosenDv) {
+            const bStart = chosenDv.dungSai.biet;
+            const hStart = chosenDv.dungSai.hieu;
+            const vdStart = chosenDv.dungSai.vanDung;
+
+            chosenDv.dungSai.biet += 2;
+            chosenDv.dungSai.hieu += 1;
+            chosenDv.dungSai.vanDung += 1;
+            if (!Array.isArray(chosenDv.dungSaiSubItems)) chosenDv.dungSaiSubItems = [];
+            chosenDv.dungSaiSubItems.push(
+              { level: 'biet', diem: 0.25, label: `${qLabel}a` },
+              { level: 'biet', diem: 0.25, label: `${qLabel}b` },
+              { level: 'hieu', diem: 0.25, label: `${qLabel}c` },
+              { level: 'vanDung', diem: 0.25, label: `${qLabel}d` }
+            );
+            chosenDv.indicatorMap[`dungSai_biet_${bStart}`] = { label: `${qLabel}a`, code: 'NB' };
+            chosenDv.indicatorMap[`dungSai_biet_${bStart + 1}`] = { label: `${qLabel}b`, code: 'NB' };
+            chosenDv.indicatorMap[`dungSai_hieu_${hStart}`] = { label: `${qLabel}c`, code: 'TH' };
+            chosenDv.indicatorMap[`dungSai_vanDung_${vdStart}`] = { label: `${qLabel}d`, code: 'VD' };
+          }
+
+          // ─── P.III: 4 câu Trả lời ngắn (3 Hiểu + 1 Vận dụng) = 1,0đ ───
+          // Mỗi câu 0,25đ. Đánh số: Câu 14, 15, 16, 17.
+          let tlnHieuLeft = 3;
+          let tlnVdLeft = 1;
+          const candidateDvsForTLN = sortedByTiet.filter(f => f.dv !== chosenDv);
+          const tlnPool = candidateDvsForTLN.length >= 4 ? candidateDvsForTLN : sortedByTiet;
+
+          tlnPool.forEach(f => {
+            if (tlnHieuLeft > 0) {
+              f.dv.traLoiNgan.hieu += 1;
+              tlnHieuLeft--;
+            } else if (tlnVdLeft > 0 && (!f.isNoVanDung || !tlnPool.some(x => !x.isNoVanDung))) {
+              f.dv.traLoiNgan.vanDung += 1;
+              tlnVdLeft--;
+            }
+          });
+          if (tlnHieuLeft > 0 || tlnVdLeft > 0) {
+            sortedByTiet.forEach(f => {
+              if (tlnHieuLeft > 0) { f.dv.traLoiNgan.hieu += 1; tlnHieuLeft--; }
+              else if (tlnVdLeft > 0) { f.dv.traLoiNgan.vanDung += 1; tlnVdLeft--; }
+            });
+          }
+
+          let p3Counter = 14;
+          flatDvs.forEach(f => {
+            for (let i = 0; i < (f.dv.traLoiNgan?.hieu || 0); i++) {
+              f.dv.indicatorMap[`traLoiNgan_hieu_${i}`] = { label: `Câu ${p3Counter++}`, code: 'TH' };
+            }
+            for (let i = 0; i < (f.dv.traLoiNgan?.vanDung || 0); i++) {
+              f.dv.indicatorMap[`traLoiNgan_vanDung_${i}`] = { label: `Câu ${p3Counter++}`, code: 'VD' };
+            }
+          });
+
+          // ─── P.IV: Tự luận (5 câu = 10 ý = 5,0đ: 5 Hiểu [2.5đ] + 3 VD [1.5đ] + 2 VDC [1.0đ]) ───
+          // Mỗi câu 2 ý a, b (mỗi ý 0,5đ). Đánh số: Câu 18, 19, 20, 21, 22.
+          // Tuyệt đối không gán câu Tự luận vào các bài chỉ lý thuyết / chỉ ở mức Nhận biết!
+          const tlCfg = state.tuLuanConfig;
+          const hasCustomTL = Boolean(tlCfg?.enabled) && Array.isArray(tlCfg?.questions) && tlCfg.questions.length > 0 && tlCfg.questions.some(q => q.subItems && q.subItems.length > 0);
+
+          let tlQuestionsToAssign = [];
+          if (hasCustomTL) {
+            tlQuestionsToAssign = tlCfg.questions;
+          } else {
+            tlQuestionsToAssign = [
+              { id: 'tl_q1', label: 'Câu 18', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'hieu' }] },
+              { id: 'tl_q2', label: 'Câu 19', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'hieu' }] },
+              { id: 'tl_q3', label: 'Câu 20', kienThuc: 'hinh_hoc', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'vanDung' }] },
+              { id: 'tl_q4', label: 'Câu 21', kienThuc: 'hinh_hoc', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 0.5, level: 'vanDung' }, { diem: 0.5, level: 'vanDung' }] },
+              { id: 'tl_q5', label: 'Câu 22', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [{ diem: 0.5, level: 'vanDungCao' }, { diem: 0.5, level: 'vanDungCao' }] },
+            ];
+          }
+
+          const allTopicsRankedTL = topics
+            .map((t, ti) => ({
+              ti,
+              t,
+              totalTiet: (t.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0),
+              hasEligibleTL: flatDvs.some(f => f.ti === ti && !f.isTheoryOnly),
+            }))
+            .sort((a, b) => b.totalTiet - a.totalTiet);
+          const eligTopicsRankedTL = allTopicsRankedTL.filter(x => x.hasEligibleTL);
+          const topicsRankedTL = eligTopicsRankedTL.length > 0 ? eligTopicsRankedTL : allTopicsRankedTL;
+
+          // Helper chọn ĐVKT tối ưu cho Tự luận Toán 8 (50-50):
+          // 1. Loại bỏ các bài chỉ lý thuyết / chỉ Nhận biết (!isTheoryOnly)
+          // 2. Với câu có mức VD / VDC: loại bỏ các bài lý thuyết mở đầu không có VD (!isNoVanDung)
+          // 3. Ưu tiên bài có soTiet >= 2 và khớp mạch kiến thức Đại số / Hình học (reqKienThuc)
+          // 4. Ưu tiên bài chưa có câu Tự luận, điểm phù hợp cao nhất và số tiết lớn nhất
+          const pickBestToan8DvForTL = (dvsInTopic, allPool, targetLevel = 'hieu', reqKienThuc = '', usedDvKeySet = null) => {
+            const filterUsed = (list) => {
+              if (!usedDvKeySet) return list;
+              const notUsed = list.filter(f => !usedDvKeySet.has(`${f.ti}_${f.di}`));
+              return notUsed.length > 0 ? notUsed : list;
+            };
+
+            let eligTopic = filterUsed(dvsInTopic || []).filter(f => !f.isTheoryOnly);
+            let eligAll = filterUsed(allPool || []).filter(f => !f.isTheoryOnly);
+
+            if (targetLevel === 'vanDung' || targetLevel === 'vanDungCao') {
+              if (eligTopic.some(f => !f.isNoVanDung)) {
+                eligTopic = eligTopic.filter(f => !f.isNoVanDung);
+              } else if (eligAll.some(f => !f.isNoVanDung)) {
+                eligTopic = [];
+              }
+              if (eligAll.some(f => !f.isNoVanDung)) {
+                eligAll = eligAll.filter(f => !f.isNoVanDung);
+              }
+            }
+
+            if (eligAll.some(f => f.soTiet >= 2)) {
+              eligTopic = eligTopic.filter(f => f.soTiet >= 2);
+              eligAll = eligAll.filter(f => f.soTiet >= 2);
+            }
+
+            if (reqKienThuc === 'hinh_hoc' && eligAll.some(f => f.mach === 'hinh_hoc')) {
+              eligTopic = eligTopic.filter(f => f.mach === 'hinh_hoc');
+              eligAll = eligAll.filter(f => f.mach === 'hinh_hoc');
+            } else if (reqKienThuc === 'dai_so' && eligAll.some(f => f.mach === 'dai_so')) {
+              eligTopic = eligTopic.filter(f => f.mach === 'dai_so');
+              eligAll = eligAll.filter(f => f.mach === 'dai_so');
+            } else if (targetLevel === 'vanDungCao' && eligAll.some(f => f.mach !== 'thong_ke')) {
+              eligTopic = eligTopic.filter(f => f.mach !== 'thong_ke');
+              eligAll = eligAll.filter(f => f.mach !== 'thong_ke');
+            }
+
+            const unassignedTopic = eligTopic.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+            const unassignedAll = eligAll.filter(f => (f.dv.tuLuan?.subItems || []).length === 0);
+
+            const chosenPool = unassignedTopic.length > 0
+              ? unassignedTopic
+              : (unassignedAll.length > 0
+                  ? unassignedAll
+                  : (eligTopic.length > 0 ? eligTopic : (eligAll.length > 0 ? eligAll : (dvsInTopic?.length > 0 ? dvsInTopic : allPool))));
+
+            return chosenPool.slice().sort((a, b) => {
+              const lenA = (a.dv.tuLuan?.subItems || []).length;
+              const lenB = (b.dv.tuLuan?.subItems || []).length;
+              if (lenA !== lenB) return lenA - lenB;
+              if (a.isNoVanDung !== b.isNoVanDung) return a.isNoVanDung ? 1 : -1;
+              const tierA = getTuLuanSuitabilityTier(a.dv, targetLevel, monHocToan8, lopToan8, a.t?.tenChuDe, reqKienThuc);
+              const tierB = getTuLuanSuitabilityTier(b.dv, targetLevel, monHocToan8, lopToan8, b.t?.tenChuDe, reqKienThuc);
+              if (Math.abs(tierB - tierA) >= 40) return tierB - tierA;
+              if (b.soTiet !== a.soTiet) return b.soTiet - a.soTiet;
+              return tierB - tierA;
+            })[0] || allPool[0];
+          };
+
+          const assignSubItemToTargetDv = (targetDv, subItem, lvl, label, qId, qLabel) => {
+            if (!Array.isArray(targetDv.tuLuan.subItems)) {
+              targetDv.tuLuan.subItems = [];
+            }
+            targetDv.tuLuan.subItems.push({
+              id: `tl_${lvl}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+              y: '',
+              diem: Math.round((Number(subItem.diem) || 0.5) * 100) / 100,
+              level: lvl,
+              label,
+              qId,
+              qLabel
+            });
+          };
+
+          tlQuestionsToAssign.forEach((q, qIdx) => {
+            const nY = q.subItems?.length || 2;
+            const curQLabel = q.label || `Câu ${18 + qIdx}`;
+            const kieuYQ = q.kieuY || 'doc_lap';
+            const phamVi = q.phamVi || (kieuYQ === 'doc_lap' ? 'cac_chu_de_khac_nhau' : 'cung_dvkt');
+            const reqKienThuc = q.kienThuc || '';
+            const qMaxLvl = (q.subItems || []).some(s => s.level === 'vanDungCao')
+              ? 'vanDungCao'
+              : ((q.subItems || []).some(s => s.level === 'vanDung') ? 'vanDung' : 'hieu');
+
+            // Chọn danh sách chủ đề ưu tiên theo mạch kiến thức (Đại số / Hình học)
+            const domainTopics = reqKienThuc
+              ? topicsRankedTL.filter(te => flatDvs.some(f => f.ti === te.ti && !f.isTheoryOnly && f.mach === reqKienThuc))
+              : [];
+            const activeTopicsForQ = domainTopics.length > 0 ? domainTopics : topicsRankedTL;
+            const topicEntry = activeTopicsForQ[qIdx % activeTopicsForQ.length];
+            const dvsInTopic = topicEntry ? flatDvs.filter(f => f.ti === topicEntry.ti) : flatDvs;
+
+            if (phamVi === 'cung_dvkt' || phamVi === 'cung_bai') {
+              const bestF = pickBestToan8DvForTL(dvsInTopic, flatDvs, qMaxLvl, reqKienThuc);
+              const bestDv = bestF?.dv || flatDvs[0].dv;
+
+              q.subItems.forEach((sub, sIdx) => {
+                const lvl = sub.level || 'hieu';
+                const label = `${curQLabel}${String.fromCharCode(97 + sIdx)}`;
+                assignSubItemToTargetDv(bestDv, sub, lvl, label, q.id, curQLabel);
+              });
+            } else if (phamVi === 'cac_dvkt_cung_chu_de' || phamVi === 'cac_bai_cung_chu_de') {
+              const usedDvKeys = new Set();
+
+              q.subItems.forEach((sub, sIdx) => {
+                const lvl = sub.level || 'hieu';
+                const bestF = pickBestToan8DvForTL(dvsInTopic, flatDvs, lvl, reqKienThuc, usedDvKeys);
+                if (bestF) {
+                  usedDvKeys.add(`${bestF.ti}_${bestF.di}`);
+                  const label = `${curQLabel}${String.fromCharCode(97 + sIdx)}`;
+                  assignSubItemToTargetDv(bestF.dv, sub, lvl, label, q.id, curQLabel);
+                }
+              });
+            } else {
+              // cac_chu_de_khac_nhau:
+              // Giữ các ý của cùng 1 câu tự luận (a, b) vào cùng 1 ĐVKT hợp lệ của chủ đề được chọn
+              const bestF = pickBestToan8DvForTL(dvsInTopic, flatDvs, qMaxLvl, reqKienThuc);
+              const bestDv = bestF?.dv || flatDvs[0].dv;
+
+              q.subItems.forEach((sub, sIdx) => {
+                const lvl = sub.level || 'hieu';
+                const label = `${curQLabel}${String.fromCharCode(97 + sIdx)}`;
+                assignSubItemToTargetDv(bestDv, sub, lvl, label, q.id, curQLabel);
+              });
+            }
+          });
+
+          // Đồng bộ các trường đếm, điểm và indicatorMap của tuLuan cho tất cả ĐVKT
+          topics.forEach(t => {
+            (t.donViKienThuc || []).forEach(dv => {
+              if (Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+                dv.tuLuan.biet = dv.tuLuan.subItems.filter(s => s.level === 'biet').length;
+                dv.tuLuan.hieu = dv.tuLuan.subItems.filter(s => s.level === 'hieu').length;
+                dv.tuLuan.vanDung = dv.tuLuan.subItems.filter(s => s.level === 'vanDung').length;
+                dv.tuLuan.vanDungCao = dv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').length;
+                dv.tuLuan.diemBiet = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'biet').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemHieu = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'hieu').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemVanDung = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'vanDung').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemVanDungCao = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+
+                const lvlCounters = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
+                dv.tuLuan.subItems.forEach(sub => {
+                  const lvl = sub.level || 'hieu';
+                  const cIdx = lvlCounters[lvl]++;
+                  const code = lvl === 'biet' ? 'NB' : (lvl === 'hieu' ? 'TH' : (lvl === 'vanDungCao' ? 'VDC' : 'VD'));
+                  dv.indicatorMap[`tuLuan_${lvl}_${cIdx}`] = {
+                    label: sub.label,
+                    code
+                  };
+                });
+              }
+            });
+          });
+
+          const finalTuLuanConfigToan8 = hasCustomTL
+            ? { ...tlCfg, enabled: true }
+            : {
+                enabled: false,
+                questions: [
+                  { id: 'tl_q1', label: 'Câu 18', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'hieu' }] },
+                  { id: 'tl_q2', label: 'Câu 19', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'hieu' }] },
+                  { id: 'tl_q3', label: 'Câu 20', kienThuc: 'hinh_hoc', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 0.5, level: 'hieu' }, { diem: 0.5, level: 'vanDung' }] },
+                  { id: 'tl_q4', label: 'Câu 21', kienThuc: 'hinh_hoc', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 0.5, level: 'vanDung' }, { diem: 0.5, level: 'vanDung' }] },
+                  { id: 'tl_q5', label: 'Câu 22', kienThuc: 'dai_so', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [{ diem: 0.5, level: 'vanDungCao' }, { diem: 0.5, level: 'vanDungCao' }] },
+                ],
+              };
+
+          const finalDungSaiConfigToan8 = hasCustomDS
+            ? { ...dsCfg, enabled: true }
+            : (state.dungSaiConfig || {
+                enabled: false,
+                mode: 'cung_bai',
+                questions: [
+                  { id: 'ds_q1', label: 'Câu 13', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+                ]
+              });
+
+          console.log(`✅ Toán 8 (50% TN - 50% TL): P.I=12câu (10B+2H), P.II=1câu DS (4 ý: 2B+1H+1VD), P.III=4câu TLN (3H+1VD), P.IV=5câu TL (10 ý: 5H+3VD+2VDC)`);
+          return { matrix: topics, tuLuanConfig: finalTuLuanConfigToan8, dungSaiConfig: finalDungSaiConfigToan8 };
         }
 
         const ec = state.examConfig;
@@ -2584,12 +3235,14 @@ export const useExamStore = create(
             let w = 0;
             if (dv.isNuaDauKi && sDau > 0) w = (st / sDau) * (dDau / 10);
             else if (!dv.isNuaDauKi && sSau > 0) w = (st / sSau) * (dSau / 10);
-            flatDvList.push({ ti, di, target: w * 10, current: 0 });
+            const isTheoryOnly = isTheoryOrRecognitionOnlyLesson(dv, state.examHeader?.monHoc || '', state.examHeader?.lop || '');
+            flatDvList.push({ ti, di, target: w * 10, current: 0, isTheoryOnly });
           }));
         } else {
           topics.forEach((t, ti) => t.donViKienThuc.forEach((dv, di) => {
             const st = Number(dv.soTiet) || 0;
-            flatDvList.push({ ti, di, target: (st / tongSoTietToanBai) * 10, current: 0 });
+            const isTheoryOnly = isTheoryOrRecognitionOnlyLesson(dv, state.examHeader?.monHoc || '', state.examHeader?.lop || '');
+            flatDvList.push({ ti, di, target: (st / tongSoTietToanBai) * 10, current: 0, isTheoryOnly });
           }));
         }
 
@@ -2681,6 +3334,7 @@ export const useExamStore = create(
 
         const tlCfgAF = state.tuLuanConfig;
         const hasManualTL = tlCfgAF?.enabled && tlCfgAF?.questions?.length > 0 && tlCfgAF.questions.some(q => q.subItems && q.subItems.length > 0);
+        const hasNonTheoryGeneric = flatDvList.some(f => !f.isTheoryOnly && f.target > 0);
 
         // Helper: push subItem vào DVKT và sync tất cả fields
         const assignSubItemToDv = (flatRef, subItem, lvl) => {
@@ -2704,9 +3358,11 @@ export const useExamStore = create(
           flatRef.current += Number(subItem.diem) || 0.5;
         };
 
-        // Helper: chọn DVKT nhiều tiết nhất trong chủ đề tiIdx
+        // Helper: chọn DVKT nhiều tiết nhất trong chủ đề tiIdx (ưu tiên bài không phải chỉ lý thuyết)
         const findMaxTietDvInTopic = (tiIdx) => {
-          const dvsInTopic = flatDvList.filter(f => f.ti === tiIdx);
+          const allInTopic = flatDvList.filter(f => f.ti === tiIdx);
+          const nonTheoryInTopic = allInTopic.filter(f => !f.isTheoryOnly);
+          const dvsInTopic = nonTheoryInTopic.length > 0 ? nonTheoryInTopic : allInTopic;
           if (dvsInTopic.length === 0) return null;
           return dvsInTopic.slice().sort((a, b) => {
             const soA = Number(topics[a.ti].donViKienThuc[a.di].soTiet) || 0;
@@ -2742,10 +3398,11 @@ export const useExamStore = create(
             };
 
             if (phamVi === 'cung_dvkt' || phamVi === 'cung_bai' || nY === 1) {
-              // Tất cả ý → DVKT gap cao nhất
+              // Tất cả ý → DVKT gap cao nhất (tránh bài chỉ lý thuyết/Nhận biết)
               let bestIdx = -1, maxGap = -Infinity;
               flatDvList.forEach((u, idx) => {
                 if (u.target <= 0) return;
+                if (hasNonTheoryGeneric && u.isTheoryOnly) return;
                 const gap = u.target - u.current;
                 if (gap > maxGap) { maxGap = gap; bestIdx = idx; }
               });
@@ -2759,12 +3416,14 @@ export const useExamStore = create(
               let bestTiGap = -Infinity, bestTi = -1;
               topicsRanked.forEach(({ ti }) => {
                 const topicGap = flatDvList
-                  .filter(f => f.ti === ti)
+                  .filter(f => f.ti === ti && !f.isTheoryOnly)
                   .reduce((s, f) => s + (f.target - f.current), 0);
                 if (topicGap > bestTiGap) { bestTiGap = topicGap; bestTi = ti; }
               });
               if (bestTi === -1) bestTi = topicsRanked[0]?.ti ?? 0;
-              const topicDvs = flatDvList.filter(f => f.ti === bestTi);
+              const rawTopicDvs = flatDvList.filter(f => f.ti === bestTi);
+              const nonTheoryTopicDvs = rawTopicDvs.filter(f => !f.isTheoryOnly);
+              const topicDvs = nonTheoryTopicDvs.length > 0 ? nonTheoryTopicDvs : rawTopicDvs;
               const usedInQ = new Set();
               q.subItems.forEach((sub, i) => {
                 let bestFlatIdx = -1, maxGap2 = -Infinity;
@@ -2801,11 +3460,12 @@ export const useExamStore = create(
             }
           });
         } else {
-          // Chế độ tự động (không có manual config) → dùng tuLuanPool như cũ
+          // Chế độ tự động (không có manual config) → dùng tuLuanPool (tránh bài chỉ lý thuyết/NB)
           tuLuanPool.forEach(item => {
             let bestIdx = -1, maxGap = -Infinity;
             flatDvList.forEach((u, idx) => {
               if (u.target <= 0) return;
+              if (hasNonTheoryGeneric && u.isTheoryOnly) return;
               const gap = u.target - u.current;
               if (gap > maxGap) { maxGap = gap; bestIdx = idx; }
             });

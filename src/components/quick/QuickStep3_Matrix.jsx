@@ -243,7 +243,7 @@ export default function Step2_MatrixBuilder() {
     if (level === 'vanDung') y += sumAll('dungSai', 'vanDungCao');
     if (y === 0) return '';
     const cau = y * 0.25;
-    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    const cauStr = cau % 1 === 0 ? String(cau) : Number(cau.toFixed(2)).toString().replace('.', ',');
     return `${cauStr} (${y} ý)`;
   };
 
@@ -251,7 +251,7 @@ export default function Step2_MatrixBuilder() {
   const fmtTuLuanCau = (level) => {
     const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
     if (cau === 0) return '';
-    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    const cauStr = cau % 1 === 0 ? String(cau) : Number(cau.toFixed(2)).toString().replace('.', ',');
     const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
     const diem = Math.round(matrix.reduce((sum, topic) => sum + getTopicTuLuanDiem(topic, tlKey), 0) * 100) / 100;
     if (diem > 0) {
@@ -265,7 +265,7 @@ export default function Step2_MatrixBuilder() {
     const cau = getTuLuanCauCount(matrix, level, tuLuanConfig);
     const y = sumAll('tuLuan', level);
     if (cau === 0) return '';
-    const cauStr = cau % 1 === 0 ? String(cau) : cau.toFixed(1).replace('.', ',');
+    const cauStr = cau % 1 === 0 ? String(cau) : Number(cau.toFixed(2)).toString().replace('.', ',');
     return y > cau ? `${cauStr} câu (${y} ý)` : `${cauStr} câu`;
   };
 
@@ -283,8 +283,8 @@ export default function Step2_MatrixBuilder() {
 
     const tlRem = tlCau - tlInt;
     if (tlRem > 0) {
-      const cauVal = Math.round((c + tlRem) * 10) / 10;
-      const cauStr = cauVal % 1 === 0 ? String(cauVal) : cauVal.toFixed(1).replace('.', ',');
+      const cauVal = Math.round((c + tlRem) * 100) / 100;
+      const cauStr = cauVal % 1 === 0 ? String(cauVal) : Number(cauVal.toFixed(2)).toString().replace('.', ',');
       return y > 0 ? `${cauStr}c+ ${y} ý` : `${cauStr}c`;
     }
 
