@@ -220,8 +220,13 @@ export default function App() {
   const handleExportWrapper = async (exportFunc) => {
     // Hàm thực thi xuất file kèm tự động lưu lịch sử làm bài
     const runExportWithHistory = async () => {
-      await exportFunc();
-      saveCurrentToHistory('', 'Đã xuất Word');
+      try {
+        await exportFunc();
+        saveCurrentToHistory('', 'Đã xuất Word');
+      } catch (err) {
+        console.error('Lỗi khi xuất file Word:', err);
+        toast.error('Có lỗi xảy ra khi xuất file Word: ' + (err.message || 'Vui lòng thử lại'));
+      }
     };
 
     const isPremium = localStorage.getItem('isPremium');
@@ -307,8 +312,13 @@ export default function App() {
         toast.warning(`Bạn vừa dùng lượt xuất file cuối cùng. Hãy nâng cấp Premium để tiếp tục sử dụng.`);
       }
 
-      await exportFunc();
-      saveCurrentToHistory('', 'Đã xuất Word');
+      try {
+        await exportFunc();
+        saveCurrentToHistory('', 'Đã xuất Word');
+      } catch (err) {
+        console.error('Lỗi khi xuất file Word:', err);
+        toast.error('Có lỗi xảy ra khi xuất file Word: ' + (err.message || 'Vui lòng thử lại'));
+      }
     } else {
       setShowPaywall(true);
     }

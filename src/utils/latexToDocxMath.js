@@ -105,7 +105,12 @@ function transformOutsideMath(str, transformFn) {
  */
 export function autoEncloseMath(text) {
   if (!text) return '';
-  let s = decodeHtmlEntities(String(text));
+  let s = String(text);
+  // Chuẩn hóa và sửa lỗi form-feed ASCII 12 (\x0crac -> \frac)
+  s = s.replace(/\x0crac/g, '\\frac');
+  // Loại bỏ các ký tự điều khiển cấm trong chuẩn XML 1.0 (trừ \t, \n, \r)
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  s = decodeHtmlEntities(s);
 
   // 1. Chuyển đổi số mũ & chỉ số Unicode
   s = transformOutsideMath(s, t => {
@@ -652,8 +657,10 @@ export function parseMixedTextToRuns(
   textColor = undefined
 ) {
   if (!text) return [new TextRun({ text: '', size: baseFontSize, font: fontName })];
+  // Khử các ký tự điều khiển lỗi XML và sửa form-feed
+  let cleanInput = String(text).replace(/\x0crac/g, '\\frac').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   // Tự động chuẩn hóa và bọc các công thức toán/lý/hóa chưa có dấu $
-  const normalizedText = (mathMode !== 'normal') ? autoEncloseMath(text) : String(text);
+  const normalizedText = (mathMode !== 'normal') ? autoEncloseMath(cleanInput) : cleanInput;
   const str = String(normalizedText);
 
   // Nếu chế độ normal, không cần tách math, chỉ xử lý text và markdown bold

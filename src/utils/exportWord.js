@@ -1803,7 +1803,11 @@ export const exportToWord = async (options = {}) => {
 
     const cleanText = (str) => {
       if (!str) return '';
-      let s = str;
+      let s = String(str);
+      // Chuẩn hóa và sửa form-feed ASCII 12 (\x0crac -> \frac)
+      s = s.replace(/\x0crac/g, '\\frac');
+      // Loại bỏ các ký tự điều khiển cấm trong XML 1.0 (trừ \t, \n, \r)
+      s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
       // Chuẩn hóa dạng LaTeX display \[ ... \] sang $$ ... $$ và \( ... \) sang $ ... $
       s = s.replace(/\\\[([\s\S]*?)\\\]/g, '$$$$1$$');
       s = s.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
@@ -2313,11 +2317,42 @@ export const exportToWord = async (options = {}) => {
             if (!examConfig.isCauTruc4213 && !isCauTrucToan8_5050) examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
           }
         } else {
-          const item = tlFlatItems[currentTlIdx];
-          currentTlIdx++;
-          const cauTienTo = isCauTrucToan8_5050 ? `Câu ${displayNum} (1,0 điểm).` : (examConfig.isCauTruc4213 ? `Câu ${displayNum} (${String(item?.diem || 1.0).replace('.', ',')} điểm).` : `Câu ${displayNum}.`);
-          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `${cauTienTo} `, bold: true, size: 28, font: "Times New Roman" }), new TextRun({ text: item ? `[${item.topic} - Mức độ: ${item.level}]` : '', italics: true, size: 28, font: "Times New Roman" })], spacing: { after: 100 } }));
-          examParagraphs.push(new Paragraph({ text: "(Ghi nội dung câu hỏi vào đây...)\n", spacing: { after: 200 } }));
+          if (isCauTrucToan8_5050) {
+            const itemA = tlFlatItems[currentTlIdx] || {};
+            currentTlIdx++;
+            const itemB = tlFlatItems[currentTlIdx] || {};
+            currentTlIdx++;
+            examParagraphs.push(new Paragraph({
+              children: [
+                new TextRun({ text: `Câu ${displayNum} (1,0 điểm).`, bold: true, size: 28, font: "Times New Roman" })
+              ],
+              spacing: { after: 80 }
+            }));
+            examParagraphs.push(new Paragraph({
+              children: [
+                new TextRun({ text: 'a) ', bold: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: itemA.topic ? `[${itemA.topic} - Mức độ: ${itemA.level}] ` : '', italics: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: '(Ghi nội dung ý a vào đây...)', size: 28, font: "Times New Roman" })
+              ],
+              indent: { left: 400 },
+              spacing: { after: 60 }
+            }));
+            examParagraphs.push(new Paragraph({
+              children: [
+                new TextRun({ text: 'b) ', bold: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: itemB.topic ? `[${itemB.topic} - Mức độ: ${itemB.level}] ` : '', italics: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: '(Ghi nội dung ý b vào đây...)', size: 28, font: "Times New Roman" })
+              ],
+              indent: { left: 400 },
+              spacing: { after: 140 }
+            }));
+          } else {
+            const item = tlFlatItems[currentTlIdx];
+            currentTlIdx++;
+            const cauTienTo = examConfig.isCauTruc4213 ? `Câu ${displayNum} (${String(item?.diem || 1.0).replace('.', ',')} điểm).` : `Câu ${displayNum}.`;
+            examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `${cauTienTo} `, bold: true, size: 28, font: "Times New Roman" }), new TextRun({ text: item ? `[${item.topic} - Mức độ: ${item.level}]` : '', italics: true, size: 28, font: "Times New Roman" })], spacing: { after: 100 } }));
+            examParagraphs.push(new Paragraph({ text: "(Ghi nội dung câu hỏi vào đây...)\n", spacing: { after: 200 } }));
+          }
         }
       }
     }
@@ -2493,7 +2528,7 @@ export const exportToWord = async (options = {}) => {
           const num1 = isContinuousAK ? globalAnswerIndex++ : (idx1 + 1);
           const slotData1 = examSlots[`phan2_cau${idx1 + 1}`];
           const raw1 = (slotData1?.dapAnDung || '').replace(/\*/g, '');
-          const parts1 = raw1.split(',').map(s => s.trim());
+          const parts1 = raw1.includes('||') ? raw1.split('||').map(s => s.trim()) : raw1.split(',').map(s => s.trim());
           const dapAn1 = [parts1[0] || '...', parts1[1] || '...', parts1[2] || '...', parts1[3] || '...'];
 
           let num2 = "";
@@ -2502,7 +2537,7 @@ export const exportToWord = async (options = {}) => {
             num2 = isContinuousAK ? globalAnswerIndex++ : (idx2 + 1);
             const slotData2 = examSlots[`phan2_cau${idx2 + 1}`];
             const raw2 = (slotData2?.dapAnDung || '').replace(/\*/g, '');
-            const parts2 = raw2.split(',').map(s => s.trim());
+            const parts2 = raw2.includes('||') ? raw2.split('||').map(s => s.trim()) : raw2.split(',').map(s => s.trim());
             dapAn2 = [parts2[0] || '...', parts2[1] || '...', parts2[2] || '...', parts2[3] || '...'];
           }
 
@@ -2746,37 +2781,74 @@ export const exportToWord = async (options = {}) => {
       for (let i = 0; i < soCauTL; i++) {
         const displayNum = isContinuousAK ? globalAnswerIndex++ : (i + 1);
         const slotData = examSlots[`phan${phanTL}_cau${i + 1}`];
-        if (!slotData) continue;
+        if (!slotData) {
+          if (isCauTrucToan8_5050) {
+            tlDataRows.push(new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 15, type: WidthType.PERCENTAGE },
+                  verticalAlign: VerticalAlign.CENTER,
+                  children: [new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" })]
+                  })]
+                }),
+                new TableCell({
+                  width: { size: 70, type: WidthType.PERCENTAGE },
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({ text: "a) ", bold: true, size: 28, font: "Times New Roman" }),
+                        new TextRun({ text: "Hướng dẫn giải chi tiết ý a... (0,5 điểm)", size: 28, font: "Times New Roman" })
+                      ],
+                      spacing: { after: 40 }
+                    }),
+                    new Paragraph({
+                      children: [
+                        new TextRun({ text: "b) ", bold: true, size: 28, font: "Times New Roman" }),
+                        new TextRun({ text: "Hướng dẫn giải chi tiết ý b... (0,5 điểm)", size: 28, font: "Times New Roman" })
+                      ],
+                      spacing: { after: 40 }
+                    })
+                  ]
+                }),
+                new TableCell({
+                  width: { size: 15, type: WidthType.PERCENTAGE },
+                  verticalAlign: VerticalAlign.CENTER,
+                  children: [new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: "1,0", bold: true, size: 28, font: "Times New Roman" })]
+                  })]
+                })
+              ]
+            }));
+          }
+          continue;
+        }
 
-        // FORMAT MỚI: dapAn + diem (mỗi câu TL = 1 câu độc lập)
+        // FORMAT: Ưu tiên phát hiện 2 ý a, b (Toán 8 hoặc multi-part)
         let yParts = [];
-        if (slotData.dapAn && slotData.dapAn.trim() !== '') {
-          // Format mới: dùng dapAn trực tiếp
+        const hasBothPartsAK = Boolean((slotData.yA || slotData.dapAnA) && (slotData.yB || slotData.dapAnB));
+        if (hasBothPartsAK) {
+          yParts = [
+            { label: 'a', y: slotData.yA || '', da: slotData.dapAnA || '', di: slotData.diemA || '0,5' },
+            { label: 'b', y: slotData.yB || '', da: slotData.dapAnB || '', di: slotData.diemB || '0,5' },
+          ].filter(p => (p.y && p.y.trim() !== '') || (p.da && p.da.trim() !== ''));
+        } else if (slotData.dapAn && slotData.dapAn.trim() !== '') {
           yParts.push({ label: '', y: '', da: slotData.dapAn, di: slotData.diem || '' });
         } else {
-           // Fallback format: yA/dapAnA/diemA
-          const hasBothPartsAK = !!(slotData.yA && slotData.yB);
-          if (hasBothPartsAK) {
-            // 2 ý → giữ label a, b
-            yParts = [
-              { label: 'a', y: slotData.yA, da: slotData.dapAnA, di: slotData.diemA },
-              { label: 'b', y: slotData.yB, da: slotData.dapAnB, di: slotData.diemB },
-            ].filter(p => (p.y && p.y.trim() !== '') || (p.da && p.da.trim() !== ''));
-          } else {
-            // 1 ý → bỏ label a
-            yParts = [
-              { label: '', y: slotData.yA || '', da: slotData.dapAnA || '', di: slotData.diemA || '' },
-            ].filter(p => (p.y && p.y.trim() !== '') || (p.da && p.da.trim() !== ''));
-          }
+          yParts = [
+            { label: '', y: slotData.yA || '', da: slotData.dapAnA || '', di: slotData.diemA || '' },
+          ].filter(p => (p.y && p.y.trim() !== '') || (p.da && p.da.trim() !== ''));
+        }
 
-          // NẾU CÂU HỎI KHÔNG CHIA Ý A, B, C MÀ VIẾT THẲNG VÀO NỘI DUNG CHÍNH
-          if (yParts.length === 0) {
-            const generalAnswer = slotData.dapAnDung || slotData.dapAnA || slotData.noiDung;
-            if (generalAnswer) {
-              yParts.push({ label: '', y: '', da: generalAnswer, di: slotData.diemA || '' });
-            } else {
-              continue;
-            }
+        // NẾU CÂU HỎI KHÔNG CHIA Ý A, B, C MÀ VIẾT THẲNG VÀO NỘI DUNG CHÍNH
+        if (yParts.length === 0) {
+          const generalAnswer = slotData.dapAnDung || slotData.dapAnA || slotData.noiDung;
+          if (generalAnswer) {
+            yParts.push({ label: '', y: '', da: generalAnswer, di: slotData.diemA || '' });
+          } else {
+            continue;
           }
         }
 
@@ -3332,11 +3404,29 @@ export const exportToWord = async (options = {}) => {
 };
 
 // Export các hàm chuyên dụng theo từng chế độ
-export const exportToWordOMML = (options = {}) =>
-  exportToWord({ ...options, mathMode: 'omml', fileName: options.fileName || 'Ma_Tran_Dac_Ta_De_Kiem_Tra_WordEquation.docx' });
+export const exportToWordOMML = (options = {}) => {
+  const { examConfig } = useExamStore.getState();
+  const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucKHTNVao10 = Boolean(examConfig?.isCauTrucKHTNVao10);
+  const defaultName = isCauTrucToan8_5050
+    ? "Ma_Tran_Dac_Ta_De_Toan_8_5050_WordEquation.docx"
+    : (isCauTrucKHTNVao10
+      ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10_WordEquation.docx"
+      : "Ma_Tran_Dac_Ta_De_Kiem_Tra_WordEquation.docx");
+  return exportToWord({ ...options, mathMode: 'omml', fileName: options.fileName || defaultName });
+};
 
-export const exportToWordLatexDocx = (options = {}) =>
-  exportToWord({ ...options, mathMode: 'raw_latex', fileName: options.fileName || 'Ma_Tran_Dac_Ta_De_Kiem_Tra_LaTeX.docx' });
+export const exportToWordLatexDocx = (options = {}) => {
+  const { examConfig } = useExamStore.getState();
+  const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucKHTNVao10 = Boolean(examConfig?.isCauTrucKHTNVao10);
+  const defaultName = isCauTrucToan8_5050
+    ? "Ma_Tran_Dac_Ta_De_Toan_8_5050_LaTeX.docx"
+    : (isCauTrucKHTNVao10
+      ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10_LaTeX.docx"
+      : "Ma_Tran_Dac_Ta_De_Kiem_Tra_LaTeX.docx");
+  return exportToWord({ ...options, mathMode: 'raw_latex', fileName: options.fileName || defaultName });
+};
 
 export const generateWordDocxBlob = (options = {}) =>
   exportToWord({ ...options, returnBlob: true });
