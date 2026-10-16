@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useExamStore, isKHTNSubject, isMathSubject } from '../store/useExamStore';
+import { useExamStore, isKHTNSubject, isMathSubject, isCongNgheSubject } from '../store/useExamStore';
 import { FileBadge, RotateCcw } from 'lucide-react';
 
 const DEFAULT_HEADER = {
@@ -14,7 +14,7 @@ const DEFAULT_HEADER = {
 const isMojibake = (str) => typeof str === 'string' && (/[├┤╖ñ£—ÉÇÈÍ¿»]/.test(str) || /SB╖|TR\s*├|l\s*├ím/i.test(str));
 
 export default function Step1_HeaderInfo() {
-  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe, setCauTrucToan3223, setCauTrucToan8_5050 } = useExamStore();
+  const { examHeader, updateExamHeader, config, updateConfig, toggleTraLoiNgan, examConfig, setCauTrucKHTNVao10, setCauTruc4213, setCauTrucDe, setCauTrucToan3223, setCauTrucToan8_5050, setCauTrucCongNghe8_7030 } = useExamStore();
 
   // Tự động kiểm tra và dọn dẹp ký tự lỗi font (mojibake) từ localStorage cũ
   useEffect(() => {
@@ -253,7 +253,7 @@ export default function Step1_HeaderInfo() {
                       type="button"
                       onClick={() => setCauTrucDe('3')}
                       className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
-                        !examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10
+                        !examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && !examConfig.isCauTrucCongNghe8_7030
                           ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-bold'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
@@ -262,10 +262,69 @@ export default function Step1_HeaderInfo() {
                         <span className="font-bold flex items-center gap-1">
                           ⚙️ Cấu trúc khác / Tự do
                         </span>
-                        {!examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
+                        {!examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && !examConfig.isCauTrucCongNghe8_7030 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
                       </div>
                       <span className="text-[10px] font-normal text-slate-500">
                         Cấu trúc theo Bộ GDĐT hoặc tự do tùy chỉnh điểm
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Panel chọn cấu trúc đề thi Môn Công nghệ */}
+              {isCongNgheSubject(examHeader.monHoc) && (
+                <div className="mt-2 p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl shadow-sm animate-fadeIn space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                      <span>⚙️</span> Cấu trúc đề thi Môn Công nghệ:
+                    </span>
+                    <span className="text-[10px] text-emerald-600 italic">Chuẩn GDPT 2018 (Hải Phòng / Toàn quốc)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Nút Cấu trúc Công nghệ 8 (70% TN - 30% TL · 45 phút) */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCauTrucCongNghe8_7030();
+                        updateExamHeader('thoiGian', '45 phút');
+                      }}
+                      className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
+                        examConfig.isCauTrucCongNghe8_7030
+                          ? 'bg-emerald-100/90 border-emerald-500 text-emerald-900 ring-2 ring-emerald-300 font-bold'
+                          : 'bg-white border-emerald-200 text-emerald-800 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          🔧 Công nghệ 8 (70% TN - 30% TL)
+                        </span>
+                        {examConfig.isCauTrucCongNghe8_7030 && <span className="text-emerald-700 text-[10px] bg-emerald-200 px-1.5 py-0.5 rounded font-bold">Đang chọn</span>}
+                      </div>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        12 NLC (3đ) + 4 Đ/S (4đ: 2B+2H) + 2 TL (3đ: C17 2đ VD + C18 1đ VDC) · 45p · 18 câu
+                      </span>
+                    </button>
+
+                    {/* Nút Cấu trúc Khác / Tự do */}
+                    <button
+                      type="button"
+                      onClick={() => setCauTrucDe('3')}
+                      className={`text-left p-2 rounded-lg border transition-all text-xs flex flex-col gap-0.5 ${
+                        !examConfig.isCauTrucCongNghe8_7030 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && !examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050
+                          ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-200 font-bold'
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1">
+                          ⚙️ Cấu trúc khác / Tự do
+                        </span>
+                        {!examConfig.isCauTrucCongNghe8_7030 && !examConfig.isCauTruc4213 && !examConfig.isCauTrucKHTNVao10 && !examConfig.isCauTrucToan3223 && !examConfig.isCauTrucToan8_5050 && <span className="text-amber-700 text-[10px] bg-amber-100 px-1.5 py-0.5 rounded">Đang chọn</span>}
+                      </div>
+                      <span className="text-[10px] font-normal text-slate-500">
+                        Tùy chỉnh tự do số điểm các phần hoặc chọn cấu trúc chung
                       </span>
                     </button>
                   </div>

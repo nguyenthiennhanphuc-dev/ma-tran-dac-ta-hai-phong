@@ -52,6 +52,8 @@ export default function Step3_Specification() {
   );
 
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+  const hasSeparateVdc = Boolean(isKHTNMon || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030);
 
   // =======================================================================
   // NHIỆM VỤ 1 (Hướng A): Tự động phát hiện mã năng lực Hóa từ nội dung YCCĐ
@@ -418,6 +420,9 @@ export default function Step3_Specification() {
     if (isCauTrucKHTNVao10) {
       prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi Tuyển sinh vào lớp 10 THPT môn ${monHoc} (chương trình THCS - chủ yếu lớp 9) theo Quyết định 1038/QĐ-SGDĐT của Sở GD&ĐT Hải Phòng (Chương trình GDPT 2018). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
       prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở 3 mức độ (Nhận biết, Thông hiểu, Vận dụng). Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
+    } else if (isCauTrucCongNghe8_7030) {
+      prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn Công nghệ lớp 8 theo Chương trình GDPT 2018 (Cấu trúc 70% Trắc nghiệm - 30% Tự luận: 40% Biết - 30% Hiểu - 20% Vận dụng - 10% Vận dụng cao · 45 phút). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng môn Công nghệ lớp 8 cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
+      prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể (Nhận biết, Thông hiểu, Vận dụng, Vận dụng cao). Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
     } else if (isCauTrucToan8_5050) {
       prompt = `Đóng vai chuyên gia xây dựng ma trận đặc tả đề thi môn Toán lớp 8 theo Chương trình GDPT 2018 (Cấu trúc 50% Trắc nghiệm - 50% Tự luận: 30% Biết - 40% Hiểu - 20% Vận dụng - 10% Vận dụng cao). Hãy viết "Yêu cầu cần đạt" bám sát chuẩn kiến thức, kĩ năng chương trình Toán lớp 8 cho Chủ đề: ${topic.tenChuDe || 'Chưa rõ'}.\n\n`;
       prompt += `Dựa vào ma trận đề thi, các Nội dung/Đơn vị kiến thức dưới đây yêu cầu đánh giá ở các mức độ cụ thể (Nhận biết, Thông hiểu, Vận dụng, Vận dụng cao). Bạn CHỈ ĐƯỢC VIẾT Yêu cầu cần đạt tương ứng với các mức độ được giao:\n\n`;
@@ -527,14 +532,14 @@ export default function Step3_Specification() {
       const dvList = topic.donViKienThuc || [];
       // Tổng số dòng của toàn bộ chủ đề
       const topicTotalRows = dvList.reduce((sum, dv) => {
-        const active = getActiveLevelsForDv(dv, isKHTNMon || isCauTrucToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
+        const active = getActiveLevelsForDv(dv, hasSeparateVdc, config.hasTraLoiNgan, config.hasTuLuan);
         return sum + active.length;
       }, 0) || 1;
 
       let isFirstTopicRow = true;
 
       dvList.forEach((dv, dvIdx) => {
-        const activeLevels = getActiveLevelsForDv(dv, isKHTNMon || isCauTrucToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
+        const activeLevels = getActiveLevelsForDv(dv, hasSeparateVdc, config.hasTraLoiNgan, config.hasTuLuan);
         const dvTotalRows = activeLevels.length;
         const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
 
@@ -550,7 +555,7 @@ export default function Step3_Specification() {
               if (!val) return;
               const parts = k.split('_');
               const indLvl = parts[1];
-              if (indLvl === lvl || ((!isKHTNMon && !isCauTrucToan8_5050) && lvl === 'vanDung' && indLvl === 'vanDungCao')) {
+              if (indLvl === lvl || (!hasSeparateVdc && lvl === 'vanDung' && indLvl === 'vanDungCao')) {
                 levelDetails.push(val);
               }
             });
@@ -790,7 +795,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-300 p-1 text-center font-medium text-green-700 text-[11px] leading-tight">
                     {lvl === 'vanDung' ? fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan', rowActiveCode) : ''}
                   </td>
-                  {(isKHTNMon || isCauTrucToan8_5050) && (
+                  {hasSeparateVdc && (
                     <td className="border border-slate-300 p-1 text-center font-medium text-red-700 text-[11px] leading-tight">
                       {lvl === 'vanDungCao' ? fmtY(dv.tuLuan?.vanDungCao, 'vanDungCao', dv, 'tuLuan', rowActiveCode) : ''}
                     </td>
@@ -1201,11 +1206,11 @@ export default function Step3_Specification() {
                 <th rowSpan="4" className="border border-slate-400 p-2 w-32">Chủ đề/Chương</th>
                 <th rowSpan="4" className="border border-slate-400 p-2 w-40">Nội dung/Đơn vị KT</th>
                 <th rowSpan="4" className="border border-slate-400 p-2 w-64 bg-yellow-50">Yêu cầu cần đạt</th>
-                <th colSpan={config.hasTuLuan ? ((isKHTNMon || isCauTrucToan8_5050) ? "13" : "12") : "9"} className="border border-slate-400 p-2">Số câu hỏi ở các mức độ đánh giá</th>
+                <th colSpan={config.hasTuLuan ? (hasSeparateVdc ? "13" : "12") : "9"} className="border border-slate-400 p-2">Số câu hỏi ở các mức độ đánh giá</th>
               </tr>
               <tr>
                 <th colSpan="9" className="border border-slate-400 p-1 bg-blue-50">TNKQ</th>
-                {config.hasTuLuan && <th colSpan={(isKHTNMon || isCauTrucToan8_5050) ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
+                {config.hasTuLuan && <th colSpan={hasSeparateVdc ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
               </tr>
               <tr>
                 <th colSpan="3" className="border border-slate-400 p-1 bg-blue-50/80">Nhiều lựa chọn</th>
@@ -1221,7 +1226,7 @@ export default function Step3_Specification() {
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">B</th>
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">TH</th>
                     <th className="border border-slate-400 p-1 font-medium bg-green-50/30">VD</th>
-                    {(isKHTNMon || isCauTrucToan8_5050) && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700">VDC</th>}
+                    {hasSeparateVdc && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700">VDC</th>}
                   </>
                 )}
               </tr>
@@ -1249,7 +1254,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
                   <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
-                  {(isKHTNMon || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
+                  {hasSeparateVdc && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
                 </>
               )}
             </tr>
@@ -1270,7 +1275,7 @@ export default function Step3_Specification() {
                   <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('biet')}</td>
                   <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('hieu')}</td>
                   <td className="border border-slate-400 p-2 text-green-800 font-bold text-center">{fmtTuLuanCau('vanDung')}</td>
-                  {(isKHTNMon || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-800 font-bold text-center">{fmtTuLuanCau('vanDungCao')}</td>}
+                  {hasSeparateVdc && <td className="border border-slate-400 p-2 text-red-800 font-bold text-center">{fmtTuLuanCau('vanDungCao')}</td>}
                 </>
               )}
             </tr>
@@ -1280,7 +1285,7 @@ export default function Step3_Specification() {
               <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('nhieuLuaChon')}</td>
               <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('dungSai')}</td>
               <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-200' : ''}`}>{getColumnTotalPoints('traLoiNgan')}</td>
-              {config.hasTuLuan && <td colSpan={(isKHTNMon || isCauTrucToan8_5050) ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
+              {config.hasTuLuan && <td colSpan={hasSeparateVdc ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
             </tr>
 
             <tr className="bg-slate-200">
@@ -1288,7 +1293,7 @@ export default function Step3_Specification() {
               <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('nhieuLuaChon') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
               <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('dungSai') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
               <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-100' : ''}`}>{config.hasTraLoiNgan ? ((getColumnTotalPoints('traLoiNgan') / 10) * 100).toFixed(1).replace('.0', '') + '%' : '0%'}</td>
-              {config.hasTuLuan && <td colSpan={(isKHTNMon || isCauTrucToan8_5050) ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
+              {config.hasTuLuan && <td colSpan={hasSeparateVdc ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             </tr>
           </tfoot>
         </table>

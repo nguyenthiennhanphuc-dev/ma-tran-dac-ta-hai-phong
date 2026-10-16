@@ -256,6 +256,9 @@ export const exportToWord = async (options = {}) => {
   const isCauTrucKHTNVao10 = Boolean(examConfig?.isCauTrucKHTNVao10 || (!config.hasTuLuan && isKHTNMon && examConfig?.tongDiemP1 === 5.5));
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
   const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+  const hasSeparateVdc = isKHTNMon || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030;
+  const isNonKhtnSeparateVdc = isCauTrucToan8_5050 || isCauTrucCongNghe8_7030;
   const hasTL = Boolean(config.hasTuLuan);
 
   // Hàm phát hiện mã năng lực Hóa học từ nội dung YCCĐ (đồng bộ Step3_Specification)
@@ -455,7 +458,7 @@ export const exportToWord = async (options = {}) => {
     return sumCount('nhieuLuaChon', level) + sumCount('dungSai', level) + (config.hasTraLoiNgan ? sumCount('traLoiNgan', level) : 0) + (config.hasTuLuan ? sumCount('tuLuan', level) : 0);
   };
 
-  const getTopicTuLuanPoints = (topic) => (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0) + ((isKHTNMon || isCauTrucToan8_5050) ? (Number(dv.tuLuan?.diemVanDungCao) || 0) : 0), 0);
+  const getTopicTuLuanPoints = (topic) => (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.tuLuan?.diemBiet) || 0) + (Number(dv.tuLuan?.diemHieu) || 0) + (Number(dv.tuLuan?.diemVanDung) || 0) + (hasSeparateVdc ? (Number(dv.tuLuan?.diemVanDungCao) || 0) : 0), 0);
 
   const getColumnTotalPoints = (type) => {
     if (type === 'tuLuan') return matrix.reduce((sum, t) => sum + getTopicTuLuanPoints(t), 0);
@@ -476,7 +479,7 @@ export const exportToWord = async (options = {}) => {
         (config.hasTuLuan ? (topic.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.tuLuan?.[tlKey]) || 0), 0) : 0);
     }, 0);
   };
-  const getGrandTotalPoints = () => getLevelTotalPoints('biet') + getLevelTotalPoints('hieu') + getLevelTotalPoints('vanDung') + ((isKHTNMon || isCauTrucToan8_5050) ? getLevelTotalPoints('vanDungCao') : 0);
+  const getGrandTotalPoints = () => getLevelTotalPoints('biet') + getLevelTotalPoints('hieu') + getLevelTotalPoints('vanDung') + (hasSeparateVdc ? getLevelTotalPoints('vanDungCao') : 0);
 
   // Helper: Format giá trị kèm mã năng lực (hỗ trợ mã chuyên môn HH/TD/GQ...)
   const fmtNLC = (val, level, dv, type, rowActiveCode = null) => {
@@ -545,14 +548,14 @@ export const exportToWord = async (options = {}) => {
 
   // === TÍNH MAP CÂU SỐ TRONG KHUNG ĐỀ CHO TỪNG Ô ===
   const qMap = {};
-  const isCont = isCauTrucKHTNVao10 ? false : ((isKHTNMon || isCauTrucToan8_5050 || isCauTrucToan3223) ? true : (examConfig.isCauTruc4213 ? false : config.isContinuousNumbering));
+  const isCont = isCauTrucKHTNVao10 ? false : ((isKHTNMon || isCauTrucToan8_5050 || isCauTrucToan3223 || isCauTrucCongNghe8_7030) ? true : (examConfig.isCauTruc4213 ? false : config.isContinuousNumbering));
   let nlcC = 1;
   matrix.forEach((t, ti) => {
     (t.donViKienThuc || []).forEach((dv, di) => {
       ['biet','hieu','vanDung'].forEach(lvl => {
         const n = Number(dv.nhieuLuaChon?.[lvl]) || 0;
         if (n > 0) {
-          if (isKHTNMon || isCauTrucToan8_5050 || isCauTrucToan3223) {
+          if (isKHTNMon || isCauTrucToan8_5050 || isCauTrucToan3223 || isCauTrucCongNghe8_7030) {
             let nums = [];
             for (let i = 0; i < n; i++) nums.push(`C${nlcC + i}`);
             qMap[`${ti}_${di}_nlc_${lvl}`] = nums.join(', ');
@@ -581,6 +584,14 @@ export const exportToWord = async (options = {}) => {
             if (lvl === 'hieu' && n === 2) {
               qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý a, b`;
             } else if (lvl === 'vanDung' && n === 2) {
+              qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý c, d`;
+            } else {
+              qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý ${sy}`;
+            }
+          } else if (isCauTrucCongNghe8_7030) {
+            if (lvl === 'biet' && n === 2) {
+              qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý a, b`;
+            } else if (lvl === 'hieu' && n === 2) {
               qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý c, d`;
             } else {
               qMap[`${ti}_${di}_ds_${lvl}`] = `C${sc} ý ${sy}`;
@@ -635,7 +646,7 @@ export const exportToWord = async (options = {}) => {
     const allTLItems = [];
     matrix.forEach((t, ti) => {
       (t.donViKienThuc || []).forEach((dv, di) => {
-        ['biet', 'hieu', 'vanDung', ...((isKHTNMon || isCauTrucToan8_5050) ? ['vanDungCao'] : [])].forEach(lvl => {
+        ['biet', 'hieu', 'vanDung', ...(hasSeparateVdc ? ['vanDungCao'] : [])].forEach(lvl => {
           const subList = Array.isArray(dv.tuLuan?.subItems)
             ? dv.tuLuan.subItems.filter(s => s.level === lvl)
             : [];
@@ -992,10 +1003,10 @@ export const exportToWord = async (options = {}) => {
     );
     matrixRows.push(new TableRow({ children: r4Cells }));
   } else {
-    // Non-KHTN header (bao gồm cả cấu trúc Toán 8 50-50 có 4 mức độ nhận thức giống hệt Web UI)
-    const tlCols = config.hasTuLuan ? (isCauTrucToan8_5050 ? 4 : 3) : 0;
+    // Non-KHTN header (bao gồm cả cấu trúc Toán 8 50-50 và Công nghệ 8 70-30 có 4 mức độ nhận thức giống hệt Web UI)
+    const tlCols = config.hasTuLuan ? (isNonKhtnSeparateVdc ? 4 : 3) : 0;
     const danhGiaCols = 9 + tlCols;
-    const tongCols = isCauTrucToan8_5050 ? 4 : 3;
+    const tongCols = isNonKhtnSeparateVdc ? 4 : 3;
 
     matrixRows.push(new TableRow({
       children: [
@@ -1003,8 +1014,8 @@ export const exportToWord = async (options = {}) => {
         createCell("Chủ đề/Chương", true, AlignmentType.CENTER, 4, 1, "E2E8F0"),
         createCell("Nội dung/Đơn vị KT", true, AlignmentType.CENTER, 4, 1, "E2E8F0"),
         createCell("Mức độ đánh giá", true, AlignmentType.CENTER, 1, danhGiaCols, "E2E8F0"),
-        createCell(isCauTrucToan8_5050 ? "Điểm theo mức độ" : "Tổng (Ý)", true, AlignmentType.CENTER, 3, tongCols, "E2E8F0"),
-        createCell(isCauTrucToan8_5050 ? "Tỉ lệ % điểm" : "Tỉ lệ %", true, AlignmentType.CENTER, 4, 1, "E2E8F0")
+        createCell(isNonKhtnSeparateVdc ? "Điểm theo mức độ" : "Tổng (Ý)", true, AlignmentType.CENTER, 3, tongCols, "E2E8F0"),
+        createCell(isNonKhtnSeparateVdc ? "Tỉ lệ % điểm" : "Tỉ lệ %", true, AlignmentType.CENTER, 4, 1, "E2E8F0")
       ]
     }));
     const r2 = [createCell("TNKQ", true, AlignmentType.CENTER, 1, 9, "DBEAFE")];
@@ -1025,7 +1036,7 @@ export const exportToWord = async (options = {}) => {
       createCell("B", false), createCell("TH", false), createCell("VD", false)
     ];
     if (config.hasTuLuan) {
-      if (isCauTrucToan8_5050) {
+      if (isNonKhtnSeparateVdc) {
         r4.push(createCell("Biết", false), createCell("Hiểu", false), createCell("VD", false), createCell("VDC", false));
       } else {
         r4.push(createCell("B", false), createCell("TH", false), createCell("VD", false));
@@ -1036,7 +1047,7 @@ export const exportToWord = async (options = {}) => {
       createCell("TH", false, AlignmentType.CENTER, 1, 1, "FFEDD5"),
       createCell("VD", false, AlignmentType.CENTER, 1, 1, "FFEDD5")
     );
-    if (isCauTrucToan8_5050) {
+    if (isNonKhtnSeparateVdc) {
       r4.push(createCell("VDC", false, AlignmentType.CENTER, 1, 1, "FEE2E2"));
     }
     matrixRows.push(new TableRow({ children: r4 }));
@@ -1112,13 +1123,13 @@ export const exportToWord = async (options = {}) => {
           cells.push(createCellWithQ(fmtY(dv.tuLuan?.biet, 'biet', dv, 'tuLuan'), `${index}_${dvIdx}_tl_biet`));
           cells.push(createCellWithQ(fmtY(dv.tuLuan?.hieu, 'hieu', dv, 'tuLuan'), `${index}_${dvIdx}_tl_hieu`));
           cells.push(createCellWithQ(fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan'), `${index}_${dvIdx}_tl_vanDung`));
-          if (isCauTrucToan8_5050) {
+          if (isNonKhtnSeparateVdc) {
             cells.push(createCellWithQ(fmtY(dv.tuLuan?.vanDungCao, 'vanDungCao', dv, 'tuLuan'), `${index}_${dvIdx}_tl_vanDungCao`));
           }
         }
       }
 
-      if (isKHTNMon || isCauTrucToan8_5050) {
+      if (isKHTNMon || isNonKhtnSeparateVdc) {
         const bietPts = (Number(dv.nhieuLuaChon?.biet) || 0) * examConfig.diemMoiCauP1 + (Number(dv.dungSai?.biet) || 0) * examConfig.diemMoiYP2 + (Number(dv.traLoiNgan?.biet) || 0) * examConfig.diemMoiYP3 + (Number(dv.tuLuan?.diemBiet) || 0);
         const hieuPts = (Number(dv.nhieuLuaChon?.hieu) || 0) * examConfig.diemMoiCauP1 + (Number(dv.dungSai?.hieu) || 0) * examConfig.diemMoiYP2 + (Number(dv.traLoiNgan?.hieu) || 0) * examConfig.diemMoiYP3 + (Number(dv.tuLuan?.diemHieu) || 0);
         const vdPts = (Number(dv.nhieuLuaChon?.vanDung) || 0) * examConfig.diemMoiCauP1 + (Number(dv.dungSai?.vanDung) || 0) * examConfig.diemMoiYP2 + (Number(dv.traLoiNgan?.vanDung) || 0) * examConfig.diemMoiYP3 + (Number(dv.tuLuan?.diemVanDung) || 0);
@@ -1130,15 +1141,15 @@ export const exportToWord = async (options = {}) => {
           return Number(val.toFixed(2)).toString().replace('.', ',');
         };
 
-        cells.push(createCell(fmtPts(bietPts), isCauTrucToan8_5050, AlignmentType.CENTER, 1, 1, isCauTrucToan8_5050 ? "FFEDD5" : ""));
-        cells.push(createCell(fmtPts(hieuPts), isCauTrucToan8_5050, AlignmentType.CENTER, 1, 1, isCauTrucToan8_5050 ? "FFEDD5" : ""));
-        cells.push(createCell(fmtPts(vdPts), isCauTrucToan8_5050, AlignmentType.CENTER, 1, 1, isCauTrucToan8_5050 ? "FFEDD5" : ""));
-        cells.push(createCell(fmtPts(vdcPts), isCauTrucToan8_5050, AlignmentType.CENTER, 1, 1, isCauTrucToan8_5050 ? "FEE2E2" : ""));
+        cells.push(createCell(fmtPts(bietPts), isNonKhtnSeparateVdc, AlignmentType.CENTER, 1, 1, isNonKhtnSeparateVdc ? "FFEDD5" : ""));
+        cells.push(createCell(fmtPts(hieuPts), isNonKhtnSeparateVdc, AlignmentType.CENTER, 1, 1, isNonKhtnSeparateVdc ? "FFEDD5" : ""));
+        cells.push(createCell(fmtPts(vdPts), isNonKhtnSeparateVdc, AlignmentType.CENTER, 1, 1, isNonKhtnSeparateVdc ? "FFEDD5" : ""));
+        cells.push(createCell(fmtPts(vdcPts), isNonKhtnSeparateVdc, AlignmentType.CENTER, 1, 1, isNonKhtnSeparateVdc ? "FEE2E2" : ""));
 
         const dvTotalPoints = bietPts + hieuPts + vdPts + vdcPts;
         const pctNum = Number(((dvTotalPoints / 10) * 100).toFixed(2)).toString().replace('.', ',');
-        const dvPercent = dvTotalPoints > 0 ? (isCauTrucToan8_5050 ? `${pctNum}%` : pctNum) : '';
-        cells.push(createCell(dvPercent, isCauTrucToan8_5050, AlignmentType.CENTER));
+        const dvPercent = dvTotalPoints > 0 ? (isNonKhtnSeparateVdc ? `${pctNum}%` : pctNum) : '';
+        cells.push(createCell(dvPercent, isNonKhtnSeparateVdc, AlignmentType.CENTER));
       } else {
         cells.push(createCell(formatDvLevelSummaryWord(dv, 'biet'), true, AlignmentType.CENTER, 1, 1, "FFEDD5"));
         cells.push(createCell(formatDvLevelSummaryWord(dv, 'hieu'), true, AlignmentType.CENTER, 1, 1, "FFEDD5"));
@@ -1267,8 +1278,8 @@ export const exportToWord = async (options = {}) => {
     );
     matrixRows.push(new TableRow({ children: row3Cells }));
   } else {
-    // Non-KHTN (bao gồm cả Toán 8 50-50): 4 dòng tổng t1, t2, t3, t4 khớp 100% Web UI (Step2_MatrixBuilder.jsx)
-    const tlColSpan = isCauTrucToan8_5050 ? 4 : 3;
+    // Non-KHTN (bao gồm cả Toán 8 50-50 và Công nghệ 8 70-30): 4 dòng tổng t1, t2, t3, t4 khớp 100% Web UI (Step2_MatrixBuilder.jsx)
+    const tlColSpan = isNonKhtnSeparateVdc ? 4 : 3;
     const fmtNumClean = (val) => {
       const v = Math.round((Number(val) || 0) * 100) / 100;
       return Number(v.toFixed(2)).toString().replace('.', ',');
@@ -1296,14 +1307,14 @@ export const exportToWord = async (options = {}) => {
         createCell(sumCount('tuLuan', 'hieu')),
         createCell(sumCount('tuLuan', 'vanDung'))
       );
-      if (isCauTrucToan8_5050) t1.push(createCell(sumCount('tuLuan', 'vanDungCao')));
+      if (isNonKhtnSeparateVdc) t1.push(createCell(sumCount('tuLuan', 'vanDungCao')));
     }
     t1.push(
       createCell(getLevelTotalItems('biet'), true, AlignmentType.CENTER),
       createCell(getLevelTotalItems('hieu'), true, AlignmentType.CENTER),
       createCell(getLevelTotalItems('vanDung'), true, AlignmentType.CENTER)
     );
-    if (isCauTrucToan8_5050) t1.push(createCell(getLevelTotalItems('vanDungCao'), true, AlignmentType.CENTER));
+    if (isNonKhtnSeparateVdc) t1.push(createCell(getLevelTotalItems('vanDungCao'), true, AlignmentType.CENTER));
     t1.push(createCell("", false));
     matrixRows.push(new TableRow({ children: t1 }));
 
@@ -1342,7 +1353,7 @@ export const exportToWord = async (options = {}) => {
       getLevelTotalQuestions('biet') +
       getLevelTotalQuestions('hieu') +
       getLevelTotalQuestions('vanDung') +
-      (isCauTrucToan8_5050 ? getLevelTotalQuestions('vanDungCao') : 0)
+      (isNonKhtnSeparateVdc ? getLevelTotalQuestions('vanDungCao') : 0)
     ) * 100) / 100;
 
     const t2 = [
@@ -1375,14 +1386,14 @@ export const exportToWord = async (options = {}) => {
         createCell(fmtTLCauMatrixNonKhtn('hieu'), true, AlignmentType.CENTER),
         createCell(fmtTLCauMatrixNonKhtn('vanDung'), true, AlignmentType.CENTER)
       );
-      if (isCauTrucToan8_5050) t2.push(createCell(fmtTLCauMatrixNonKhtn('vanDungCao'), true, AlignmentType.CENTER));
+      if (isNonKhtnSeparateVdc) t2.push(createCell(fmtTLCauMatrixNonKhtn('vanDungCao'), true, AlignmentType.CENTER));
     }
     t2.push(
       createCell(fmtTongCau('biet'), true, AlignmentType.CENTER),
       createCell(fmtTongCau('hieu'), true, AlignmentType.CENTER),
       createCell(fmtTongCau('vanDung'), true, AlignmentType.CENTER)
     );
-    if (isCauTrucToan8_5050) t2.push(createCell(fmtTongCau('vanDungCao'), true, AlignmentType.CENTER));
+    if (isNonKhtnSeparateVdc) t2.push(createCell(fmtTongCau('vanDungCao'), true, AlignmentType.CENTER));
     t2.push(createCell(fmtNumClean(grandTotalCau), true, AlignmentType.CENTER));
     matrixRows.push(new TableRow({ children: t2 }));
 
@@ -1398,7 +1409,7 @@ export const exportToWord = async (options = {}) => {
       createCell(fmtNumClean(getLevelTotalPoints('hieu')), true, AlignmentType.CENTER),
       createCell(fmtNumClean(getLevelTotalPoints('vanDung')), true, AlignmentType.CENTER)
     );
-    if (isCauTrucToan8_5050) t3.push(createCell(fmtNumClean(getLevelTotalPoints('vanDungCao')), true, AlignmentType.CENTER));
+    if (isNonKhtnSeparateVdc) t3.push(createCell(fmtNumClean(getLevelTotalPoints('vanDungCao')), true, AlignmentType.CENTER));
     t3.push(createCell(fmtNumClean(getGrandTotalPoints()), true, AlignmentType.CENTER));
     matrixRows.push(new TableRow({ children: t3 }));
 
@@ -1414,7 +1425,7 @@ export const exportToWord = async (options = {}) => {
       createCell(fmtPctClean(getLevelTotalPoints('hieu')), true, AlignmentType.CENTER),
       createCell(fmtPctClean(getLevelTotalPoints('vanDung')), true, AlignmentType.CENTER)
     );
-    if (isCauTrucToan8_5050) t4.push(createCell(fmtPctClean(getLevelTotalPoints('vanDungCao')), true, AlignmentType.CENTER));
+    if (isNonKhtnSeparateVdc) t4.push(createCell(fmtPctClean(getLevelTotalPoints('vanDungCao')), true, AlignmentType.CENTER));
     t4.push(createCell(fmtPctClean(getGrandTotalPoints()), true, AlignmentType.CENTER));
     matrixRows.push(new TableRow({ children: t4 }));
   }
@@ -1423,16 +1434,16 @@ export const exportToWord = async (options = {}) => {
   // ==================== BẢNG 2: ĐẶC TẢ ====================
   const specRows = [];
   specRows.push(new TableRow({ children: [
-    createCell("TT", true, AlignmentType.CENTER, 4, 1, "E2E8F0"), createCell("Chủ đề/Chương", true, AlignmentType.CENTER, 4, 1, "E2E8F0"), createCell("Nội dung/Đơn vị KT", true, AlignmentType.CENTER, 4, 1, "E2E8F0"), createCell("Yêu cầu cần đạt", true, AlignmentType.CENTER, 4, 1, "FEF08A"), createCell("Số câu hỏi ở các mức độ", true, AlignmentType.CENTER, 1, config.hasTuLuan ? ((isKHTNMon || isCauTrucToan8_5050) ? 13 : 12) : 9, "E2E8F0")
+    createCell("TT", true, AlignmentType.CENTER, 4, 1, "E2E8F0"), createCell("Chủ đề/Chương", true, AlignmentType.CENTER, 4, 1, "E2E8F0"), createCell("Nội dung/Đơn vị KT", true, AlignmentType.CENTER, 4, 1, "E2E8F0"), createCell("Yêu cầu cần đạt", true, AlignmentType.CENTER, 4, 1, "FEF08A"), createCell("Số câu hỏi ở các mức độ", true, AlignmentType.CENTER, 1, config.hasTuLuan ? (hasSeparateVdc ? 13 : 12) : 9, "E2E8F0")
   ] }));
   const sr2 = [createCell("TNKQ", true, AlignmentType.CENTER, 1, 9, "DBEAFE")];
-  if (config.hasTuLuan) sr2.push(createCell("Tự luận", true, AlignmentType.CENTER, 2, (isKHTNMon || isCauTrucToan8_5050) ? 4 : 3, "DCFCE7"));
+  if (config.hasTuLuan) sr2.push(createCell("Tự luận", true, AlignmentType.CENTER, 2, hasSeparateVdc ? 4 : 3, "DCFCE7"));
   specRows.push(new TableRow({ children: sr2 }));
   specRows.push(new TableRow({ children: [createCell("Nhiều lựa chọn", true, AlignmentType.CENTER, 1, 3, "BFDBFE"), createCell("Đúng - Sai (Ý)", true, AlignmentType.CENTER, 1, 3, "BFDBFE"), createCell(examConfig.isCauTruc4213 ? "Trả lời ngắn (Câu)" : "Trả lời ngắn (Ý)", true, AlignmentType.CENTER, 1, 3, "BFDBFE")] }));
   const sr4 = [createCell("B", false), createCell("TH", false), createCell("VD", false), createCell("B", false), createCell("TH", false), createCell("VD", false), createCell("B", false), createCell("TH", false), createCell("VD", false)];
   if (config.hasTuLuan) {
     sr4.push(createCell("B", false), createCell("TH", false), createCell("VD", false));
-    if (isKHTNMon || isCauTrucToan8_5050) sr4.push(createCell("VDC", false));
+    if (hasSeparateVdc) sr4.push(createCell("VDC", false));
   }
   specRows.push(new TableRow({ children: sr4 }));
 
@@ -1442,14 +1453,14 @@ export const exportToWord = async (options = {}) => {
     if (dvList.length === 0) return;
 
     const topicTotalRows = dvList.reduce((sum, dv) => {
-      const active = getActiveLevelsForDv(dv, isKHTNMon || isCauTrucToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
+      const active = getActiveLevelsForDv(dv, hasSeparateVdc, config.hasTraLoiNgan, config.hasTuLuan);
       return sum + active.length;
     }, 0) || 1;
 
     let isFirstTopicRow = true;
 
     dvList.forEach((dv, dvIdx) => {
-      const activeLevels = getActiveLevelsForDv(dv, isKHTNMon || isCauTrucToan8_5050, config.hasTraLoiNgan, config.hasTuLuan);
+      const activeLevels = getActiveLevelsForDv(dv, hasSeparateVdc, config.hasTraLoiNgan, config.hasTuLuan);
       const dvTotalRows = activeLevels.length;
       const parsedYccd = parseYccdByLevel(dv.yeuCauCanDat || '');
 
@@ -1517,7 +1528,7 @@ export const exportToWord = async (options = {}) => {
           cells.push(lvl === 'biet' ? createCellWithQ(fmtY(dv.tuLuan?.biet, 'biet', dv, 'tuLuan', rowActiveCode), `${index}_${dvIdx}_tl_biet`, true) : createCell(""));
           cells.push(lvl === 'hieu' ? createCellWithQ(fmtY(dv.tuLuan?.hieu, 'hieu', dv, 'tuLuan', rowActiveCode), `${index}_${dvIdx}_tl_hieu`, true) : createCell(""));
           cells.push(lvl === 'vanDung' ? createCellWithQ(fmtY(dv.tuLuan?.vanDung, 'vanDung', dv, 'tuLuan', rowActiveCode), `${index}_${dvIdx}_tl_vanDung`, true) : createCell(""));
-          if (isKHTNMon || isCauTrucToan8_5050) {
+          if (hasSeparateVdc) {
             cells.push(lvl === 'vanDungCao' ? createCellWithQ(fmtY(dv.tuLuan?.vanDungCao, 'vanDungCao', dv, 'tuLuan', rowActiveCode), `${index}_${dvIdx}_tl_vanDungCao`, true) : createCell(""));
           }
         }
@@ -1533,7 +1544,7 @@ export const exportToWord = async (options = {}) => {
   ];
   if (config.hasTuLuan) {
     tot1.push(createCell(sumCount('tuLuan', 'biet')), createCell(sumCount('tuLuan', 'hieu')), createCell(sumCount('tuLuan', 'vanDung')));
-    if (isKHTNMon || isCauTrucToan8_5050) tot1.push(createCell(sumCount('tuLuan', 'vanDungCao')));
+    if (hasSeparateVdc) tot1.push(createCell(sumCount('tuLuan', 'vanDungCao')));
   }
   specRows.push(new TableRow({ children: tot1 }));
 
@@ -1564,19 +1575,19 @@ export const exportToWord = async (options = {}) => {
       return cStr;
     };
     tot2.push(createCell(formatTLCau('biet')), createCell(formatTLCau('hieu')), createCell(formatTLCau('vanDung')));
-    if (isKHTNMon || isCauTrucToan8_5050) tot2.push(createCell(formatTLCau('vanDungCao')));
+    if (hasSeparateVdc) tot2.push(createCell(formatTLCau('vanDungCao')));
   }
   specRows.push(new TableRow({ children: tot2 }));
   const specTotDiem = [
     createCell("Tổng điểm", true, AlignmentType.CENTER, 1, 4, "CBD5E1"), createCell(getColumnTotalPoints('nhieuLuaChon'), true, AlignmentType.CENTER, 1, 3), createCell(getColumnTotalPoints('dungSai'), true, AlignmentType.CENTER, 1, 3), createCell(config.hasTraLoiNgan ? getColumnTotalPoints('traLoiNgan') : 0, true, AlignmentType.CENTER, 1, 3)
   ];
-  if (config.hasTuLuan) specTotDiem.push(createCell(getColumnTotalPoints('tuLuan'), true, AlignmentType.CENTER, 1, (isKHTNMon || isCauTrucToan8_5050) ? 4 : 3));
+  if (config.hasTuLuan) specTotDiem.push(createCell(getColumnTotalPoints('tuLuan'), true, AlignmentType.CENTER, 1, hasSeparateVdc ? 4 : 3));
   specRows.push(new TableRow({ children: specTotDiem }));
 
   const specTotTiLe = [
     createCell("Tỉ lệ %", true, AlignmentType.CENTER, 1, 4, "E2E8F0"), createCell(((getColumnTotalPoints('nhieuLuaChon') / 10) * 100).toFixed(1).replace('.0', '') + "%", true, AlignmentType.CENTER, 1, 3), createCell(((getColumnTotalPoints('dungSai') / 10) * 100).toFixed(1).replace('.0', '') + "%", true, AlignmentType.CENTER, 1, 3), createCell(config.hasTraLoiNgan ? ((getColumnTotalPoints('traLoiNgan') / 10) * 100).toFixed(1).replace('.0', '') + "%" : "0%", true, AlignmentType.CENTER, 1, 3)
   ];
-  if (config.hasTuLuan) specTotTiLe.push(createCell(((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '') + "%", true, AlignmentType.CENTER, 1, (isKHTNMon || isCauTrucToan8_5050) ? 4 : 3));
+  if (config.hasTuLuan) specTotTiLe.push(createCell(((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '') + "%", true, AlignmentType.CENTER, 1, hasSeparateVdc ? 4 : 3));
   specRows.push(new TableRow({ children: specTotTiLe }));
 
   // ==================== BẢNG 3: KHUNG ĐỀ THI / ĐỀ THI AI ====================
@@ -1738,6 +1749,12 @@ export const exportToWord = async (options = {}) => {
             if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
             if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
             if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+          } else if (isCauTrucCongNghe8_7030) {
+            // Chuẩn Công nghệ 8: a, b mức Nhận biết; c, d mức Thông hiểu
+            if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+            if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+            if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+            if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
           } else if (examConfig.isCauTruc4213 || isKHTNMon || isCauTrucToan8_5050) {
             // Chuẩn: a, b mức Nhận biết; c mức Thông hiểu; d mức Vận dụng
             if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
@@ -1756,6 +1773,10 @@ export const exportToWord = async (options = {}) => {
               else if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
               else if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
               else break;
+            } else if (isCauTrucCongNghe8_7030) {
+              if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+              else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+              else break;
             } else {
               if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
               else if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
@@ -1773,7 +1794,7 @@ export const exportToWord = async (options = {}) => {
       let items = [];
       matrix.forEach(t => {
         (t.donViKienThuc || []).forEach(dv => {
-          ['biet', 'hieu', 'vanDung', ...((isKHTNMon || isCauTrucToan8_5050) ? ['vanDungCao'] : [])].forEach(lvl => {
+          ['biet', 'hieu', 'vanDung', ...(hasSeparateVdc ? ['vanDungCao'] : [])].forEach(lvl => {
             let numQ = 0;
             if (typeKey === 'tuLuan') numQ = dv.tuLuan?.subItems?.filter(s => s.level === lvl).length || Number(dv[typeKey]?.[lvl]) || 0;
             else numQ = Number(dv[typeKey]?.[lvl]) || 0;
@@ -1840,7 +1861,7 @@ export const exportToWord = async (options = {}) => {
 
     // BIẾN ĐẾM TOÀN CỤC CHO ĐÁNH SỐ CÂU HỎI LIÊN TỤC (ĐỀ THI)
     let globalQuestionIndex = 1;
-    const isContinuous = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? false : ((isCauTrucToan8_5050 || isCauTrucToan3223) ? true : config.isContinuousNumbering);
+    const isContinuous = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? false : ((isCauTrucToan8_5050 || isCauTrucToan3223 || isCauTrucCongNghe8_7030) ? true : config.isContinuousNumbering);
 
     // === LOGIC TIÊU ĐỀ PHẦN ĐỘNG THEO TỰ LUẬN ===
     const hasTuLuanMode = config.hasTuLuan;
@@ -1851,7 +1872,7 @@ export const exportToWord = async (options = {}) => {
         const diemP3 = getTotalY('traLoiNgan') * examConfig.diemMoiYP3;
         const diemTN = diemP1 + diemP2 + diemP3;
         examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `PHẦN A. TRẮC NGHIỆM KHÁCH QUAN (${String(diemTN).replace('.',',')} ĐIỂM)`, bold: true, size: 28, font: "Times New Roman" })], spacing: { before: 300, after: 200 } }));
-    } else if (hasTuLuanMode && !isMinistry && !isCauTrucToan8_5050 && !isCauTrucToan3223) {
+    } else if (hasTuLuanMode && !isMinistry && !isCauTrucToan8_5050 && !isCauTrucToan3223 && !isCauTrucCongNghe8_7030) {
       examParagraphs.push(new Paragraph({ children: [new TextRun({ text: "PHẦN I. TRẮC NGHIỆM", bold: true, size: 28, font: "Times New Roman" })], spacing: { before: 300, after: 200 } }));
     }
 
@@ -1862,7 +1883,10 @@ export const exportToWord = async (options = {}) => {
         ? "DẠNG 1. Câu trắc nghiệm nhiều phương án lựa chọn"
         : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn";
       let d1Desc = "Học sinh khoanh tròn chữ cái đứng trước câu trả lời đúng:";
-      if (isCauTrucToan8_5050) {
+      if (isCauTrucCongNghe8_7030) {
+        d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (3,0 điểm).`;
+        d1Desc = ` Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
+      } else if (isCauTrucToan8_5050) {
         d1Title = `PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (3,0 điểm).`;
         d1Desc = ` Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
       } else if (isCauTrucKHTNVao10) {
@@ -1880,7 +1904,7 @@ export const exportToWord = async (options = {}) => {
         d1Desc = ` Thí sinh trả lời từ câu 1 đến câu ${totalMCQ}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
       }
 
-      if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050) {
+      if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) {
         examParagraphs.push(new Paragraph({
           children: [
             new TextRun({ text: d1Title, bold: true, size: 28, font: "Times New Roman" }),
@@ -1942,7 +1966,10 @@ export const exportToWord = async (options = {}) => {
       const startQ = isContinuous ? globalQuestionIndex : 1;
       const endQ = startQ + soCauTF - 1;
       
-      if (isCauTrucToan8_5050) {
+      if (isCauTrucCongNghe8_7030) {
+        d2Title = `PHẦN II. Câu trắc nghiệm đúng sai (4,0 điểm).`;
+        d2Desc = ` Thí sinh trả lời từ câu 13 đến câu 16. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
+      } else if (isCauTrucToan8_5050) {
         d2Title = `PHẦN II. Câu trắc nghiệm đúng sai (1,0 điểm).`;
         d2Desc = ` Thí sinh trả lời câu 13. Trong mỗi ý a), b), c), d), thí sinh chọn đúng hoặc sai.`;
       } else if (isCauTrucKHTNVao10) {
@@ -1959,7 +1986,7 @@ export const exportToWord = async (options = {}) => {
         d2Title = "PHẦN II. Câu trắc nghiệm đúng sai.";
         d2Desc = ` Thí sinh trả lời từ câu ${startQ} đến câu ${endQ}. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai.`;
       }
-      if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050) {
+      if (examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) {
         examParagraphs.push(new Paragraph({
           children: [
             new TextRun({ text: d2Title, bold: true, size: 28, font: "Times New Roman" }),
@@ -1980,7 +2007,7 @@ export const exportToWord = async (options = {}) => {
           const tfPrompt = cleanText(slotData.noiDung) || '';
           const tfPromptRuns = [
             new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }),
-            ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
+            ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" })),
             ...parseMixedTextToRuns(tfPrompt, 28, "Times New Roman", mathMode)
           ];
           examParagraphs.push(new Paragraph({ children: tfPromptRuns, spacing: { after: 120 } }));
@@ -1988,7 +2015,7 @@ export const exportToWord = async (options = {}) => {
             const imgData = await fetchGraphImage(slotData.hinhAnh);
             if (imgData) examParagraphs.push(createGraphParagraph(imgData));
           }
-          if (isMinistry || examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isCauTrucToan8_5050) {
+          if (isMinistry || examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) {
             const answers = extractABCD(slotData.dapAnDung);
             const tfYKeys = [['a.', slotData.yA, 'a)', 0], ['b.', slotData.yB, 'b)', 1], ['c.', slotData.yC, 'c)', 2], ['d.', slotData.yD, 'd)', 3]];
             tfYKeys.forEach(([labelMin, content, label4213, idx]) => {
@@ -2051,12 +2078,12 @@ export const exportToWord = async (options = {}) => {
               borders: standardBorders,
             }));
           }
-          if (!examConfig.isCauTruc4213 && !isCauTrucKHTNVao10 && !isCauTrucToan8_5050) {
+          if (!examConfig.isCauTruc4213 && !isCauTrucKHTNVao10 && !isCauTrucToan8_5050 && !isCauTrucCongNghe8_7030) {
             examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
           }
         } else {
-          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" }))], spacing: { after: 100 } }));
-          if (isMinistry || examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isCauTrucToan8_5050) {
+          examParagraphs.push(new Paragraph({ children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" }), ((examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isMinistry || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? new TextRun({ text: '. ', bold: true, size: 28, font: "Times New Roman" }) : new TextRun({ text: `(${diemMoiCauP2Str} điểm). `, bold: true, size: 28, font: "Times New Roman" }))], spacing: { after: 100 } }));
+          if (isMinistry || examConfig.isCauTruc4213 || isCauTrucKHTNVao10 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) {
             const tfYKeys = [['a.', 'a)', 0], ['b.', 'b)', 1], ['c.', 'c)', 2], ['d.', 'd)', 3]];
             tfYKeys.forEach(([labelMin, label4213, idx]) => {
               const flatIdx = i * 4 + idx;
@@ -2109,7 +2136,7 @@ export const exportToWord = async (options = {}) => {
       }
     }
 
-    if (config.hasTraLoiNgan) {
+    if (config.hasTraLoiNgan && !isCauTrucCongNghe8_7030) {
       const totalSA = getTotalY('traLoiNgan');
       // NÂNG CẤP: Dạng 3 giờ là câu hỏi ĐỘC LẬP, 1 câu = 1 noiDung + 1 dapAnDung
       if (totalSA > 0) {
@@ -2216,9 +2243,18 @@ export const exportToWord = async (options = {}) => {
     if (soCauTL > 0) {
       // Reset nếu không liên tục
       if (!isContinuous) globalQuestionIndex = 1;
-      const phanTL = config.hasTraLoiNgan ? 4 : 3;
+      const phanTL = config.hasTraLoiNgan ? 4 : (isCauTrucCongNghe8_7030 ? 4 : 3);
       // PHẦN II: TỰ LUẬN (nếu có Tự luận) hoặc PHẦN IV/III (nếu không) — BỎ QUA wrapper khi mẫu Bộ 2025
-      if (isCauTrucToan8_5050) {
+      if (isCauTrucCongNghe8_7030) {
+        examParagraphs.push(new Paragraph({
+          children: [new TextRun({ text: "PHẦN IV. Tự luận (3,0 điểm)", bold: true, size: 28, font: "Times New Roman" })],
+          spacing: { before: 300, after: 80 }
+        }));
+        examParagraphs.push(new Paragraph({
+          children: [new TextRun({ text: "Thí sinh trình bày lời giải chi tiết cho Câu 17 (2,0 điểm) và Câu 18 (1,0 điểm).", italics: true, size: 26, font: "Times New Roman" })],
+          spacing: { after: 200 }
+        }));
+      } else if (isCauTrucToan8_5050) {
         examParagraphs.push(new Paragraph({
           children: [new TextRun({ text: "PHẦN IV. Tự luận (5,0 điểm)", bold: true, size: 28, font: "Times New Roman" })],
           spacing: { before: 300, after: 80 }
@@ -2270,7 +2306,17 @@ export const exportToWord = async (options = {}) => {
           }
 
           const tlDiemStr = String(Math.round(totalDiem * 100) / 100).replace('.', ',');
-          const cauTienTo = isCauTrucToan8_5050 ? `Câu ${displayNum} (1,0 điểm).` : (examConfig.isCauTruc4213 ? `Câu ${displayNum} (${tlDiemStr} điểm).` : `Câu ${displayNum}.`);
+          let cauTienTo;
+          if (isCauTrucCongNghe8_7030) {
+            const diemCau = (i === 0) ? "2,0" : "1,0";
+            cauTienTo = `Câu ${displayNum} (${diemCau} điểm).`;
+          } else if (isCauTrucToan8_5050) {
+            cauTienTo = `Câu ${displayNum} (1,0 điểm).`;
+          } else if (examConfig.isCauTruc4213) {
+            cauTienTo = `Câu ${displayNum} (${tlDiemStr} điểm).`;
+          } else {
+            cauTienTo = `Câu ${displayNum}.`;
+          }
 
           const hasBothParts = !!(slotData.yA && slotData.yB);
           
@@ -2302,7 +2348,7 @@ export const exportToWord = async (options = {}) => {
                 examParagraphs.push(new Paragraph({ children: [new TextRun({ text: 'c) ', bold: true, size: 28, font: "Times New Roman" }), ...parseMixedTextToRuns(slotData.yC, 28, "Times New Roman", mathMode)], indent: { left: 400 }, spacing: { after: 80 } }));
                 pushMetadata(qItems[2]);
             }
-            if (!examConfig.isCauTruc4213 && !isCauTrucToan8_5050) examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+            if (!examConfig.isCauTruc4213 && !isCauTrucToan8_5050 && !isCauTrucCongNghe8_7030) examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
           } else {
             const content = slotData.yA || slotData.noiDung || '';
             const singleRuns = [
@@ -2315,10 +2361,41 @@ export const exportToWord = async (options = {}) => {
               const imgData = await fetchGraphImage(slotData.hinhAnh);
               if (imgData) examParagraphs.push(createGraphParagraph(imgData));
             }
-            if (!examConfig.isCauTruc4213 && !isCauTrucToan8_5050) examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
+            if (!examConfig.isCauTruc4213 && !isCauTrucToan8_5050 && !isCauTrucCongNghe8_7030) examParagraphs.push(new Paragraph({ text: "", spacing: { after: 200 } }));
           }
         } else {
-          if (isCauTrucToan8_5050) {
+          if (isCauTrucCongNghe8_7030) {
+            const diemCauStr = (i === 0) ? "2,0" : "1,0";
+            const diemYStr = (i === 0) ? "1,0" : "0,5";
+            const itemA = tlFlatItems[currentTlIdx] || {};
+            currentTlIdx++;
+            const itemB = tlFlatItems[currentTlIdx] || {};
+            currentTlIdx++;
+            examParagraphs.push(new Paragraph({
+              children: [
+                new TextRun({ text: `Câu ${displayNum} (${diemCauStr} điểm).`, bold: true, size: 28, font: "Times New Roman" })
+              ],
+              spacing: { after: 80 }
+            }));
+            examParagraphs.push(new Paragraph({
+              children: [
+                new TextRun({ text: 'a) ', bold: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: itemA.topic ? `[${itemA.topic} - Mức độ: ${itemA.level}] ` : '', italics: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: `(Ghi nội dung ý a vào đây... ${diemYStr} điểm)`, size: 28, font: "Times New Roman" })
+              ],
+              indent: { left: 400 },
+              spacing: { after: 60 }
+            }));
+            examParagraphs.push(new Paragraph({
+              children: [
+                new TextRun({ text: 'b) ', bold: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: itemB.topic ? `[${itemB.topic} - Mức độ: ${itemB.level}] ` : '', italics: true, size: 28, font: "Times New Roman" }),
+                new TextRun({ text: `(Ghi nội dung ý b vào đây... ${diemYStr} điểm)`, size: 28, font: "Times New Roman" })
+              ],
+              indent: { left: 400 },
+              spacing: { after: 140 }
+            }));
+          } else if (isCauTrucToan8_5050) {
             const itemA = tlFlatItems[currentTlIdx] || {};
             currentTlIdx++;
             const itemB = tlFlatItems[currentTlIdx] || {};
@@ -2395,7 +2472,7 @@ export const exportToWord = async (options = {}) => {
 
     // BIẾN ĐẾM TOÀN CỤC CHO ĐÁNH SỐ CÂU HỎI LIÊN TỤC (ĐÁP ÁN)
     let globalAnswerIndex = 1;
-    const isContinuousAK = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? false : ((isCauTrucToan8_5050 || isCauTrucToan3223) ? true : config.isContinuousNumbering);
+    const isContinuousAK = (examConfig.isCauTruc4213 || isCauTrucKHTNVao10) ? false : ((isCauTrucToan8_5050 || isCauTrucToan3223 || isCauTrucCongNghe8_7030) ? true : config.isContinuousNumbering);
     const hasTuLuanModeAK = config.hasTuLuan;
 
     // PHẦN TRẮC NGHIỆM (nếu có Tự luận) — cho đáp án — BỎ QUA khi mẫu Bộ 2025 hoặc Toán 8 50-50
@@ -2404,7 +2481,7 @@ export const exportToWord = async (options = {}) => {
         children: [new TextRun({ text: "PHẦN A. TRẮC NGHIỆM KHÁCH QUAN", bold: true, size: 28, font: "Times New Roman" })],
         spacing: { before: 200, after: 150 }
       }));
-    } else if (hasTuLuanModeAK && !isMinistry && !isCauTrucToan8_5050 && !isCauTrucToan3223) {
+    } else if (hasTuLuanModeAK && !isMinistry && !isCauTrucToan8_5050 && !isCauTrucToan3223 && !isCauTrucCongNghe8_7030) {
       answerKeyParagraphs.push(new Paragraph({
         children: [new TextRun({ text: "PHẦN I. TRẮC NGHIỆM", bold: true, size: 28, font: "Times New Roman" })],
         spacing: { before: 200, after: 150 }
@@ -2414,7 +2491,7 @@ export const exportToWord = async (options = {}) => {
     // ---------- DẠNG 1 / PHẦN I: BẢNG ĐÁP ÁN TRẮC NGHIỆM ----------
     const totalMCQ = getTotalY('nhieuLuaChon');
     if (totalMCQ > 0) {
-      const d1TitleAK = isCauTrucToan8_5050
+      const d1TitleAK = (isCauTrucToan8_5050 || isCauTrucCongNghe8_7030)
         ? `PHẦN I. Trắc nghiệm nhiều phương án lựa chọn (Mỗi câu trả lời đúng được 0,25 điểm)`
         : (isMinistry
           ? `Phần I.`
@@ -2474,7 +2551,7 @@ export const exportToWord = async (options = {}) => {
     const soCauTF = Math.ceil(totalTF / 4);
     if (soCauTF > 0) {
       if (!isContinuousAK) globalAnswerIndex = 1;
-      const d2TitleAK = isCauTrucToan8_5050
+      const d2TitleAK = (isCauTrucToan8_5050 || isCauTrucCongNghe8_7030)
         ? `PHẦN II. Trắc nghiệm Đúng/Sai`
         : (isMinistry
           ? `Phần II`
@@ -2487,7 +2564,7 @@ export const exportToWord = async (options = {}) => {
         spacing: { before: 200, after: 80 }
       }));
 
-      if (isMinistry || isCauTrucToan8_5050) {
+      if (isMinistry || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) {
         // Text guide exactly as image
         answerKeyParagraphs.push(new Paragraph({
           children: [new TextRun({ text: "Điểm tối đa của 01 câu hỏi là 1 điểm.", size: 28, font: "Times New Roman" })],
@@ -2638,7 +2715,7 @@ export const exportToWord = async (options = {}) => {
 
 
     // ---------- DẠNG 3 / PHẦN III: ĐÁP ÁN TRẢ LỜI NGẮN ----------
-    if (config.hasTraLoiNgan) {
+    if (config.hasTraLoiNgan && !isCauTrucCongNghe8_7030) {
       const totalSA = getTotalY('traLoiNgan');
       if (totalSA > 0) {
         if (!isContinuousAK) globalAnswerIndex = 1;
@@ -2744,9 +2821,14 @@ export const exportToWord = async (options = {}) => {
     const soCauTL = computeTLCauCount();
     if (soCauTL > 0) {
       if (!isContinuousAK) globalAnswerIndex = 1;
-      const phanTL = config.hasTraLoiNgan ? 4 : 3;
+      const phanTL = config.hasTraLoiNgan ? 4 : (isCauTrucCongNghe8_7030 ? 4 : 3);
       // Tiêu đề đáp án tự luận — dynamic theo mode
-      if (isCauTrucToan8_5050) {
+      if (isCauTrucCongNghe8_7030) {
+        answerKeyParagraphs.push(new Paragraph({
+          children: [new TextRun({ text: "PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)", bold: true, size: 28, font: "Times New Roman" })],
+          spacing: { before: 200, after: 150 }
+        }));
+      } else if (isCauTrucToan8_5050) {
         answerKeyParagraphs.push(new Paragraph({
           children: [new TextRun({ text: "PHẦN IV. TỰ LUẬN (5,0 ĐIỂM)", bold: true, size: 28, font: "Times New Roman" })],
           spacing: { before: 200, after: 150 }
@@ -2783,7 +2865,49 @@ export const exportToWord = async (options = {}) => {
         const displayNum = isContinuousAK ? globalAnswerIndex++ : (i + 1);
         const slotData = examSlots[`phan${phanTL}_cau${i + 1}`];
         if (!slotData) {
-          if (isCauTrucToan8_5050) {
+          if (isCauTrucCongNghe8_7030) {
+            const diemCauStr = (i === 0) ? "2,0" : "1,0";
+            const diemYStr = (i === 0) ? "1,0" : "0,5";
+            tlDataRows.push(new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 15, type: WidthType.PERCENTAGE },
+                  verticalAlign: VerticalAlign.CENTER,
+                  children: [new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: `Câu ${displayNum}`, bold: true, size: 28, font: "Times New Roman" })]
+                  })]
+                }),
+                new TableCell({
+                  width: { size: 70, type: WidthType.PERCENTAGE },
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({ text: "a) ", bold: true, size: 28, font: "Times New Roman" }),
+                        new TextRun({ text: `Hướng dẫn giải chi tiết ý a... (${diemYStr} điểm)`, size: 28, font: "Times New Roman" })
+                      ],
+                      spacing: { after: 40 }
+                    }),
+                    new Paragraph({
+                      children: [
+                        new TextRun({ text: "b) ", bold: true, size: 28, font: "Times New Roman" }),
+                        new TextRun({ text: `Hướng dẫn giải chi tiết ý b... (${diemYStr} điểm)`, size: 28, font: "Times New Roman" })
+                      ],
+                      spacing: { after: 40 }
+                    })
+                  ]
+                }),
+                new TableCell({
+                  width: { size: 15, type: WidthType.PERCENTAGE },
+                  verticalAlign: VerticalAlign.CENTER,
+                  children: [new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: diemCauStr, bold: true, size: 28, font: "Times New Roman" })]
+                  })]
+                })
+              ]
+            }));
+          } else if (isCauTrucToan8_5050) {
             tlDataRows.push(new TableRow({
               children: [
                 new TableCell({
@@ -2831,9 +2955,10 @@ export const exportToWord = async (options = {}) => {
         let yParts = [];
         const hasBothPartsAK = Boolean((slotData.yA || slotData.dapAnA) && (slotData.yB || slotData.dapAnB));
         if (hasBothPartsAK) {
+          const defaultDiemY = isCauTrucCongNghe8_7030 ? ((i === 0) ? '1,0' : '0,5') : '0,5';
           yParts = [
-            { label: 'a', y: slotData.yA || '', da: slotData.dapAnA || '', di: slotData.diemA || '0,5' },
-            { label: 'b', y: slotData.yB || '', da: slotData.dapAnB || '', di: slotData.diemB || '0,5' },
+            { label: 'a', y: slotData.yA || '', da: slotData.dapAnA || '', di: slotData.diemA || defaultDiemY },
+            { label: 'b', y: slotData.yB || '', da: slotData.dapAnB || '', di: slotData.diemB || defaultDiemY },
           ].filter(p => (p.y && p.y.trim() !== '') || (p.da && p.da.trim() !== ''));
         } else if (slotData.dapAn && slotData.dapAn.trim() !== '') {
           yParts.push({ label: '', y: '', da: slotData.dapAn, di: slotData.diem || '' });
@@ -3325,6 +3450,42 @@ export const exportToWord = async (options = {}) => {
           }),
         ] : []),
 
+        // ==================== BẢNG CHỈ BÁO NĂNG LỰC CÔNG NGHỆ (NẾU MÔN CÔNG NGHỆ) ====================
+        ...(/công nghệ|cong nghe/i.test(examHeader?.monHoc || '') || isCauTrucCongNghe8_7030 ? [
+          new Paragraph({ text: "", spacing: { after: 200 } }),
+          new Paragraph({ children: [new TextRun({ text: "BẢNG MÃ CHỈ BÁO NĂNG LỰC MÔN CÔNG NGHỆ", bold: true, size: 28, font: "Times New Roman" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+          new Table({
+            rows: [
+              new TableRow({ children: [createCell("Mã chỉ báo", true, AlignmentType.CENTER, 1, 1, "E2E8F0"), createCell("Nội dung chỉ báo năng lực (Chuẩn CTGDPT 2018)", true, AlignmentType.CENTER, 1, 1, "E2E8F0")] }),
+              new TableRow({ children: [createCell("I. Nhận thức công nghệ (Mã CN1)", true, AlignmentType.LEFT, 1, 2, "DBEAFE")] }),
+              new TableRow({ children: [createCell("CN1.1", true), createCell("Nhận biết, kể tên, phát biểu các đối tượng, khái niệm, quy trình kĩ thuật, công nghệ cơ bản.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("CN1.2", true), createCell("Mô tả, giải thích được nguyên lí hoạt động, cấu tạo, thông số kĩ thuật của đối tượng công nghệ.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("II. Giao tiếp công nghệ (Mã CN2)", true, AlignmentType.LEFT, 1, 2, "DCFCE7")] }),
+              new TableRow({ children: [createCell("CN2.1", true), createCell("Đọc, hiểu và diễn đạt được các thông tin kĩ thuật qua bản vẽ, sơ đồ kĩ thuật.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("CN2.2", true), createCell("Sử dụng được ngôn ngữ, thuật ngữ công nghệ trong thảo luận, trình bày sản phẩm kĩ thuật.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("III. Sử dụng công nghệ (Mã CN3)", true, AlignmentType.LEFT, 1, 2, "FEF3C7")] }),
+              new TableRow({ children: [createCell("CN3.1", true), createCell("Sử dụng các sản phẩm công nghệ, thiết bị kĩ thuật đúng quy trình kĩ thuật và an toàn.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("CN3.2", true), createCell("Lắp ráp, cài đặt, bảo dưỡng thiết bị công nghệ đơn giản.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("IV. Đánh giá công nghệ (Mã CN4)", true, AlignmentType.LEFT, 1, 2, "F3E8FF")] }),
+              new TableRow({ children: [createCell("CN4.1", true), createCell("Đánh giá sản phẩm công nghệ theo tiêu chí kĩ thuật, kinh tế, môi trường và an toàn.", false, AlignmentType.LEFT)] }),
+            ],
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: standardBorders,
+          }),
+          new Paragraph({ text: "", spacing: { after: 200 } }),
+          new Paragraph({ children: [new TextRun({ text: "ĐỘNG TỪ MÔ TẢ CẤP ĐỘ TƯ DUY TRONG MÔN CÔNG NGHỆ", bold: true, size: 28, font: "Times New Roman" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+          new Table({
+            rows: [
+              new TableRow({ children: [createCell("Mức độ", true, AlignmentType.CENTER, 1, 1, "E2E8F0"), createCell("Động từ mô tả", true, AlignmentType.CENTER, 1, 1, "E2E8F0")] }),
+              new TableRow({ children: [createCell("1. Biết\n(Nhận biết)", true), createCell("Nhận biết, nhận dạng, gọi tên, nêu được các chi tiết máy, mối ghép, bản vẽ, dụng cụ cơ khí, an toàn điện. Đọc và viết được kí hiệu kĩ thuật. Nêu được khái niệm, công dụng cơ bản.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("2. Hiểu\n(Thông hiểu)", true), createCell("Mô tả, giải thích được cấu tạo, nguyên lí hoạt động của cơ cấu truyền và biến đổi chuyển động, đồ dùng điện. Đọc hiểu bản vẽ kĩ thuật (bản vẽ chi tiết, bản vẽ lắp, bản vẽ nhà). So sánh, phân loại được các vật liệu cơ khí và phương pháp gia công.", false, AlignmentType.LEFT)] }),
+              new TableRow({ children: [createCell("3. Vận dụng &\nVận dụng cao", true), createCell("Tính toán tỉ số truyền, vận tốc các cơ cấu truyền động. Đề xuất biện pháp an toàn khi sử dụng điện và xử lí tình huống tai nạn điện. Thiết kế mạch điện đơn giản, lựa chọn vật liệu cơ khí phù hợp cho sản phẩm thực tế.", false, AlignmentType.LEFT)] }),
+            ],
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: standardBorders,
+          }),
+        ] : []),
+
         new Paragraph({ text: "", spacing: { after: 200 } }),
         new Paragraph({ children: [new TextRun({ text: "Bảng quy ước mã hóa năng lực theo nhóm môn", bold: true, size: 28, font: "Times New Roman" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
         new Table({
@@ -3395,11 +3556,13 @@ export const exportToWord = async (options = {}) => {
   if (returnBlob) {
     return blob;
   }
-  const defaultName = isCauTrucToan8_5050
-    ? "Ma_Tran_Dac_Ta_De_Toan_8_5050.docx"
-    : (isCauTrucKHTNVao10
-      ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10.docx"
-      : (isKHTNMon ? "Ma_Tran_Dac_Ta_De_KHTN_4213.docx" : "Ma_Tran_Dac_Ta_De_Kiem_Tra.docx"));
+  const defaultName = isCauTrucCongNghe8_7030
+    ? "Ma_Tran_Dac_Ta_De_Cong_Nghe_8_7030.docx"
+    : (isCauTrucToan8_5050
+      ? "Ma_Tran_Dac_Ta_De_Toan_8_5050.docx"
+      : (isCauTrucKHTNVao10
+        ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10.docx"
+        : (isKHTNMon ? "Ma_Tran_Dac_Ta_De_KHTN_4213.docx" : "Ma_Tran_Dac_Ta_De_Kiem_Tra.docx")));
   saveAs(blob, fileName || defaultName);
   return blob;
 };
@@ -3407,25 +3570,31 @@ export const exportToWord = async (options = {}) => {
 // Export các hàm chuyên dụng theo từng chế độ
 export const exportToWordOMML = (options = {}) => {
   const { examConfig } = useExamStore.getState();
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
   const isCauTrucKHTNVao10 = Boolean(examConfig?.isCauTrucKHTNVao10);
-  const defaultName = isCauTrucToan8_5050
-    ? "Ma_Tran_Dac_Ta_De_Toan_8_5050_WordEquation.docx"
-    : (isCauTrucKHTNVao10
-      ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10_WordEquation.docx"
-      : "Ma_Tran_Dac_Ta_De_Kiem_Tra_WordEquation.docx");
+  const defaultName = isCauTrucCongNghe8_7030
+    ? "Ma_Tran_Dac_Ta_De_Cong_Nghe_8_7030_WordEquation.docx"
+    : (isCauTrucToan8_5050
+      ? "Ma_Tran_Dac_Ta_De_Toan_8_5050_WordEquation.docx"
+      : (isCauTrucKHTNVao10
+        ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10_WordEquation.docx"
+        : "Ma_Tran_Dac_Ta_De_Kiem_Tra_WordEquation.docx"));
   return exportToWord({ ...options, mathMode: 'omml', fileName: options.fileName || defaultName });
 };
 
 export const exportToWordLatexDocx = (options = {}) => {
   const { examConfig } = useExamStore.getState();
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
   const isCauTrucKHTNVao10 = Boolean(examConfig?.isCauTrucKHTNVao10);
-  const defaultName = isCauTrucToan8_5050
-    ? "Ma_Tran_Dac_Ta_De_Toan_8_5050_LaTeX.docx"
-    : (isCauTrucKHTNVao10
-      ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10_LaTeX.docx"
-      : "Ma_Tran_Dac_Ta_De_Kiem_Tra_LaTeX.docx");
+  const defaultName = isCauTrucCongNghe8_7030
+    ? "Ma_Tran_Dac_Ta_De_Cong_Nghe_8_7030_LaTeX.docx"
+    : (isCauTrucToan8_5050
+      ? "Ma_Tran_Dac_Ta_De_Toan_8_5050_LaTeX.docx"
+      : (isCauTrucKHTNVao10
+        ? "Ma_Tran_Dac_Ta_De_KHTN_Vao_10_LaTeX.docx"
+        : "Ma_Tran_Dac_Ta_De_Kiem_Tra_LaTeX.docx"));
   return exportToWord({ ...options, mathMode: 'raw_latex', fileName: options.fileName || defaultName });
 };
 

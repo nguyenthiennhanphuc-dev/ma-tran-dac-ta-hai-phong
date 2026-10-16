@@ -33,6 +33,7 @@ export async function exportToWordMathType(options = {}) {
   const storeState = useExamStore.getState();
   const examConfig = storeState.examConfig || {};
   const examHeader = storeState.examHeader || {};
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig.isCauTrucCongNghe8_7030);
   const isCauTrucToan8_5050 = Boolean(examConfig.isCauTrucToan8_5050);
   const isCauTrucKHTNVao10 = Boolean(examConfig.isCauTrucKHTNVao10);
   const isKHTNMon = Boolean(
@@ -43,11 +44,13 @@ export async function exportToWordMathType(options = {}) {
     /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khtn/i.test(examConfig.monHoc || '')
   );
 
-  const defaultBaseName = isCauTrucToan8_5050
-    ? 'Ma_Tran_Dac_Ta_De_Toan_8_5050'
-    : (isCauTrucKHTNVao10
-      ? 'Ma_Tran_Dac_Ta_De_KHTN_Vao_10'
-      : (isKHTNMon ? 'Ma_Tran_Dac_Ta_De_KHTN_4213' : 'Ma_Tran_Dac_Ta_De_Kiem_Tra'));
+  const defaultBaseName = isCauTrucCongNghe8_7030
+    ? 'Ma_Tran_Dac_Ta_De_Cong_Nghe_8_7030'
+    : (isCauTrucToan8_5050
+      ? 'Ma_Tran_Dac_Ta_De_Toan_8_5050'
+      : (isCauTrucKHTNVao10
+        ? 'Ma_Tran_Dac_Ta_De_KHTN_Vao_10'
+        : (isKHTNMon ? 'Ma_Tran_Dac_Ta_De_KHTN_4213' : 'Ma_Tran_Dac_Ta_De_Kiem_Tra')));
 
   const fileName = options.fileName || `${defaultBaseName}_MathType.docx`;
   const fallbackFileName = options.fileName

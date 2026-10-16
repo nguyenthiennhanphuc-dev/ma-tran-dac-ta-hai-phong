@@ -101,6 +101,8 @@ export default function Step2_MatrixBuilder() {
 
   const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+  const hasSeparateVdc = Boolean(isKHTN || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030);
 
   const isCauTrucKHTNVao10 = Boolean(
     examConfig?.isCauTrucKHTNVao10 ||
@@ -187,14 +189,14 @@ export default function Step2_MatrixBuilder() {
     let total = sumAll('nhieuLuaChon', level) + sumAll('dungSai', level) +
       (config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0) + sumAll('tuLuan', level);
     // VDC hiểu ngầm → gộp vào cột VD (chỉ gộp khi KHÔNG có cột VDC riêng)
-    if (level === 'vanDung' && !(isKHTN || isCauTrucToan8_5050)) total += sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDung' && !hasSeparateVdc) total += sumAll('dungSai', 'vanDungCao');
     return total;
   };
 
   const getLevelTotalQuestions = (level) => {
     let dsCount = sumAll('dungSai', level);
-    if (level === 'vanDung' && !(isKHTN || isCauTrucToan8_5050)) dsCount += sumAll('dungSai', 'vanDungCao');
-    if (level === 'vanDungCao' && (isKHTN || isCauTrucToan8_5050)) dsCount = sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDung' && !hasSeparateVdc) dsCount += sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDungCao' && hasSeparateVdc) dsCount = sumAll('dungSai', 'vanDungCao');
     return sumAll('nhieuLuaChon', level) +
       (dsCount * 0.25) +
       (config.hasTraLoiNgan ? sumAll('traLoiNgan', level) : 0) +
@@ -218,8 +220,8 @@ export default function Step2_MatrixBuilder() {
     const tlKey = level === 'biet' ? 'diemBiet' : level === 'hieu' ? 'diemHieu' : level === 'vanDungCao' ? 'diemVanDungCao' : 'diemVanDung';
     const raw = matrix.reduce((sum, topic) => {
       let dsCount = getTopicSum(topic, 'dungSai', level);
-      if (level === 'vanDung' && !(isKHTN || isCauTrucToan8_5050)) dsCount += getTopicSum(topic, 'dungSai', 'vanDungCao');
-      if (level === 'vanDungCao') dsCount = (isKHTN || isCauTrucToan8_5050) ? getTopicSum(topic, 'dungSai', 'vanDungCao') : 0;
+      if (level === 'vanDung' && !hasSeparateVdc) dsCount += getTopicSum(topic, 'dungSai', 'vanDungCao');
+      if (level === 'vanDungCao') dsCount = hasSeparateVdc ? getTopicSum(topic, 'dungSai', 'vanDungCao') : 0;
       
       const p1Pts = level === 'vanDungCao' ? 0 : getTopicSum(topic, 'nhieuLuaChon', level) * examConfig.diemMoiCauP1;
       const dsPts = dsCount * examConfig.diemMoiYP2;
@@ -235,14 +237,14 @@ export default function Step2_MatrixBuilder() {
     getLevelTotalPoints('biet') +
     getLevelTotalPoints('hieu') +
     getLevelTotalPoints('vanDung') +
-    ((isKHTN || isCauTrucToan8_5050) ? getLevelTotalPoints('vanDungCao') : 0)
+    (hasSeparateVdc ? getLevelTotalPoints('vanDungCao') : 0)
   ) * 100) / 100;
 
   const getTopicSoTiet = (topic) => getTotalSoTiet(topic);
 
-  // Helper: Format tổng per ĐVKT dạng "1c+ 2 ý" (hoặc điểm số thập phân nếu là KHTN hoặc Toán 8 50-50)
+  // Helper: Format tổng per ĐVKT dạng "1c+ 2 ý" (hoặc điểm số thập phân nếu là KHTN hoặc Toán 8 50-50 hoặc Công nghệ 8)
   const formatDvLevelSummary = (dv, level) => {
-    if (isKHTN || isCauTrucToan8_5050) {
+    if (hasSeparateVdc) {
       let pts = 0;
       pts += (Number(dv.nhieuLuaChon?.[level]) || 0) * (examConfig.diemMoiCauP1 || 0.25);
       pts += (Number(dv.dungSai?.[level]) || 0) * (examConfig.diemMoiYP2 || 0.25);
@@ -480,8 +482,8 @@ export default function Step2_MatrixBuilder() {
     const c = nlc + tln + tlInt;
 
     let dsCount = sumAll('dungSai', level);
-    if (level === 'vanDung' && !(isKHTN || isCauTrucToan8_5050)) dsCount += sumAll('dungSai', 'vanDungCao');
-    if (level === 'vanDungCao' && (isKHTN || isCauTrucToan8_5050)) dsCount = sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDung' && !hasSeparateVdc) dsCount += sumAll('dungSai', 'vanDungCao');
+    if (level === 'vanDungCao' && hasSeparateVdc) dsCount = sumAll('dungSai', 'vanDungCao');
     const y = dsCount;
 
     const tlRem = tlCau - tlInt;
@@ -502,7 +504,7 @@ export default function Step2_MatrixBuilder() {
     getLevelTotalQuestions('biet') +
     getLevelTotalQuestions('hieu') +
     getLevelTotalQuestions('vanDung') +
-    ((isKHTN || isCauTrucToan8_5050) ? getLevelTotalQuestions('vanDungCao') : 0)
+    (hasSeparateVdc ? getLevelTotalQuestions('vanDungCao') : 0)
   ) * 100) / 100;
 
   // Helper: Render cell input kèm mã năng lực chỉ báo (nếu có)
@@ -656,6 +658,14 @@ export default function Step2_MatrixBuilder() {
       // P.IV: 5 câu × 2 ý × 0,5đ = 5,0đ (10 ý: 5H + 3VD + 2VDC)
       return { soCauP1: 12, soYP2: 4, soCauP2: 1, soYP3: 4, tongYTuLuan: 10 };
     }
+    if (ec.isCauTrucCongNghe8_7030) {
+      // Cấu trúc Công nghệ 8 (70% TN - 30% TL):
+      // P.I: 12 câu × 0,25đ = 3,0đ (8B + 4H)
+      // P.II: 4 câu × 4 ý × 0,25đ = 4,0đ (16 ý: 8B + 8H)
+      // P.III: 0 câu = 0đ (không có)
+      // P.IV: 2 câu × 2 ý = 4 ý = 3,0đ (2 ý VD [2đ] + 2 ý VDC [1đ])
+      return { soCauP1: 12, soYP2: 16, soCauP2: 4, soYP3: 0, tongYTuLuan: 4 };
+    }
     const tongDiem = ec.tongDiem || 10.0;
     const tiLe = ec.tiLeNhanThuc;
     const weights = [tiLe.biet, tiLe.hieu, tiLe.vanDung];
@@ -790,7 +800,7 @@ export default function Step2_MatrixBuilder() {
       adviceList,
       isPerfectMatch
     };
-  }, [matrix, examConfig, config.hasTuLuan, config.hasTraLoiNgan, isKHTN, isCauTrucToan8_5050]);
+  }, [matrix, examConfig, config.hasTuLuan, config.hasTraLoiNgan, isKHTN, isCauTrucToan8_5050, isCauTrucCongNghe8_7030]);
 
   // =======================================================================
   // BUILD ROWS: Double-loop — topic → ĐVKT
@@ -1052,7 +1062,7 @@ export default function Step2_MatrixBuilder() {
                 {renderTuLuanCell(topic.id, dv.id, dv, 'biet')}
                 {renderTuLuanCell(topic.id, dv.id, dv, 'hieu')}
                 {renderTuLuanCell(topic.id, dv.id, dv, 'vanDung')}
-                {(isKHTN || isCauTrucToan8_5050) && renderTuLuanCell(topic.id, dv.id, dv, 'vanDungCao')}
+                {hasSeparateVdc && renderTuLuanCell(topic.id, dv.id, dv, 'vanDungCao')}
               </>
             )}
 
@@ -1060,7 +1070,7 @@ export default function Step2_MatrixBuilder() {
             <td className="border border-slate-300 p-2 text-center font-bold bg-orange-50/50 text-[11px] whitespace-nowrap">{formatDvLevelSummary(dv, 'biet')}</td>
             <td className="border border-slate-300 p-2 text-center font-bold bg-orange-50/50 text-[11px] whitespace-nowrap">{formatDvLevelSummary(dv, 'hieu')}</td>
             <td className="border border-slate-300 p-2 text-center font-bold bg-orange-50/50 text-[11px] whitespace-nowrap">{formatDvLevelSummary(dv, 'vanDung')}</td>
-            {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-300 p-2 text-center font-bold bg-red-50/50 text-[11px] whitespace-nowrap text-red-700">{formatDvLevelSummary(dv, 'vanDungCao')}</td>}
+            {hasSeparateVdc && <td className="border border-slate-300 p-2 text-center font-bold bg-red-50/50 text-[11px] whitespace-nowrap text-red-700">{formatDvLevelSummary(dv, 'vanDungCao')}</td>}
 
             {/* CỘT TỈ LỆ — HIỂN THỊ RIÊNG CHO TỪNG BÀI */}
             <td className="border border-slate-300 p-2 text-center font-bold text-blue-700 bg-slate-50/50">
@@ -1695,6 +1705,89 @@ export default function Step2_MatrixBuilder() {
         </div>
       )}
 
+      {/* [CÔNG NGHỆ 8 (70% TN - 30% TL)] BẢNG TÓM TẮT CẤU TRÚC */}
+      {isCauTrucCongNghe8_7030 && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-extrabold text-emerald-900 text-sm flex items-center gap-2">
+              <span className="text-base">🔧</span> BẢNG PHÂN BỐ MA TRẬN MỨC ĐỘ TƯ DUY MÔN CÔNG NGHỆ 8 (70% TRẮC NGHIỆM — 30% TỰ LUẬN)
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={autoFillMatrix}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-3.5 py-1.5 rounded-lg shadow font-bold text-xs hover:from-emerald-700 hover:to-teal-700 hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                title="Tự động phân bổ đúng 100% tỉ lệ Công nghệ 8 (70% TN - 30% TL): 12 câu NLC (3,0đ) + 4 câu ĐS (4,0đ) + 2 câu TL (3,0đ)"
+              >
+                <span>⚡</span> Auto-Fill chuẩn Công nghệ 8 (70-30)
+              </button>
+              <span className="text-xs bg-emerald-600 text-white font-black px-2.5 py-1 rounded-lg shadow-sm">
+                40%B – 30%H – 20%VD – 10%VDC · 18 câu (10,0đ)
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-emerald-200 text-emerald-900">
+                  <th className="border border-emerald-300 px-2 py-1.5 text-left font-extrabold">Phần bài thi</th>
+                  <th className="border border-emerald-300 px-2 py-1.5 font-extrabold">Nhận biết (40%)</th>
+                  <th className="border border-emerald-300 px-2 py-1.5 font-extrabold">Thông hiểu (30%)</th>
+                  <th className="border border-emerald-300 px-2 py-1.5 font-extrabold">Vận dụng (20%)</th>
+                  <th className="border border-emerald-300 px-2 py-1.5 font-extrabold">VD Cao (10%)</th>
+                  <th className="border border-emerald-300 px-2 py-1.5 font-extrabold">Tổng điểm</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100 text-slate-700 font-medium">
+                <tr className="bg-white hover:bg-emerald-50/50">
+                  <td className="border border-emerald-200 px-2 py-1.5 font-bold text-emerald-900">Phần I: Trắc nghiệm 4 lựa chọn (12 câu × 0,25đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-blue-700 bg-blue-50/40">8 câu (2,0đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-emerald-700 bg-emerald-50/40">4 câu (1,0đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-emerald-900">12 câu (3,0đ)</td>
+                </tr>
+                <tr className="bg-emerald-50/30 hover:bg-emerald-50/70">
+                  <td className="border border-emerald-200 px-2 py-1.5 font-bold text-emerald-900">Phần II: Đúng/Sai (4 câu, mỗi câu 4 ý: 2 Biết + 2 Hiểu)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-blue-700 bg-blue-50/40">8 ý (2,0đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-emerald-700 bg-emerald-50/40">8 ý (2,0đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 ý</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 ý</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-emerald-900">4 câu (4,0đ)</td>
+                </tr>
+                <tr className="bg-white hover:bg-emerald-50/50">
+                  <td className="border border-emerald-200 px-2 py-1.5 font-bold text-slate-400 italic">Phần III: Trả lời ngắn</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400 italic">Không có (0đ)</td>
+                </tr>
+                <tr className="bg-emerald-50/30 hover:bg-emerald-50/70">
+                  <td className="border border-emerald-200 px-2 py-1.5 font-bold text-emerald-900">Phần IV: Tự luận (Câu 17: 2,0đ VD + Câu 18: 1,0đ VDC)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center text-slate-400">0 câu</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-orange-700 bg-orange-50/40">2 ý (2,0đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-red-700 bg-red-50/40">2 ý (1,0đ)</td>
+                  <td className="border border-emerald-200 px-2 py-1.5 text-center font-bold text-emerald-900">2 câu (3,0đ)</td>
+                </tr>
+                <tr className="bg-emerald-200 font-extrabold text-emerald-950">
+                  <td className="border border-emerald-300 px-2 py-1.5 text-left uppercase">TỔNG CỘNG TOÀN ĐỀ</td>
+                  <td className="border border-emerald-300 px-2 py-1.5 text-center text-blue-900">4,0 điểm (40%)</td>
+                  <td className="border border-emerald-300 px-2 py-1.5 text-center text-emerald-900">3,0 điểm (30%)</td>
+                  <td className="border border-emerald-300 px-2 py-1.5 text-center text-orange-900">2,0 điểm (20%)</td>
+                  <td className="border border-emerald-300 px-2 py-1.5 text-center text-red-900">1,0 điểm (10%)</td>
+                  <td className="border border-emerald-300 px-2 py-1.5 text-center text-red-700">10,0 điểm (100%) · 18 câu (32 lệnh hỏi)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-emerald-800 mt-2 text-[11px] font-semibold">
+            📌 Chuẩn cấu trúc Công nghệ THCS: 12 câu NLC (8B+4H) + 4 câu Đúng/Sai (mỗi câu 2B+2H) + 2 câu Tự luận (Câu 17: 2 ý a, b mỗi ý 1,0đ VD; Câu 18: 2 ý a, b mỗi ý 0,5đ VDC). Không có phần Trả lời ngắn.
+          </p>
+        </div>
+      )}
+
       {/* [KHTN THCS] BANG PHAN BO MA TRAN MUC DO TU DUY */}
       {isKHTN && (
         isCauTrucKHTNVao10 ? (
@@ -2298,14 +2391,14 @@ export default function Step2_MatrixBuilder() {
             <th rowSpan="4" className="border border-slate-400 p-2 w-28">Chủ đề/Chương</th>
             <th rowSpan="4" className="border border-slate-400 p-2 w-72">Nội dung/đơn vị KT</th>
             <th rowSpan="4" className="border border-slate-400 p-2 w-20 bg-yellow-50">Số tiết</th>
-            <th colSpan={config.hasTuLuan ? ((isKHTN || isCauTrucToan8_5050) ? "13" : "12") : "9"} className="border border-slate-400 p-2">Mức độ đánh giá</th>
-            <th colSpan={(isKHTN || isCauTrucToan8_5050) ? "4" : "3"} rowSpan="3" className="border border-slate-400 p-2">{(isKHTN || isCauTrucToan8_5050) ? "Điểm theo mức độ" : "Tổng (Ý)"}</th>
-            <th rowSpan="4" className="border border-slate-400 p-2 w-16">{(isKHTN || isCauTrucToan8_5050) ? "Tỉ lệ % điểm" : "Tỉ lệ %"}</th>
+            <th colSpan={config.hasTuLuan ? (hasSeparateVdc ? "13" : "12") : "9"} className="border border-slate-400 p-2">Mức độ đánh giá</th>
+            <th colSpan={hasSeparateVdc ? "4" : "3"} rowSpan="3" className="border border-slate-400 p-2">{hasSeparateVdc ? "Điểm theo mức độ" : "Tổng (Ý)"}</th>
+            <th rowSpan="4" className="border border-slate-400 p-2 w-16">{hasSeparateVdc ? "Tỉ lệ % điểm" : "Tỉ lệ %"}</th>
             <th rowSpan="4" className="border border-slate-400 p-2 w-10">Xóa</th>
           </tr>
           <tr>
             <th colSpan="9" className="border border-slate-400 p-1 bg-blue-50">TNKQ</th>
-            {config.hasTuLuan && <th colSpan={(isKHTN || isCauTrucToan8_5050) ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
+            {config.hasTuLuan && <th colSpan={hasSeparateVdc ? "4" : "3"} rowSpan="2" className="border border-slate-400 p-1 bg-green-50">Tự luận</th>}
           </tr>
           <tr>
             <th colSpan="3" className="border border-slate-400 p-1 bg-blue-50/80">Nhiều lựa chọn</th>
@@ -2321,13 +2414,13 @@ export default function Step2_MatrixBuilder() {
                 <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Biết</th>
                 <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">Hiểu</th>
                 <th className="border border-slate-400 p-0 font-medium bg-green-50/30 w-12 text-[10px]">VD</th>
-                {(isKHTN || isCauTrucToan8_5050) && <th className="border border-slate-400 p-0 font-medium bg-red-50/50 w-12 text-[10px] text-red-700 font-bold">VDC</th>}
+                {hasSeparateVdc && <th className="border border-slate-400 p-0 font-medium bg-red-50/50 w-12 text-[10px] text-red-700 font-bold">VDC</th>}
               </>
             )}
             <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">B</th>
             <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">TH</th>
             <th className="border border-slate-400 p-1 font-medium bg-orange-50 w-8">VD</th>
-            {(isKHTN || isCauTrucToan8_5050) && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700 w-8 font-bold">VDC</th>}
+            {hasSeparateVdc && <th className="border border-slate-400 p-1 font-medium bg-red-50 text-red-700 w-8 font-bold">VDC</th>}
           </tr>
         </thead>
 
@@ -2352,13 +2445,13 @@ export default function Step2_MatrixBuilder() {
                 <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'biet')}</td>
                 <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'hieu')}</td>
                 <td className="border border-slate-400 p-2 text-green-800">{sumAll('tuLuan', 'vanDung')}</td>
-                {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
+                {hasSeparateVdc && <td className="border border-slate-400 p-2 text-red-800">{sumAll('tuLuan', 'vanDungCao')}</td>}
               </>
             )}
             <td className="border border-slate-400 p-2 text-orange-700">{getLevelTotalItems('biet')}</td>
             <td className="border border-slate-400 p-2 text-orange-700">{getLevelTotalItems('hieu')}</td>
             <td className="border border-slate-400 p-2 text-orange-700">{getLevelTotalItems('vanDung')}</td>
-            {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-700">{getLevelTotalItems('vanDungCao')}</td>}
+            {hasSeparateVdc && <td className="border border-slate-400 p-2 text-red-700">{getLevelTotalItems('vanDungCao')}</td>}
             <td className="border border-slate-400 p-2"></td><td className="border border-slate-400 p-2"></td>
           </tr>
 
@@ -2378,13 +2471,13 @@ export default function Step2_MatrixBuilder() {
                 <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('biet')}>{fmtTuLuanCau('biet')}</td>
                 <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('hieu')}>{fmtTuLuanCau('hieu')}</td>
                 <td className="border border-slate-300 p-2 text-green-800 font-bold text-center" title={fmtTuLuanTooltip('vanDung')}>{fmtTuLuanCau('vanDung')}</td>
-                {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-300 p-2 text-red-800 font-bold text-center" title={fmtTuLuanTooltip('vanDungCao')}>{fmtTuLuanCau('vanDungCao')}</td>}
+                {hasSeparateVdc && <td className="border border-slate-300 p-2 text-red-800 font-bold text-center" title={fmtTuLuanTooltip('vanDungCao')}>{fmtTuLuanCau('vanDungCao')}</td>}
               </>
             )}
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('biet')}</td>
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('hieu')}</td>
             <td className="border border-slate-300 p-2 font-bold text-slate-700 text-[11px] whitespace-nowrap">{fmtTongCau('vanDung')}</td>
-            {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-300 p-2 font-bold text-red-700 text-[11px] whitespace-nowrap">{fmtTongCau('vanDungCao')}</td>}
+            {hasSeparateVdc && <td className="border border-slate-300 p-2 font-bold text-red-700 text-[11px] whitespace-nowrap">{fmtTongCau('vanDungCao')}</td>}
             <td className="border border-slate-300 p-2 font-black text-slate-800">{grandTotalCau}</td>
             <td className="border border-slate-300 p-2"></td>
           </tr>
@@ -2394,11 +2487,11 @@ export default function Step2_MatrixBuilder() {
             <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('nhieuLuaChon')}</td>
             <td colSpan="3" className="border border-slate-400 p-2">{getColumnTotalPoints('dungSai')}</td>
             <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-200' : ''}`}>{getColumnTotalPoints('traLoiNgan')}</td>
-            {config.hasTuLuan && <td colSpan={(isKHTN || isCauTrucToan8_5050) ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
+            {config.hasTuLuan && <td colSpan={hasSeparateVdc ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{getColumnTotalPoints('tuLuan')}</td>}
             <td className="border border-slate-400 p-2 text-red-600">{getLevelTotalPoints('biet')}</td>
             <td className="border border-slate-400 p-2 text-red-600">{getLevelTotalPoints('hieu')}</td>
             <td className="border border-slate-400 p-2 text-red-600">{getLevelTotalPoints('vanDung')}</td>
-            {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-600 font-black">{getLevelTotalPoints('vanDungCao')}</td>}
+            {hasSeparateVdc && <td className="border border-slate-400 p-2 text-red-600 font-black">{getLevelTotalPoints('vanDungCao')}</td>}
             <td className="border border-slate-400 p-2 font-black text-red-600 text-lg">{getGrandTotalPoints()}</td>
             <td className="border border-slate-400 p-2"></td>
           </tr>
@@ -2408,11 +2501,11 @@ export default function Step2_MatrixBuilder() {
             <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('nhieuLuaChon') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td colSpan="3" className="border border-slate-400 p-2">{((getColumnTotalPoints('dungSai') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td colSpan="3" className={`border border-slate-400 p-2 ${!config.hasTraLoiNgan ? 'text-slate-400 bg-slate-100' : ''}`}>{config.hasTraLoiNgan ? ((getColumnTotalPoints('traLoiNgan') / 10) * 100).toFixed(1).replace('.0', '') + '%' : '0%'}</td>
-            {config.hasTuLuan && <td colSpan={(isKHTN || isCauTrucToan8_5050) ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
+            {config.hasTuLuan && <td colSpan={hasSeparateVdc ? "4" : "3"} className="border border-slate-400 p-2 text-red-600">{((getColumnTotalPoints('tuLuan') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             <td className="border border-slate-400 p-2 text-blue-700">{((getLevelTotalPoints('biet') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td className="border border-slate-400 p-2 text-blue-700">{((getLevelTotalPoints('hieu') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td className="border border-slate-400 p-2 text-blue-700">{((getLevelTotalPoints('vanDung') / 10) * 100).toFixed(1).replace('.0', '')}%</td>
-            {(isKHTN || isCauTrucToan8_5050) && <td className="border border-slate-400 p-2 text-red-700 font-bold">{((getLevelTotalPoints('vanDungCao') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
+            {hasSeparateVdc && <td className="border border-slate-400 p-2 text-red-700 font-bold">{((getLevelTotalPoints('vanDungCao') / 10) * 100).toFixed(1).replace('.0', '')}%</td>}
             <td className="border border-slate-400 p-2 font-black text-green-700">{((getGrandTotalPoints() / 10) * 100).toFixed(1).replace('.0', '')}%</td>
             <td className="border border-slate-400 p-2"></td>
           </tr>
@@ -2887,7 +2980,8 @@ export default function Step2_MatrixBuilder() {
                 const isKHTN = examConfig.subject === 'khtn' || examConfig.isCauTruc4213;
                 const isToan3223 = Boolean(examConfig?.isCauTrucToan3223);
                 const isToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
-                const targetDiem = isToan8_5050 ? 5.0 : ((isKHTN || isToan3223) ? 3.0 : 4.0);
+                const isCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+                const targetDiem = isToan8_5050 ? 5.0 : ((isKHTN || isToan3223 || isCongNghe8_7030) ? 3.0 : 4.0);
                 const matchDiem = Math.abs(totalAllDiem - targetDiem) < 0.01;
                 return (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
@@ -2908,7 +3002,15 @@ export default function Step2_MatrixBuilder() {
             <div className="flex justify-end items-center gap-3 p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
               <button
                 onClick={() => {
-                  if (examConfig?.isCauTrucToan8_5050) {
+                  if (examConfig?.isCauTrucCongNghe8_7030) {
+                    setTuLuanConfig({
+                      enabled: false,
+                      questions: [
+                        { id: 'tl_q1', label: 'Câu 17', kienThuc: 'vanDung', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 1.0, level: 'vanDung' }, { diem: 1.0, level: 'vanDung' }] },
+                        { id: 'tl_q2', label: 'Câu 18', kienThuc: 'vanDungCao', kieuY: 'doc_lap', phamVi: 'cac_chu_de_khac_nhau', subItems: [{ diem: 0.5, level: 'vanDungCao' }, { diem: 0.5, level: 'vanDungCao' }] },
+                      ],
+                    });
+                  } else if (examConfig?.isCauTrucToan8_5050) {
                     setTuLuanConfig({
                       enabled: false,
                       questions: [
@@ -2967,6 +3069,7 @@ export default function Step2_MatrixBuilder() {
         isKHTN={isKHTN}
         isCauTrucToan3223={isCauTrucToan3223}
         isCauTrucToan8_5050={isCauTrucToan8_5050}
+        isCauTrucCongNghe8_7030={isCauTrucCongNghe8_7030}
       />
 
       {/* Modal Chọn Năng lực chỉ báo */}

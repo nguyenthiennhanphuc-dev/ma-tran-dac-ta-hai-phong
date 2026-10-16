@@ -25,6 +25,7 @@ const isBiologySubject = (monHoc) => /sinh|sinh học|sinh hoc/i.test(monHoc || 
 const isPhysicsSubject = (monHoc) => /lý|lí|vật lí|vat li|vật lý|vat ly/i.test(monHoc || '');
 const isGeographySubject = (monHoc) => /địa|dia|địa lí|dia li|địa lý|dia ly/i.test(monHoc || '');
 const isKHTNSubject = (monHoc) => /khoa.*h[oọ]c.*t[uự].*nhi[eê]n|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHoc || '');
+const isCongNgheSubject = (monHoc) => /công\s*nghệ|cong\s*nghe/i.test(monHoc || '');
 
 // Kiß╗âm tra cß║Ñu tr├║c 4-2-0 (To├ín) v├á c├│ Tß╗▒ luß║¡n ─æß╗â ├íp dß╗Ñng bß║úng ─æß║╖c tß║ú mß║½u mß╗¢i
 const isNewMathStructure = (examConfig, config) => {
@@ -322,6 +323,7 @@ export const useExamStore = create(
         isCauTrucKHTNVao10: false,
         isCauTrucToan3223: false,
         isCauTrucToan8_5050: false,
+        isCauTrucCongNghe8_7030: false,
         tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 }
       },
 
@@ -439,6 +441,7 @@ export const useExamStore = create(
               isCauTrucKHTNVao10: false,
               isCauTrucToan3223: false,
               isCauTrucToan8_5050: false,
+              isCauTrucCongNghe8_7030: false,
               tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
             }
           };
@@ -446,7 +449,7 @@ export const useExamStore = create(
 
         // 3. Các cấu trúc khác (Toán, 100% TN khác...)
         const p1 = Number(tongDiemP1) || 3.0;
-        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false, isCauTrucToan3223: false, isCauTrucToan8_5050: false };
+        const newExamConfig = { ...state.examConfig, tongDiemP1: p1, isCauTruc4213: false, isCauTrucKHTNVao10: false, isCauTrucToan3223: false, isCauTrucToan8_5050: false, isCauTrucCongNghe8_7030: false };
         const hasTLN = state.config.hasTraLoiNgan !== false;
         const hasTL = state.config.hasTuLuan;
 
@@ -564,6 +567,7 @@ export const useExamStore = create(
             isCauTrucKHTNVao10: true,
             isCauTrucToan3223: false,
             isCauTrucToan8_5050: false,
+            isCauTrucCongNghe8_7030: false,
             tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
           }
         };
@@ -607,6 +611,7 @@ export const useExamStore = create(
           isCauTrucKHTNVao10: true,
           isCauTrucToan3223: false,
           isCauTrucToan8_5050: false,
+          isCauTrucCongNghe8_7030: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30, vanDungCao: 0 },
         }
       })),
@@ -632,6 +637,7 @@ export const useExamStore = create(
           isCauTrucKHTNVao10: false,
           isCauTrucToan3223: false,
           isCauTrucToan8_5050: false,
+          isCauTrucCongNghe8_7030: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
         }
       })),
@@ -667,6 +673,7 @@ export const useExamStore = create(
           isCauTrucKHTNVao10: false,
           isCauTrucToan3223: true,
           isCauTrucToan8_5050: false,
+          isCauTrucCongNghe8_7030: false,
           tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 30 },
         },
         tuLuanConfig: {
@@ -726,6 +733,7 @@ export const useExamStore = create(
           isCauTrucKHTNVao10: false,
           isCauTrucToan3223: false,
           isCauTrucToan8_5050: true,
+          isCauTrucCongNghe8_7030: false,
           tiLeNhanThuc: { biet: 30, hieu: 40, vanDung: 20, vanDungCao: 10 },
         },
         tuLuanConfig: {
@@ -748,6 +756,138 @@ export const useExamStore = create(
           mode: 'cung_bai',
           questions: [
             { id: 'ds_q1', label: 'Câu 13', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+          ]
+        },
+      })),
+
+      // Action chuyển nhanh sang Cấu trúc Công nghệ 8 (70% Trắc nghiệm - 30% Tự luận - 45 phút)
+      // Tổng 10.0đ (18 câu, 32 lệnh hỏi) - Tỉ lệ nhận thức: 40% Biết - 30% Hiểu - 20% Vận dụng - 10% Vận dụng cao
+      // P.I  (3,0đ): 12 câu NLC x 0,25đ (8 Biết [2.0đ] + 4 Hiểu [1.0đ]) - Câu 1 -> 12
+      // P.II (4,0đ): 4 câu Đúng/Sai x 4 ý x 0,25đ = 16 ý (Mỗi câu: 2 Biết [0.5đ] + 2 Hiểu [0.5đ]) - Câu 13 -> 16
+      // P.III(0,0đ): KHÔNG CÓ (0 câu, 0 điểm - BỎ QUA HOÀN TOÀN)
+      // P.IV (3,0đ): 2 câu Tự luận (Câu 17: 2.0đ VD [2 ý x 1.0đ], Câu 18: 1.0đ VDC [2 ý x 0.5đ])
+      setCauTrucCongNghe8_7030: () => set((state) => ({
+        config: {
+          ...state.config,
+          hasTuLuan: true,
+          hasTraLoiNgan: false,
+          diemNhieuLuaChon: 0.25,
+          diemDungSai: 0.25,
+          diemTraLoiNgan: 0.25,
+          diemTuLuan: 1.0,
+          isCuoiKi: false,
+          isContinuousNumbering: true,
+          exportTemplate: 'ministry',
+          showCompetencySymbol: true,
+          showCompetencyCode: true,
+          showExamRedMetadata: true,
+          showExamAnswerUnderline: true,
+          groupTfByTopic: false,
+        },
+        examHeader: {
+          ...state.examHeader,
+          thoiGian: '45 phút',
+          monHoc: state.examHeader.monHoc && isCongNgheSubject(state.examHeader.monHoc)
+            ? state.examHeader.monHoc
+            : 'Công nghệ 8'
+        },
+        examConfig: {
+          ...state.examConfig,
+          tongDiem: 10.0,
+          tongDiemP1: 3.0,   diemMoiCauP1: 0.25,  // P.I:  12 câu × 0,25đ = 3,0đ
+          tongDiemP2: 4.0,   diemMoiYP2: 0.25,    // P.II:  4 câu × 4 ý × 0,25đ = 4,0đ (16 ý)
+          tongDiemP3: 0.0,   diemMoiYP3: 0.0,     // P.III: 0 câu = 0đ (KHÔNG CÓ)
+          diemMoiYTuLuan: 1.0,                    // P.IV:  2 câu = 3,0đ
+          isCauTruc4213: false,
+          isCauTrucKHTNVao10: false,
+          isCauTrucToan3223: false,
+          isCauTrucToan8_5050: false,
+          isCauTrucCongNghe8_7030: true,
+          tiLeNhanThuc: { biet: 40, hieu: 30, vanDung: 20, vanDungCao: 10 },
+        },
+        tuLuanConfig: {
+          enabled: false,
+          questions: [
+            {
+              id: 'tl_q1',
+              label: 'Câu 17',
+              kienThuc: 'vanDung',
+              kieuY: 'doc_lap',
+              phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [
+                { diem: 1.0, level: 'vanDung' },
+                { diem: 1.0, level: 'vanDung' }
+              ]
+            },
+            {
+              id: 'tl_q2',
+              label: 'Câu 18',
+              kienThuc: 'vanDungCao',
+              kieuY: 'doc_lap',
+              phamVi: 'cac_chu_de_khac_nhau',
+              subItems: [
+                { diem: 0.5, level: 'vanDungCao' },
+                { diem: 0.5, level: 'vanDungCao' }
+              ]
+            },
+          ],
+        },
+        dungSaiConfig: {
+          enabled: false,
+          mode: 'phan_tan_chu_de',
+          questions: [
+            {
+              id: 'ds_q1',
+              label: 'Câu 13',
+              topicIndex: null,
+              dvktIndex: null,
+              phamVi: 'cung_bai',
+              subItems: [
+                { level: 'biet', diem: 0.25 },
+                { level: 'biet', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 }
+              ]
+            },
+            {
+              id: 'ds_q2',
+              label: 'Câu 14',
+              topicIndex: null,
+              dvktIndex: null,
+              phamVi: 'cung_bai',
+              subItems: [
+                { level: 'biet', diem: 0.25 },
+                { level: 'biet', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 }
+              ]
+            },
+            {
+              id: 'ds_q3',
+              label: 'Câu 15',
+              topicIndex: null,
+              dvktIndex: null,
+              phamVi: 'cung_bai',
+              subItems: [
+                { level: 'biet', diem: 0.25 },
+                { level: 'biet', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 }
+              ]
+            },
+            {
+              id: 'ds_q4',
+              label: 'Câu 16',
+              topicIndex: null,
+              dvktIndex: null,
+              phamVi: 'cung_bai',
+              subItems: [
+                { level: 'biet', diem: 0.25 },
+                { level: 'biet', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 },
+                { level: 'hieu', diem: 0.25 }
+              ]
+            },
           ]
         },
       })),
@@ -3061,6 +3201,257 @@ export const useExamStore = create(
           return { matrix: topics, tuLuanConfig: finalTuLuanConfigToan8, dungSaiConfig: finalDungSaiConfigToan8 };
         }
 
+        // ╔══════════════════════════════════════════════════════════════════════╗
+        // ║  CHUYÊN BIỆT: CẤU TRÚC CÔNG NGHỆ 8 (70% TRẮC NGHIỆM - 30% TỰ LUẬN)   ║
+        // ║  Thời gian: 45 phút | Tổng điểm: 10.0đ (18 câu, 32 lệnh hỏi)         ║
+        // ║  Phần I   (NLC = 3.0đ): 12 câu x 0.25đ (8 Biết [2.0đ] + 4 Hiểu [1.0đ])║
+        // ║  Phần II  (Đ/S = 4.0đ): 4 câu x 4 ý x 0.25đ = 16 ý                 ║
+        // ║    Mỗi câu Đ/S cố định: 2 ý Biết (0.5đ) + 2 ý Hiểu (0.5đ)           ║
+        // ║    Tổng P.II: 8 Biết (2.0đ) + 8 Hiểu (2.0đ) = 4.0đ                  ║
+        // ║  Phần III (TLN = 0.0đ): KHÔNG CÓ (0 câu, 0 điểm - BỎ QUA HOÀN TOÀN)   ║
+        // ║  Phần IV  (TL  = 3.0đ): 2 câu (Câu 17: 2.0đ VD + Câu 18: 1.0đ VDC)  ║
+        // ║    Câu 17 (2.0đ VD): 2 ý a, b x 1.0đ (Vận dụng)                     ║
+        // ║    Câu 18 (1.0đ VDC): 2 ý a, b x 0.5đ (Vận dụng cao)                ║
+        // ║  TỔNG CỘNG: 40% Biết (4.0đ) - 30% Hiểu (3.0đ) - 20% VD - 10% VDC     ║
+        // ╚══════════════════════════════════════════════════════════════════════╝
+        if (state.examConfig.isCauTrucCongNghe8_7030) {
+          console.log('⚡ AutoFill: Cấu trúc Công nghệ 8 (70% TN - 30% TL)');
+
+          const topics = state.matrix.map(t => ({
+            ...t,
+            donViKienThuc: (t.donViKienThuc || []).map(dv => ({
+              ...dv,
+              nhieuLuaChon: { biet: 0, hieu: 0, vanDung: 0 },
+              dungSai: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              dungSaiSubItems: [],
+              traLoiNgan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 },
+              tuLuan: { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0, diemBiet: 0, diemHieu: 0, diemVanDung: 0, diemVanDungCao: 0, subItems: [] },
+              indicatorMap: {},
+            })),
+          }));
+
+          const flatDvs = [];
+          topics.forEach((t, ti) => {
+            (t.donViKienThuc || []).forEach((dv, di) => {
+              flatDvs.push({
+                t: topics[ti],
+                dv: topics[ti].donViKienThuc[di],
+                soTiet: Number(dv.soTiet) || 1,
+                ti,
+                di,
+              });
+            });
+          });
+
+          if (flatDvs.length === 0) return { matrix: topics };
+
+          // ─── P.I: 12 câu Nhiều lựa chọn (8 Biết + 4 Hiểu) = 3,0đ ───
+          // 1. Phân bổ 8 câu Biết theo tỉ lệ số tiết
+          const p1BietCounts = distributeLargestRemainder(8, flatDvs.map(f => f.soTiet));
+          p1BietCounts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.biet += cnt; });
+
+          // 2. Phân bổ 4 câu Hiểu theo tỉ lệ số tiết
+          const p1HieuCounts = distributeLargestRemainder(4, flatDvs.map(f => f.soTiet));
+          p1HieuCounts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.hieu += cnt; });
+
+          // Đánh số câu Phần I: Câu 1 đến Câu 12
+          let p1Counter = 1;
+          flatDvs.forEach(f => {
+            for (let i = 0; i < (f.dv.nhieuLuaChon?.biet || 0); i++) {
+              f.dv.indicatorMap[`nhieuLuaChon_biet_${i}`] = { label: `Câu ${p1Counter++}`, code: 'NB' };
+            }
+            for (let i = 0; i < (f.dv.nhieuLuaChon?.hieu || 0); i++) {
+              f.dv.indicatorMap[`nhieuLuaChon_hieu_${i}`] = { label: `Câu ${p1Counter++}`, code: 'TH' };
+            }
+          });
+
+          // ─── P.II: 4 câu Đúng/Sai (Câu 13, 14, 15, 16) = 16 ý = 4,0đ ───
+          // Mỗi câu cố định: 2 ý Biết (0.25đ) + 2 ý Hiểu (0.25đ)
+          // Ưu tiên chọn 4 ĐVKT phân bổ đều theo các chủ đề hoặc theo số tiết lớn nhất
+          const sortedByTietAll = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
+          const chosenDsDvs = [];
+          const usedTopicIndexes = new Set();
+
+          // Vòng 1: Chọn mỗi chủ đề 1 ĐVKT có số tiết lớn nhất
+          sortedByTietAll.forEach(f => {
+            if (chosenDsDvs.length < 4 && !usedTopicIndexes.has(f.ti)) {
+              chosenDsDvs.push(f);
+              usedTopicIndexes.add(f.ti);
+            }
+          });
+          // Vòng 2: Nếu chưa đủ 4, lấy thêm các ĐVKT có số tiết lớn còn lại
+          if (chosenDsDvs.length < 4) {
+            sortedByTietAll.forEach(f => {
+              if (chosenDsDvs.length < 4 && !chosenDsDvs.includes(f)) {
+                chosenDsDvs.push(f);
+              }
+            });
+          }
+          // Fallback: nếu flatDvs có ít hơn 4 bài, lặp vòng lại
+          while (chosenDsDvs.length < 4) {
+            chosenDsDvs.push(flatDvs[chosenDsDvs.length % flatDvs.length]);
+          }
+
+          chosenDsDvs.forEach((f, k) => {
+            const targetDv = f.dv;
+            const bStart = targetDv.dungSai.biet;
+            const hStart = targetDv.dungSai.hieu;
+            targetDv.dungSai.biet += 2;
+            targetDv.dungSai.hieu += 2;
+            if (!Array.isArray(targetDv.dungSaiSubItems)) targetDv.dungSaiSubItems = [];
+            const qLabel = `Câu ${13 + k}`;
+            targetDv.dungSaiSubItems.push(
+              { label: `${qLabel}a`, level: 'biet', diem: 0.25, code: 'NB' },
+              { label: `${qLabel}b`, level: 'biet', diem: 0.25, code: 'NB' },
+              { label: `${qLabel}c`, level: 'hieu', diem: 0.25, code: 'TH' },
+              { label: `${qLabel}d`, level: 'hieu', diem: 0.25, code: 'TH' }
+            );
+            targetDv.indicatorMap[`dungSai_biet_${bStart}`] = { label: `${qLabel}a`, code: 'NB' };
+            targetDv.indicatorMap[`dungSai_biet_${bStart + 1}`] = { label: `${qLabel}b`, code: 'NB' };
+            targetDv.indicatorMap[`dungSai_hieu_${hStart}`] = { label: `${qLabel}c`, code: 'TH' };
+            targetDv.indicatorMap[`dungSai_hieu_${hStart + 1}`] = { label: `${qLabel}d`, code: 'TH' };
+          });
+
+          // ─── P.III: Trả lời ngắn: KHÔNG CÓ (0 câu, 0 điểm) ───
+
+          // ─── P.IV: Tự luận (2 câu = 4 ý = 3,0đ: Câu 17 = 2.0đ VD + Câu 18 = 1.0đ VDC) ───
+          // Chọn 2 ĐVKT cho Tự luận (ưu tiên khác nhau và số tiết lớn)
+          const tlDvs = [...sortedByTietAll];
+          const chosenTl1 = tlDvs[0] || flatDvs[0];
+          const chosenTl2 = tlDvs.find(f => f.ti !== chosenTl1.ti) || (tlDvs.length > 1 ? tlDvs[1] : tlDvs[0]);
+
+          // Câu 17: Vận dụng 2.0đ (2 ý a, b mỗi ý 1.0đ)
+          if (!Array.isArray(chosenTl1.dv.tuLuan.subItems)) chosenTl1.dv.tuLuan.subItems = [];
+          chosenTl1.dv.tuLuan.subItems.push(
+            { id: `tl_vd_1_${Date.now()}`, y: '', diem: 1.0, level: 'vanDung', label: 'Câu 17a', qId: 'tl_q1', qLabel: 'Câu 17' },
+            { id: `tl_vd_2_${Date.now()}`, y: '', diem: 1.0, level: 'vanDung', label: 'Câu 17b', qId: 'tl_q1', qLabel: 'Câu 17' }
+          );
+
+          // Câu 18: Vận dụng cao 1.0đ (2 ý a, b mỗi ý 0.5đ)
+          if (!Array.isArray(chosenTl2.dv.tuLuan.subItems)) chosenTl2.dv.tuLuan.subItems = [];
+          chosenTl2.dv.tuLuan.subItems.push(
+            { id: `tl_vdc_1_${Date.now()}`, y: '', diem: 0.5, level: 'vanDungCao', label: 'Câu 18a', qId: 'tl_q2', qLabel: 'Câu 18' },
+            { id: `tl_vdc_2_${Date.now()}`, y: '', diem: 0.5, level: 'vanDungCao', label: 'Câu 18b', qId: 'tl_q2', qLabel: 'Câu 18' }
+          );
+
+          // Đồng bộ các trường đếm, điểm và indicatorMap của tuLuan cho tất cả ĐVKT
+          topics.forEach(t => {
+            (t.donViKienThuc || []).forEach(dv => {
+              if (Array.isArray(dv.tuLuan?.subItems) && dv.tuLuan.subItems.length > 0) {
+                dv.tuLuan.biet = dv.tuLuan.subItems.filter(s => s.level === 'biet').length;
+                dv.tuLuan.hieu = dv.tuLuan.subItems.filter(s => s.level === 'hieu').length;
+                dv.tuLuan.vanDung = dv.tuLuan.subItems.filter(s => s.level === 'vanDung').length;
+                dv.tuLuan.vanDungCao = dv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').length;
+                dv.tuLuan.diemBiet = 0;
+                dv.tuLuan.diemHieu = 0;
+                dv.tuLuan.diemVanDung = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'vanDung').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+                dv.tuLuan.diemVanDungCao = Math.round(dv.tuLuan.subItems.filter(s => s.level === 'vanDungCao').reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100;
+
+                const lvlCounters = { biet: 0, hieu: 0, vanDung: 0, vanDungCao: 0 };
+                dv.tuLuan.subItems.forEach(sub => {
+                  const lvl = sub.level || 'vanDung';
+                  const cIdx = lvlCounters[lvl]++;
+                  const code = lvl === 'vanDungCao' ? 'VDC' : 'VD';
+                  dv.indicatorMap[`tuLuan_${lvl}_${cIdx}`] = {
+                    label: sub.label,
+                    code
+                  };
+                });
+              }
+            });
+          });
+
+          const finalTuLuanConfigCongNghe8 = {
+            enabled: false,
+            questions: [
+              {
+                id: 'tl_q1',
+                label: 'Câu 17',
+                kienThuc: 'vanDung',
+                kieuY: 'doc_lap',
+                phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [
+                  { diem: 1.0, level: 'vanDung' },
+                  { diem: 1.0, level: 'vanDung' }
+                ]
+              },
+              {
+                id: 'tl_q2',
+                label: 'Câu 18',
+                kienThuc: 'vanDungCao',
+                kieuY: 'doc_lap',
+                phamVi: 'cac_chu_de_khac_nhau',
+                subItems: [
+                  { diem: 0.5, level: 'vanDungCao' },
+                  { diem: 0.5, level: 'vanDungCao' }
+                ]
+              },
+            ],
+          };
+
+          const finalDungSaiConfigCongNghe8 = {
+            enabled: false,
+            mode: 'phan_tan_chu_de',
+            questions: [
+              {
+                id: 'ds_q1',
+                label: 'Câu 13',
+                topicIndex: null,
+                dvktIndex: null,
+                phamVi: 'cung_bai',
+                subItems: [
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 }
+                ]
+              },
+              {
+                id: 'ds_q2',
+                label: 'Câu 14',
+                topicIndex: null,
+                dvktIndex: null,
+                phamVi: 'cung_bai',
+                subItems: [
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 }
+                ]
+              },
+              {
+                id: 'ds_q3',
+                label: 'Câu 15',
+                topicIndex: null,
+                dvktIndex: null,
+                phamVi: 'cung_bai',
+                subItems: [
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 }
+                ]
+              },
+              {
+                id: 'ds_q4',
+                label: 'Câu 16',
+                topicIndex: null,
+                dvktIndex: null,
+                phamVi: 'cung_bai',
+                subItems: [
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'biet', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 },
+                  { level: 'hieu', diem: 0.25 }
+                ]
+              },
+            ]
+          };
+
+          console.log(`✅ Công nghệ 8 (70% TN - 30% TL): P.I=12câu NLC (8B+4H), P.II=4câu DS (16 ý: 8B+8H), P.III=0câu TLN, P.IV=2câu TL (4 ý: 2VD [2đ] + 2VDC [1đ])`);
+          return { matrix: topics, tuLuanConfig: finalTuLuanConfigCongNghe8, dungSaiConfig: finalDungSaiConfigCongNghe8 };
+        }
+
         const ec = state.examConfig;
         const dP1 = Number(ec.diemMoiCauP1) || 0.25;
         const dP2 = Number(ec.diemMoiYP2) || 0.25;
@@ -4096,4 +4487,4 @@ export const useExamStore = create(
 );
 
 // Export helpers cho các component sử dụng
-export { getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet, isNewMathStructure, isKHTNSubject, isMathSubject };
+export { getTopicSum, getTopicTuLuanDiem, getTuLuanCauCount, getTotalSoTiet, isNewMathStructure, isKHTNSubject, isMathSubject, isCongNgheSubject };

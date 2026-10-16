@@ -1,37 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Settings2, X, CheckCircle2, AlertTriangle, Sparkles, BookOpen, Layers, RotateCcw } from 'lucide-react';
 
-export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSaiConfig = {}, setDungSaiConfig, isKHTN = true, isCauTrucToan3223 = false, isCauTrucToan8_5050 = false }) {
-  const defaultLabel1 = (isCauTrucToan3223 || isCauTrucToan8_5050) ? 'Câu 13' : 'Câu 1';
-  const defaultLabel2 = isCauTrucToan3223 ? 'Câu 14' : 'Câu 2';
+export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSaiConfig = {}, setDungSaiConfig, isKHTN = true, isCauTrucToan3223 = false, isCauTrucToan8_5050 = false, isCauTrucCongNghe8_7030 = false }) {
+  const defaultLabel1 = (isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? 'Câu 13' : 'Câu 1';
+  const defaultLabel2 = (isCauTrucToan3223 || isCauTrucCongNghe8_7030) ? 'Câu 14' : 'Câu 2';
+
+  const getDefaultQuestions = () => {
+    if (isCauTrucCongNghe8_7030) {
+      return [
+        { id: 'ds_q1', label: 'Câu 13', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+        { id: 'ds_q2', label: 'Câu 14', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+        { id: 'ds_q3', label: 'Câu 15', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+        { id: 'ds_q4', label: 'Câu 16', topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+      ];
+    }
+    if (isCauTrucToan8_5050) {
+      return [
+        { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+      ];
+    }
+    return [
+      { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+      { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
+    ];
+  };
 
   const [localConfig, setLocalConfig] = useState({
     enabled: false,
     mode: isCauTrucToan8_5050 ? 'cung_bai' : 'phan_tan_chu_de',
-    questions: isCauTrucToan8_5050 ? [
-      { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-    ] : [
-      { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-      { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-    ]
+    questions: getDefaultQuestions()
   });
 
   useEffect(() => {
-    if (dungSaiConfig && dungSaiConfig.questions) {
+    if (dungSaiConfig && dungSaiConfig.questions && dungSaiConfig.questions.length > 0) {
       setLocalConfig(JSON.parse(JSON.stringify(dungSaiConfig)));
     } else {
       setLocalConfig({
         enabled: false,
         mode: isCauTrucToan8_5050 ? 'cung_bai' : 'phan_tan_chu_de',
-        questions: isCauTrucToan8_5050 ? [
-          { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-        ] : [
-          { id: 'ds_q1', label: defaultLabel1, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-          { id: 'ds_q2', label: defaultLabel2, topicIndex: null, dvktIndex: null, phamVi: 'cung_bai' },
-        ]
+        questions: getDefaultQuestions()
       });
     }
-  }, [show, dungSaiConfig, isCauTrucToan3223, isCauTrucToan8_5050]);
+  }, [show, dungSaiConfig, isCauTrucToan3223, isCauTrucToan8_5050, isCauTrucCongNghe8_7030]);
 
   if (!show) return null;
 
@@ -130,7 +140,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
               <h3 className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
                 Cấu hình Trắc nghiệm Đúng / Sai (Phần II)
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold border border-indigo-200">
-                  2 câu · 8 ý · 2.0 điểm
+                  {isCauTrucCongNghe8_7030 ? '4 câu · 16 ý · 4.0 điểm' : (isCauTrucToan8_5050 ? '1 câu · 4 ý · 1.0 điểm' : '2 câu · 8 ý · 2.0 điểm')}
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -227,7 +237,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
 
           {/* DANH SÁCH CÂU HỎI ĐÚNG / SAI */}
           <div className="flex flex-col gap-3">
-            {(isCauTrucToan8_5050 ? [q1] : [q1, q2]).map((q, idx) => {
+            {(localConfig.questions && localConfig.questions.length > 0 ? localConfig.questions : (isCauTrucToan8_5050 ? [q1] : [q1, q2])).map((q, idx) => {
               const selectedTopic = q.topicIndex !== null && q.topicIndex !== undefined && topics[q.topicIndex] ? topics[q.topicIndex] : null;
               const dvList = selectedTopic?.donViKienThuc || [];
 
@@ -256,7 +266,7 @@ export default function DungSaiConfigModal({ show, onClose, matrix = [], dungSai
                     {/* Badge trạng thái */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                        {(isKHTN || isCauTrucToan3223 || isCauTrucToan8_5050) ? '2 Biết · 1 Hiểu · 1 VD' : '1 Biết · 1 Hiểu · 2 VD'}
+                        {isCauTrucCongNghe8_7030 ? '2 Biết · 2 Hiểu' : ((isKHTN || isCauTrucToan3223 || isCauTrucToan8_5050) ? '2 Biết · 1 Hiểu · 1 VD' : '1 Biết · 1 Hiểu · 2 VD')}
                       </span>
                     </div>
                   </div>
