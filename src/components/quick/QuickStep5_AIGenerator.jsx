@@ -1884,7 +1884,14 @@ Giải thích: [Ngắn gọn]
       const isHoaMon = /hóa|hoá/i.test(monHoc);
       const isToanMon = /toán|toan/i.test(monHoc);
       const isKHTNMon = /khoa học tự nhiên|khtn/i.test(monHoc);
+      const isCongNgheMon = /công nghệ|cong nghe/i.test(monHoc) || Boolean(examConfig?.isCauTrucCongNghe8_7030);
       const getAutoCode = (level) => {
+        if (isCongNgheMon) {
+          if (level === 'biet') return 'CN1.1';
+          if (level === 'hieu') return 'CN1.2';
+          if (level === 'vanDung') return 'CN3.1';
+          if (level === 'vanDungCao') return 'CN4.1';
+        }
         if (isKHTNMon) {
           if (level === 'biet') return 'NT1';
           if (level === 'hieu') return 'NT3';
@@ -1948,6 +1955,10 @@ Giải thích: [Ngắn gọn]
       slots.push({ key, label: `Phần I - Câu ${i + 1} (Trắc nghiệm)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 1, daDien, inds: meta.inds });
     }
 
+    const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
+    const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+    const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+
     // --- PHẦN II ---
     const soCauTF = Math.ceil(getTotalY('dungSai') / 4);
     const tfMetas = buildSlotMetadata('dungSai');
@@ -1956,7 +1967,8 @@ Giải thích: [Ngắn gọn]
       const daDien = isSlotFilled(key);
       const meta = tfMetas[i * 4] || { name: '', inds: [] }; // Lấy label của ý đầu tiên trong nhóm 4 ý
       const dvktSuffix = meta.name ? ` - ${meta.name}` : '';
-      slots.push({ key, label: `Phần II - Câu ${i + 1} (Đúng/Sai)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 2, daDien, inds: meta.inds });
+      const displayNum = (isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? (12 + i + 1) : (i + 1);
+      slots.push({ key, label: `Phần II - Câu ${displayNum} (Đúng/Sai)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 2, daDien, inds: meta.inds });
     }
 
     // --- PHẦN III (NÂNG CẤP: KHÔNG CHIA 4) ---
@@ -1968,7 +1980,8 @@ Giải thích: [Ngắn gọn]
         const daDien = isSlotFilled(key);
         const meta = saMetas[i] || { name: '', inds: [] };
         const dvktSuffix = meta.name ? ` - ${meta.name}` : '';
-        slots.push({ key, label: `Phần III - Câu ${i + 1} (Trả lời ngắn)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 3, daDien, inds: meta.inds });
+        const displayNum = isCauTrucToan8_5050 ? (13 + i + 1) : isCauTrucToan3223 ? (14 + i + 1) : (i + 1);
+        slots.push({ key, label: `Phần III - Câu ${displayNum} (Trả lời ngắn)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 3, daDien, inds: meta.inds });
       }
     }
 
@@ -1993,7 +2006,7 @@ Giải thích: [Ngắn gọn]
       if (hasManualTLConfig) return tuLuanConfig.questions.length;
       return localTuLuanGroups.length;
     })();
-    const phanTL = config.hasTraLoiNgan ? 4 : 3;
+    const phanTL = isCauTrucCongNghe8_7030 ? 4 : (config.hasTraLoiNgan ? 4 : 3);
     
     for (let i = 0; i < soCauTL; i++) {
       const key = `phan${phanTL}_cau${i + 1}`;
@@ -2017,7 +2030,8 @@ Giải thích: [Ngắn gọn]
         slotInds = meta.inds || [];
       }
       
-      slots.push({ key, label: `Phần ${phanTL === 4 ? 'IV' : 'III'} - Câu ${i + 1} (Tự luận)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 4, daDien, inds: [...new Set(slotInds)] });
+      const displayNum = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan8_5050 ? (17 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : (i + 1);
+      slots.push({ key, label: `Phần ${phanTL === 4 ? 'IV' : 'III'} - Câu ${displayNum} (Tự luận)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 4, daDien, inds: [...new Set(slotInds)] });
     }
 
     return slots;

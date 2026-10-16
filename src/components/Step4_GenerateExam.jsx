@@ -63,6 +63,7 @@ export default function Step4_GenerateExam() {
   const isCauTruc4213 = !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 || isKHTN);
   const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
 
   // State cho tính năng Xóa nhiều câu hỏi
   const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
@@ -272,6 +273,12 @@ export default function Step4_GenerateExam() {
           if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
           if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
           if (buckets.vanDung.length > 0) chunk.push(buckets.vanDung.shift());
+        } else if (isCauTrucCongNghe8_7030) {
+          // Chuẩn Công nghệ 8 (70/30): mỗi câu cố định 2 ý mức Nhận biết (a, b) và 2 ý mức Thông hiểu (c, d)
+          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+          if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
+          if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
+          if (buckets.hieu.length > 0) chunk.push(buckets.hieu.shift());
         } else if (isCauTruc4213 || isCauTrucToan3223 || isCauTrucToan8_5050) {
           // Chuẩn CV 4956 hoặc Toán (Toán 8 50-50 / Khánh Hòa 3-2-2-3): ý a, b mức Nhận biết, ý c mức Thông hiểu, ý d mức Vận dụng
           if (buckets.biet.length > 0) chunk.push(buckets.biet.shift());
@@ -476,7 +483,7 @@ export default function Step4_GenerateExam() {
   const p1FilledCount = mcqQuestions.filter((_, i) => examSlots[`phan1_cau${i + 1}`]).length;
   const p2FilledCount = tfQuestions.filter((_, i) => examSlots[`phan2_cau${i + 1}`]).length;
   const p3FilledCount = saQuestions.filter((_, i) => examSlots[`phan3_cau${i + 1}`]).length;
-  const phanTLPrefix = config.hasTraLoiNgan ? 'phan4' : 'phan3';
+  const phanTLPrefix = isCauTrucCongNghe8_7030 ? 'phan4' : (config.hasTraLoiNgan ? 'phan4' : 'phan3');
   const p4FilledCount = tlQuestions.filter((_, i) => examSlots[`${phanTLPrefix}_cau${i + 1}`]).length;
   const totalFilledQuestionsCount = p1FilledCount + p2FilledCount + p3FilledCount + p4FilledCount;
 
@@ -578,7 +585,9 @@ export default function Step4_GenerateExam() {
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">
-                  {isCauTrucToan8_5050
+                  {isCauTrucCongNghe8_7030
+                    ? "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (3,0 điểm)"
+                    : isCauTrucToan8_5050
                     ? "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (3,0 điểm)"
                     : isCauTruc4213 
                     ? "I. Trắc nghiệm nhiều lựa chọn" 
@@ -586,6 +595,9 @@ export default function Step4_GenerateExam() {
                     ? "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn (3,0 điểm)"
                     : "PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn"}
                 </h3>
+                {isCauTrucCongNghe8_7030 && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 1 đến câu 12. Mỗi câu hỏi thí sinh chỉ chọn một phương án (gồm 8 câu Nhận biết và 4 câu Thông hiểu).</p>
+                )}
                 {(isCauTrucToan3223 || isCauTrucToan8_5050) && (
                   <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 1 đến câu 12. Mỗi câu hỏi thí sinh chỉ chọn một phương án.</p>
                 )}
@@ -682,7 +694,9 @@ export default function Step4_GenerateExam() {
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">
-                  {isCauTrucToan8_5050
+                  {isCauTrucCongNghe8_7030
+                    ? "PHẦN II. Câu trắc nghiệm đúng sai (4,0 điểm)"
+                    : isCauTrucToan8_5050
                     ? "PHẦN II. Câu trắc nghiệm đúng sai (1,0 điểm)"
                     : isCauTruc4213 
                     ? "II. Trắc nghiệm đúng sai" 
@@ -690,6 +704,9 @@ export default function Step4_GenerateExam() {
                     ? "PHẦN II. Câu trắc nghiệm đúng sai (2,0 điểm)"
                     : "PHẦN II. Câu trắc nghiệm đúng sai"}
                 </h3>
+                {isCauTrucCongNghe8_7030 && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 13 đến câu 16. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai (mỗi câu gồm 2 ý Nhận biết và 2 ý Thông hiểu).</p>
+                )}
                 {isCauTrucToan8_5050 && (
                   <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời câu 13. Trong mỗi ý a), b), c), d), thí sinh chọn đúng hoặc sai.</p>
                 )}
@@ -722,7 +739,7 @@ export default function Step4_GenerateExam() {
                     <div className="flex justify-between items-center font-bold text-orange-800 mb-3 border-b border-orange-200 pb-2">
                       <div className="flex-1 flex flex-col gap-1">
                         <span>
-                          {(isCauTrucToan3223 || isCauTrucToan8_5050) ? `Câu ${12 + qIndex + 1}.` : `Câu ${qIndex + 1}.`} 
+                          {(isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? `Câu ${12 + qIndex + 1}.` : `Câu ${qIndex + 1}.`} 
                           <span className="text-sm font-normal text-slate-500 italic"> (Gồm {qChunk.length} ý)</span>
                         </span>
                         {slotData?.noiDung && <span className="text-sm font-normal text-slate-700 mt-1">{slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '')}</span>}
@@ -956,7 +973,9 @@ export default function Step4_GenerateExam() {
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">
-                  {isCauTrucToan8_5050
+                  {isCauTrucCongNghe8_7030
+                    ? "PHẦN IV. Tự luận (3,0 điểm)"
+                    : isCauTrucToan8_5050
                     ? "PHẦN IV. Tự luận (5,0 điểm)"
                     : isCauTruc4213 
                     ? "IV. Tự luận" 
@@ -964,6 +983,9 @@ export default function Step4_GenerateExam() {
                     ? "PHẦN IV. Tự luận (3,0 điểm)"
                     : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
                 </h3>
+                {isCauTrucCongNghe8_7030 && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trình bày lời giải chi tiết cho Câu 17 (2,0 điểm - Vận dụng, gồm ý a, b) và Câu 18 (1,0 điểm - Vận dụng cao, gồm ý a, b). Tổng điểm phần Tự luận: 3,0 điểm.</p>
+                )}
                 {isCauTrucToan8_5050 && (
                   <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trình bày lời giải chi tiết từ Câu 18 đến Câu 22 (mỗi câu gồm 2 phần/ý a, b, mỗi phần 0,5 điểm). Tổng điểm phần Tự luận: 5,0 điểm.</p>
                 )}
@@ -989,7 +1011,7 @@ export default function Step4_GenerateExam() {
             </div>
             <div className="space-y-4">
               {tlQuestions.map((qChunk, qIndex) => {
-                const phanTL = config.hasTraLoiNgan ? 4 : 3;
+                const phanTL = isCauTrucCongNghe8_7030 ? 4 : (config.hasTraLoiNgan ? 4 : 3);
                 const slotKey = `phan${phanTL}_cau${qIndex + 1}`;
                 const slotData = examSlots[slotKey];
                 const kienThucQ = slotData?.kienThuc || (hasManualTLConfig ? (tuLuanConfig.questions[qIndex]?.kienThuc || '') : '');
@@ -998,7 +1020,9 @@ export default function Step4_GenerateExam() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1 flex flex-col gap-1">
                         <span className="font-bold text-purple-800">
-                          {isCauTrucToan8_5050 
+                          {isCauTrucCongNghe8_7030
+                            ? `Câu ${16 + qIndex + 1}.`
+                            : isCauTrucToan8_5050 
                             ? (qChunk[0]?.qLabel ? `${qChunk[0].qLabel}.` : `Câu ${17 + qIndex + 1}.`) 
                             : isCauTrucToan3223 
                             ? (qChunk[0]?.qLabel ? `${qChunk[0].qLabel}.` : `Câu ${18 + qIndex + 1}.`) 

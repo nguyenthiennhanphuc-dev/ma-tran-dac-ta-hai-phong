@@ -22,7 +22,8 @@ export default function BatchDeleteExamModal({
   const [searchQuery, setSearchQuery] = useState('');
 
   // Xác định cấu trúc số phần cho tự luận
-  const phanTL = config.hasTraLoiNgan ? 4 : 3;
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+  const phanTL = isCauTrucCongNghe8_7030 ? 4 : (config.hasTraLoiNgan ? 4 : 3);
 
   // Thu thập danh sách toàn bộ câu hỏi trong khung đề
   const allQuestions = useMemo(() => {
@@ -69,13 +70,14 @@ export default function BatchDeleteExamModal({
         ? `${slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '').trim()} ${yPreview ? `[${yPreview}]` : ''}`
         : yPreview;
 
+      const displayNumP2 = (examConfig.isCauTrucToan3223 || examConfig.isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? (12 + i + 1) : (i + 1);
       list.push({
         slotKey,
         partKey: 'phan2',
         partLabel: 'Phần II',
         partName: 'Trắc nghiệm đúng sai',
-        qNum: i + 1,
-        title: `Câu ${i + 1} (Phần II)`,
+        qNum: displayNumP2,
+        title: `Câu ${displayNumP2} (Phần II)`,
         topic: qChunk[0]?.topic || '',
         level: qChunk[0]?.level || '',
         data: slotData,
@@ -95,13 +97,14 @@ export default function BatchDeleteExamModal({
         ? `${slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '').trim()} ${slotData.dapAnDung ? `[Đ/A: ${slotData.dapAnDung}]` : ''}`
         : '';
 
+      const displayNumP3 = examConfig.isCauTrucToan8_5050 ? (13 + i + 1) : examConfig.isCauTrucToan3223 ? (14 + i + 1) : (i + 1);
       list.push({
         slotKey,
         partKey: 'phan3',
         partLabel: 'Phần III',
         partName: 'Trả lời ngắn',
-        qNum: i + 1,
-        title: `Câu ${i + 1} (Phần III)`,
+        qNum: displayNumP3,
+        title: `Câu ${displayNumP3} (Phần III)`,
         topic: qChunk[0]?.topic || '',
         level: qChunk[0]?.level || '',
         data: slotData,
@@ -125,13 +128,14 @@ export default function BatchDeleteExamModal({
         ? `${slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '').trim()} ${yPreview ? `[${yPreview}]` : ''}`
         : yPreview;
 
+      const displayNumP4 = isCauTrucCongNghe8_7030 ? (16 + i + 1) : examConfig.isCauTrucToan8_5050 ? (17 + i + 1) : examConfig.isCauTrucToan3223 ? (18 + i + 1) : (i + 1);
       list.push({
         slotKey,
         partKey: 'phan4',
-        partLabel: examConfig.isCauTruc4213 ? 'Phần IV' : (config.hasTraLoiNgan ? 'Phần IV' : 'Phần III'),
+        partLabel: isCauTrucCongNghe8_7030 ? 'Phần IV' : (examConfig.isCauTruc4213 ? 'Phần IV' : (config.hasTraLoiNgan ? 'Phần IV' : 'Phần III')),
         partName: 'Tự luận',
-        qNum: i + 1,
-        title: `Câu ${i + 1} (${examConfig.isCauTruc4213 ? 'Phần IV' : 'Tự luận'})`,
+        qNum: displayNumP4,
+        title: isCauTrucCongNghe8_7030 ? `Câu ${displayNumP4} (Phần IV - Tự luận)` : `Câu ${displayNumP4} (${examConfig.isCauTruc4213 ? 'Phần IV' : 'Tự luận'})`,
         topic: qChunk[0]?.topic || '',
         level: qChunk[0]?.level || '',
         data: slotData,
@@ -164,7 +168,7 @@ export default function BatchDeleteExamModal({
     });
 
     return list;
-  }, [mcqQuestions, tfQuestions, saQuestions, tlQuestions, examSlots, lockedSlots, config.hasTraLoiNgan, examConfig.isCauTruc4213, phanTL]);
+  }, [mcqQuestions, tfQuestions, saQuestions, tlQuestions, examSlots, lockedSlots, config.hasTraLoiNgan, examConfig, phanTL, isCauTrucCongNghe8_7030]);
 
   // Danh sách các câu hỏi ĐÃ CÓ NỘI DUNG (để xóa)
   const filledQuestions = useMemo(() => allQuestions.filter(q => q.isFilled), [allQuestions]);

@@ -54,7 +54,7 @@ const findIndicators = (matrix, dvktName, loai, level) => {
 };
 
 export default function Step4_GenerateExam() {
-  const { matrix, config, tuLuanConfig, examSlots, examHeader, clearExamSlot, clearMultipleExamSlots, clearAllExamSlots, updateExamSlot, draftQuestions, setDraftQuestions, lockedSlots, toggleLockSlot, updateConfig } = useExamStore();
+  const { matrix, config, examConfig, tuLuanConfig, examSlots, examHeader, clearExamSlot, clearMultipleExamSlots, clearAllExamSlots, updateExamSlot, draftQuestions, setDraftQuestions, lockedSlots, toggleLockSlot, updateConfig } = useExamStore();
 
   const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
 
@@ -378,13 +378,18 @@ export default function Step4_GenerateExam() {
     return result;
   })();
 
+  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+  const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
+  const isCauTruc4213 = Boolean(examConfig?.isCauTruc4213);
+
   const alphabet = ['a)', 'b)', 'c)', 'd)', 'e)', 'f)'];
 
   // Đếm số câu đã điền trong từng phần để phục vụ xóa nhanh
   const p1FilledCount = mcqQuestions.filter((_, i) => examSlots[`phan1_cau${i + 1}`]).length;
   const p2FilledCount = tfQuestions.filter((_, i) => examSlots[`phan2_cau${i + 1}`]).length;
   const p3FilledCount = saQuestions.filter((_, i) => examSlots[`phan3_cau${i + 1}`]).length;
-  const phanTLPrefix = config.hasTraLoiNgan ? 'phan4' : 'phan3';
+  const phanTLPrefix = isCauTrucCongNghe8_7030 ? 'phan4' : (config.hasTraLoiNgan ? 'phan4' : 'phan3');
   const p4FilledCount = tlQuestions.filter((_, i) => examSlots[`${phanTLPrefix}_cau${i + 1}`]).length;
   const totalFilledQuestionsCount = p1FilledCount + p2FilledCount + p3FilledCount + p4FilledCount;
 
@@ -597,7 +602,7 @@ export default function Step4_GenerateExam() {
                   <div key={qIndex} className={`p-4 border rounded-lg text-slate-700 ${slotData ? 'bg-green-50 border-green-300' : 'bg-orange-50/30 border-orange-200'}`}>
                     <div className="flex justify-between items-center font-bold text-orange-800 mb-3 border-b border-orange-200 pb-2">
                       <div className="flex-1 flex flex-col gap-1">
-                        <span>Câu {qIndex + 1}. <span className="text-sm font-normal text-slate-500 italic">(Gồm {qChunk.length} ý)</span></span>
+                        <span>{(isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? `Câu ${12 + qIndex + 1}.` : `Câu ${qIndex + 1}.`} <span className="text-sm font-normal text-slate-500 italic">(Gồm {qChunk.length} ý)</span></span>
                         {slotData?.noiDung && <span className="text-sm font-normal text-slate-700 mt-1">{slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '')}</span>}
                       </div>
                       <div className="flex items-center gap-2">
@@ -725,7 +730,7 @@ export default function Step4_GenerateExam() {
                 return (
                   <div key={qIndex} className={`p-4 border rounded-lg text-slate-700 ${slotData ? 'bg-green-50 border-green-300' : 'bg-emerald-50/30 border-emerald-200'}`}>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-bold text-emerald-800">Câu {qIndex + 1}.</span>
+                      <span className="font-bold text-emerald-800">{isCauTrucToan8_5050 ? `Câu ${13 + qIndex + 1}.` : isCauTrucToan3223 ? `Câu ${14 + qIndex + 1}.` : `Câu ${qIndex + 1}.`}</span>
                       <div className="flex items-center gap-2">
                         {slotData && (
                           <>
@@ -807,7 +812,15 @@ export default function Step4_GenerateExam() {
           <div className="mb-10">
             <div className="flex flex-wrap justify-between items-center mb-4 border-b pb-2 gap-2">
               <h3 className="text-lg font-bold text-slate-800">
-                {config.hasTraLoiNgan ? 'PHẦN IV.' : 'PHẦN III.'} Câu hỏi tự luận
+                {isCauTrucCongNghe8_7030
+                  ? "PHẦN IV. Tự luận (3,0 điểm)"
+                  : isCauTrucToan8_5050
+                  ? "PHẦN IV. Tự luận (5,0 điểm)"
+                  : isCauTruc4213 
+                  ? "IV. Tự luận" 
+                  : isCauTrucToan3223 
+                  ? "PHẦN IV. Tự luận (3,0 điểm)"
+                  : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
               </h3>
               {p4FilledCount > 0 && (
                 <button
@@ -827,7 +840,7 @@ export default function Step4_GenerateExam() {
             </div>
             <div className="space-y-4">
               {tlQuestions.map((qChunk, qIndex) => {
-                const phanTL = config.hasTraLoiNgan ? 4 : 3;
+                const phanTL = isCauTrucCongNghe8_7030 ? 4 : (config.hasTraLoiNgan ? 4 : 3);
                 const slotKey = `phan${phanTL}_cau${qIndex + 1}`;
                 const slotData = examSlots[slotKey];
                 const kienThucQ = slotData?.kienThuc || (hasManualTLConfig ? (tuLuanConfig.questions[qIndex]?.kienThuc || '') : '');
@@ -836,7 +849,13 @@ export default function Step4_GenerateExam() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1 flex flex-col gap-1">
                         <span className="font-bold text-purple-800">
-                          Câu {qIndex + 1}.
+                          {isCauTrucCongNghe8_7030
+                            ? `Câu ${16 + qIndex + 1}.`
+                            : isCauTrucToan8_5050 
+                            ? (qChunk[0]?.qLabel ? `${qChunk[0].qLabel}.` : `Câu ${17 + qIndex + 1}.`) 
+                            : isCauTrucToan3223 
+                            ? (qChunk[0]?.qLabel ? `${qChunk[0].qLabel}.` : `Câu ${18 + qIndex + 1}.`) 
+                            : `Câu ${qIndex + 1}.`}
                           <span className="text-sm font-normal text-red-600 ml-2">({Math.round(qChunk.reduce((s, item) => s + (item.diem || 0), 0) * 100) / 100} điểm)</span>
                           {kienThucQ === 'hinh_hoc' && <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">📐 Hình học</span>}
                           {kienThucQ === 'dai_so'   && <span className="ml-2 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">∑ Đại số</span>}
@@ -981,7 +1000,7 @@ export default function Step4_GenerateExam() {
         examSlots={examSlots}
         lockedSlots={lockedSlots}
         config={config}
-        examConfig={{}}
+        examConfig={examConfig}
         onClearSlot={clearExamSlot}
         onClearMultipleSlots={clearMultipleExamSlots}
         onClearAllSlots={clearAllExamSlots}
