@@ -37,6 +37,7 @@ export default function Step3_Specification() {
   const isHoaMon = /hóa|hoá/i.test(examHeader?.monHoc || '');
   const isToanMon = /toán|toan/i.test(examHeader?.monHoc || '');
   const isSinhMon = /sinh/i.test(examHeader?.monHoc || '');
+  const isCongNgheMon = /công\s*nghệ|cong\s*nghe/i.test(examHeader?.monHoc || '') || Boolean(examConfig?.isCauTrucCongNghe8_7030);
   const isKHTNMon = Boolean(
     examConfig.subject === 'khtn' || 
     examConfig.isCauTruc4213 || 
@@ -54,6 +55,41 @@ export default function Step3_Specification() {
   const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
   const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
   const hasSeparateVdc = Boolean(isKHTNMon || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030);
+
+  // =======================================================================
+  // NHIỆM VỤ CÔNG NGHỆ: Tự động phát hiện mã năng lực Công nghệ từ nội dung YCCĐ
+  // Dựa trên khung năng lực Công nghệ GDPT 2018:
+  //   CN1 (Nhận thức): CN1.1, CN1.2
+  //   CN2 (Giao tiếp): CN2.1, CN2.2
+  //   CN3 (Sử dụng): CN3.1, CN3.2
+  //   CN4 (Đánh giá): CN4.1
+  // =======================================================================
+  const getCongNgheIndicatorForLevel = (text, level) => {
+    if (!text || !isCongNgheMon || config.showCompetencyCode === false) return null;
+    const lower = text.toLowerCase();
+    const codes = [];
+    if (level === 'biet') {
+      if (/nhận biết|nêu được|kể tên|liệt kê|nhận dạng|chỉ ra|phát biểu|đặc điểm/.test(lower)) codes.push('CN1.1');
+      if (codes.length === 0) codes.push('CN1.1');
+    }
+    if (level === 'hieu') {
+      if (/trình bày được|mô tả được|giải thích được|phân loại được|so sánh được/.test(lower)) codes.push('CN1.2');
+      if (/đọc được|phân tích được|sơ đồ|bản vẽ|thông số/.test(lower)) codes.push('CN2.1');
+      if (codes.length === 0) codes.push('CN1.2');
+    }
+    if (level === 'vanDung') {
+      if (/lựa chọn được|sử dụng được|thực hiện được|lắp ráp|vận hành|tính toán/.test(lower)) codes.push('CN3.1');
+      if (/vẽ được|phác họa|sơ đồ mạch|bản vẽ/.test(lower)) codes.push('CN2.2');
+      if (codes.length === 0) codes.push('CN3.1');
+    }
+    if (level === 'vanDungCao') {
+      if (/đánh giá được|đề xuất|giải pháp|khắc phục|sự cố|tối ưu|tiết kiệm|an toàn/.test(lower)) codes.push('CN4.1');
+      if (/bảo dưỡng|sửa chữa|cải tiến/.test(lower)) codes.push('CN3.2');
+      if (codes.length === 0) codes.push('CN4.1');
+    }
+    const unique = [...new Set(codes)];
+    return unique.length > 0 ? unique.join(', ') : null;
+  };
 
   // =======================================================================
   // NHIỆM VỤ 1 (Hướng A): Tự động phát hiện mã năng lực Hóa từ nội dung YCCĐ
@@ -356,6 +392,7 @@ export default function Step3_Specification() {
     } else {
       let indicator = isToanMon ? getMathIndicatorForLevel(dv?.yeuCauCanDat, level) : null;
       if (!indicator) indicator = isSinhMon ? getBiologyIndicatorForLevel(dv?.yeuCauCanDat, level) : null;
+      if (!indicator && isCongNgheMon) indicator = getCongNgheIndicatorForLevel(dv?.yeuCauCanDat, level);
       if (!indicator) indicator = getIndicatorForLevel(dv?.yeuCauCanDat, level);
       if (indicator) tag = indicator;
     }
@@ -377,6 +414,7 @@ export default function Step3_Specification() {
     } else {
       let indicator = isToanMon ? getMathIndicatorForLevel(dv?.yeuCauCanDat, level) : null;
       if (!indicator) indicator = isSinhMon ? getBiologyIndicatorForLevel(dv?.yeuCauCanDat, level) : null;
+      if (!indicator && isCongNgheMon) indicator = getCongNgheIndicatorForLevel(dv?.yeuCauCanDat, level);
       if (!indicator) indicator = getIndicatorForLevel(dv?.yeuCauCanDat, level);
       if (indicator) tag = indicator;
     }
@@ -503,6 +541,28 @@ export default function Step3_Specification() {
         prompt += `   - Vận dụng [MÃ]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [VD1]: Vận dụng kiến thức giải thích... (hoặc [TH4], [NT6])]\n`;
         prompt += `   - Vận dụng cao [VD2]: [Ghi đúng 1 câu ngắn gọn... Đề xuất giải pháp/biện pháp thực tiễn, bảo vệ môi trường]`;
       }
+    } else if (isCongNgheMon) {
+      prompt += `📌 CHÚ THÍCH BỘ MÃ NĂNG LỰC CÔNG NGHỆ (CĂN CỨ CTGDPT 2018):\n`;
+      prompt += `► Nhóm Nhận thức công nghệ (CN1):\n`;
+      prompt += `  [CN1.1] Nhận biết: Nhận biết, kể tên, nêu được đối tượng, khái niệm, tính chất, quy tắc an toàn công nghệ\n`;
+      prompt += `  [CN1.2] Thông hiểu: Trình bày, mô tả, giải thích nguyên lý, cấu tạo, công dụng thiết bị công nghệ\n`;
+      prompt += `► Nhóm Giao tiếp công nghệ (CN2):\n`;
+      prompt += `  [CN2.1] Thông hiểu: Đọc, phân tích bản vẽ kỹ thuật, sơ đồ mạch điện, tài liệu kỹ thuật\n`;
+      prompt += `  [CN2.2] Vận dụng: Lập bản vẽ, phác họa sơ đồ, biểu diễn quy trình công nghệ\n`;
+      prompt += `► Nhóm Sử dụng công nghệ (CN3):\n`;
+      prompt += `  [CN3.1] Vận dụng: Lựa chọn, sử dụng đúng cách, an toàn dụng cụ, vật liệu, thiết bị công nghệ\n`;
+      prompt += `  [CN3.2] Vận dụng cao: Lắp ráp, bảo dưỡng, khắc phục sự cố kỹ thuật đơn giản trong thực tiễn\n`;
+      prompt += `► Nhóm Đánh giá công nghệ (CN4):\n`;
+      prompt += `  [CN4.1] Vận dụng cao: Đánh giá hiệu quả công nghệ, an toàn, tiết kiệm năng lượng, bảo vệ môi trường; đề xuất giải pháp cải tiến kỹ thuật\n\n`;
+
+      prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
+      prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;
+      prompt += `2. CỰC KỲ NGẮN GỌN & CHUẨN XÁC: Mỗi mức độ nhận thức CHỈ ĐƯỢC VIẾT ĐÚNG 1 CÂU (1 DÒNG), sử dụng đúng động từ chỉ báo hành vi chuẩn theo Chương trình GDPT 2018 môn Công nghệ.\n`;
+      prompt += `3. Định dạng đầu ra BẮT BUỘC KÈM ĐÚNG MÃ CHỈ BÁO NĂNG LỰC CÔNG NGHỆ:\n`;
+      prompt += `   - Nhận biết [CN1.1]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Nhận biết [CN1.1]: Nêu được...]\n`;
+      prompt += `   - Thông hiểu [CN1.2 hoặc CN2.1]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Thông hiểu [CN1.2]: Trình bày được...]\n`;
+      prompt += `   - Vận dụng [CN3.1 hoặc CN2.2]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng [CN3.1]: Lựa chọn và sử dụng được...]\n`;
+      prompt += `   - Vận dụng cao [CN4.1 hoặc CN3.2]: [Ghi đúng 1 câu ngắn gọn, ví dụ: Vận dụng cao [CN4.1]: Đánh giá hiệu quả, đề xuất giải pháp...]`;
     } else {
       prompt += `⚠️ 3 YÊU CẦU BẮT BUỘC (PHẢI TUÂN THỦ TUYỆT ĐỐI):\n`;
       prompt += `1. Trình bày tách biệt YCCĐ cho từng nội dung. Giữ nguyên định dạng in đậm số thứ tự và tên bài (Ví dụ: **1. ${dvList[0]?.noiDung || 'Tên bài'}**).\n`;

@@ -429,6 +429,71 @@ assertEq(p2_7Y, 12, 'KHTN Vào 10 P.II = 12 ý Đ/S (3.0đ)');
 assertEq(p3_7, 6, 'KHTN Vào 10 P.III = 6 câu TLN (1.5đ, Tổng = 10.0đ)');
 
 // ──────────────────────────────────────────────────────────
+// TEST 8: Công nghệ 8 (70% TN - 30% TL)
+// ──────────────────────────────────────────────────────────
+console.log('\n🔒 TEST 8: Công nghệ 8 (70% Trắc nghiệm - 30% Tự luận)');
+
+function makeCongNgheMatrix() {
+  return [
+    { tenChuDe: 'Vẽ kĩ thuật', donViKienThuc: [makeDv('Hình chiếu vuông góc', 4), makeDv('Bản vẽ khối tròn xoay', 4)] },
+    { tenChuDe: 'Cơ khí', donViKienThuc: [makeDv('Vật liệu cơ khí', 4), makeDv('Truyền và biến đổi chuyển động', 6)] },
+    { tenChuDe: 'Kĩ thuật điện', donViKienThuc: [makeDv('An toàn điện', 4), makeDv('Mạch điện điều khiển', 6)] },
+  ];
+}
+
+useExamStore.getState().setCauTrucCongNghe8_7030();
+useExamStore.setState({
+  matrix: makeCongNgheMatrix(),
+  examHeader: { monHoc: 'Công nghệ 8', lop: '8', thoiGian: '45 phút' },
+});
+useExamStore.getState().autoFillMatrix();
+
+const m8 = useExamStore.getState().matrix;
+let p1_8B = 0, p1_8H = 0;
+let p2_8B = 0, p2_8H = 0, p2_8VD = 0, p2_8VDC = 0;
+let p3_8 = 0;
+let p4_8VD = 0, p4_8VDC = 0, p4_8DiemVD = 0, p4_8DiemVDC = 0;
+
+m8.forEach(t => t.donViKienThuc.forEach(dv => {
+  p1_8B += dv.nhieuLuaChon?.biet || 0;
+  p1_8H += dv.nhieuLuaChon?.hieu || 0;
+  p2_8B += dv.dungSai?.biet || 0;
+  p2_8H += dv.dungSai?.hieu || 0;
+  p2_8VD += dv.dungSai?.vanDung || 0;
+  p2_8VDC += dv.dungSai?.vanDungCao || 0;
+  p3_8 += (dv.traLoiNgan?.biet || 0) + (dv.traLoiNgan?.hieu || 0) + (dv.traLoiNgan?.vanDung || 0) + (dv.traLoiNgan?.vanDungCao || 0);
+  p4_8VD += dv.tuLuan?.vanDung || 0;
+  p4_8VDC += dv.tuLuan?.vanDungCao || 0;
+  p4_8DiemVD += dv.tuLuan?.diemVanDung || 0;
+  p4_8DiemVDC += dv.tuLuan?.diemVanDungCao || 0;
+}));
+
+assertEq(p1_8B + p1_8H, 12, 'Công nghệ 8 P.I = 12 câu TN (3.0đ)');
+assertEq(p1_8B, 8, 'Công nghệ 8 P.I = 8 câu Nhận biết (2.0đ)');
+assertEq(p1_8H, 4, 'Công nghệ 8 P.I = 4 câu Thông hiểu (1.0đ)');
+
+assertEq(p2_8B + p2_8H, 16, 'Công nghệ 8 P.II = 16 ý Đúng/Sai (4 câu × 4 ý = 4.0đ)');
+assertEq(p2_8B, 8, 'Công nghệ 8 P.II = 8 ý Nhận biết (2.0đ)');
+assertEq(p2_8H, 8, 'Công nghệ 8 P.II = 8 ý Thông hiểu (2.0đ)');
+assertEq(p2_8VD + p2_8VDC, 0, 'Công nghệ 8 P.II = 0 ý VD/VDC (Đúng/Sai chỉ có Biết và Hiểu)');
+
+assertEq(p3_8, 0, 'Công nghệ 8 P.III = 0 câu Trả lời ngắn (Bỏ qua hoàn toàn)');
+
+assertEq(p4_8VD, 2, 'Công nghệ 8 P.IV = 2 ý Vận dụng (Câu 17: 2.0đ)');
+assertEq(p4_8DiemVD, 2.0, 'Công nghệ 8 P.IV: Điểm Vận dụng = 2.0đ');
+assertEq(p4_8VDC, 2, 'Công nghệ 8 P.IV = 2 ý Vận dụng cao (Câu 18: 1.0đ)');
+assertEq(p4_8DiemVDC, 1.0, 'Công nghệ 8 P.IV: Điểm Vận dụng cao = 1.0đ');
+
+const totalScore8 = (p1_8B + p1_8H) * 0.25 + (p2_8B + p2_8H) * 0.25 + p4_8DiemVD + p4_8DiemVDC;
+assertEq(totalScore8, 10.0, 'Công nghệ 8: Tổng điểm toàn đề = 10.0đ (100%)');
+const totalBiet8 = p1_8B * 0.25 + p2_8B * 0.25;
+assertEq(totalBiet8, 4.0, 'Công nghệ 8: Tỉ lệ Nhận biết = 4.0đ (40%)');
+const totalHieu8 = p1_8H * 0.25 + p2_8H * 0.25;
+assertEq(totalHieu8, 3.0, 'Công nghệ 8: Tỉ lệ Thông hiểu = 3.0đ (30%)');
+assertEq(p4_8DiemVD, 2.0, 'Công nghệ 8: Tỉ lệ Vận dụng = 2.0đ (20%)');
+assertEq(p4_8DiemVDC, 1.0, 'Công nghệ 8: Tỉ lệ Vận dụng cao = 1.0đ (10%)');
+
+// ──────────────────────────────────────────────────────────
 // KẾT QUẢ
 // ──────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(50)}`);

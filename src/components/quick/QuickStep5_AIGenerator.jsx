@@ -1422,6 +1422,25 @@ Giải thích: [Ngắn gọn]
         prompt += `⚠️ Câu Đúng/Sai: ý a=NT1 (Nhận biết), ý b=NT1 (Nhận biết), ý c=NT3 (Thông hiểu), ý d=VD1 (Vận dụng) — TUYỆT ĐỐI không có Vận dụng cao ở câu Đúng/Sai (Vận dụng cao chỉ có ở phần Tự luận)\n`;
       }
     }
+    if (isCongNgheMon) {
+      prompt += `\n📌 CHÚ THÍCH MÃ NĂNG LỰC CÔNG NGHỆ (BẮT BUỘC đọc khi ra đề — Căn cứ CTGDPT 2018):\n`;
+      prompt += `► Nhóm Nhận thức công nghệ (CN1):\n`;
+      prompt += `  [CN1.1] Nhận biết: Nhận biết, kể tên, nêu đối tượng, khái niệm, tính chất, an toàn công nghệ\n`;
+      prompt += `  [CN1.2] Thông hiểu: Trình bày, mô tả, giải thích nguyên lý, cấu tạo, công dụng thiết bị\n`;
+      prompt += `► Nhóm Giao tiếp công nghệ (CN2):\n`;
+      prompt += `  [CN2.1] Thông hiểu: Đọc, phân tích bản vẽ kỹ thuật, sơ đồ mạch điện, tài liệu kỹ thuật\n`;
+      prompt += `  [CN2.2] Vận dụng: Lập bản vẽ, phác họa sơ đồ, biểu diễn quy trình\n`;
+      prompt += `► Nhóm Sử dụng công nghệ (CN3):\n`;
+      prompt += `  [CN3.1] Vận dụng: Lựa chọn, sử dụng đúng cách, an toàn dụng cụ, vật liệu, thiết bị công nghệ\n`;
+      prompt += `  [CN3.2] Vận dụng cao: Lắp ráp, bảo dưỡng, khắc phục sự cố kỹ thuật đơn giản\n`;
+      prompt += `► Nhóm Đánh giá công nghệ (CN4):\n`;
+      prompt += `  [CN4.1] Vận dụng cao: Đánh giá hiệu quả công nghệ, an toàn, tiết kiệm năng lượng; đề xuất giải pháp cải tiến kỹ thuật\n`;
+      if (isCauTrucCongNghe8_7030) {
+        prompt += `⚠️ Câu Đúng/Sai: Mỗi câu cố định ý a=CN1.1 (Nhận biết), ý b=CN1.1 (Nhận biết), ý c=CN1.2/CN2.1 (Thông hiểu), ý d=CN1.2/CN2.1 (Thông hiểu). TUYỆT ĐỐI không có Vận dụng hay Vận dụng cao ở câu Đúng/Sai!\n`;
+        prompt += `⚠️ Phần Tự luận: Câu 17 (2,0 điểm - Vận dụng, gồm ý 17a: 1,0đ + 17b: 1,0đ); Câu 18 (1,0 điểm - Vận dụng cao, gồm ý 18a: 0,5đ + 18b: 0,5đ).\n`;
+      }
+    }
+    prompt += `- MÔN CÔNG NGHỆ: Câu hỏi gắn liền với đọc bản vẽ kĩ thuật, cơ khí, truyền và biến đổi chuyển động, đồ dùng điện gia đình, an toàn và tiết kiệm điện năng trong gia đình.\n`;
     prompt += `- MÔN KHOA HỌC XÃ HỘI (Sử, Địa, GDCD): Sử/Địa ưu tiên nguyên nhân, hệ quả, phân tích số liệu/biểu đồ. Riêng GDCD/KTPL: 100% câu hỏi Vận dụng phải là TÌNH HUỐNG THỰC TẾ (ví dụ: nhân vật A, B vi phạm gì) để học sinh xử lý.\n`;
     prompt += `- MÔN NGỮ VĂN: Tập trung ĐỌC HIỂU (nhận diện tu từ, tác dụng nghệ thuật, phương thức biểu đạt). Tự luận hướng đến cảm thụ và nghị luận.\n`;
     prompt += `- MÔN TIẾNG ANH: Kiểm tra từ vựng trong ngữ cảnh (Context), chức năng giao tiếp. Đáp án nhiễu phải có cấu trúc tương đồng để phân loại học sinh.\n`;
