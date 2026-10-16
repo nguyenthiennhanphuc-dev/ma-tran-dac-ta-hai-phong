@@ -5,6 +5,7 @@ import { Copy, FileText, CheckCircle2, Wand2, AlertTriangle, ArrowUpCircle, Tras
 import 'katex/dist/katex.min.css';
 import Latex from 'react-latex-next';
 import ClientGraph from '../ClientGraph';
+import { normalizeMathDelimiters } from '../../utils/latexToDocxMath';
 
 // =============================================================================
 // [BƯỚC 1] TỪ ĐIỂN PHONG CÁCH RA ĐỀ
@@ -27,7 +28,8 @@ const MathText = ({ content }) => {
 export function parseExamDraft(rawText) {
   const cleanLatexJunk = (text) => {
     if (!text) return text;
-    return text
+    let s = normalizeMathDelimiters(text);
+    return s
       .replace(/\$\s*\\rightarrow\s*\$/g, '->')
       .replace(/\$\s*->\s*\$/g, '->')
       .replace(/\$\s*\\Rightarrow\s*\$/g, '=>')

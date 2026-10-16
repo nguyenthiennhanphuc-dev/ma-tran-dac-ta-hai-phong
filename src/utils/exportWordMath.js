@@ -392,9 +392,9 @@ const extractABCD = (str) => {
     if (!s.match(/(?:a\)|a-)/i) && (s.includes('||') || s.includes(','))) {
         const parts = s.includes('||') ? s.split('||').map(x => x.trim()) : s.split(',').map(x => x.trim());
         const autoWrap = (val) => {
-            let v = val;
-            if (v.includes('\\') && !v.includes('$')) return `$${v}$`;
-            return v;
+            let v = String(val || '').trim();
+            if (v.endsWith(',') || v.endsWith(';')) v = v.slice(0, -1).trim();
+            return autoEncloseMath(v);
         };
         return [parts[0] || '...', parts[1] || '...', parts[2] || '...', parts[3] || '...'].map(autoWrap).map(formatTextWithMath);
     }
@@ -405,11 +405,9 @@ const extractABCD = (str) => {
     const d = s.match(/(?:d\)|d-)\s*(.*?)$/i)?.[1] || '...';
 
     const autoWrap = (val) => {
-        let v = val.trim();
+        let v = String(val || '').trim();
         if (v.endsWith(',') || v.endsWith(';')) v = v.slice(0, -1).trim();
-        // Nếu AI quên bọc dấu $ cho công thức Toán, tự động bọc lại
-        if (v.includes('\\') && !v.includes('$')) return `$${v}$`;
-        return v;
+        return autoEncloseMath(v);
     };
 
     return [a, b, c, d].map(autoWrap).map(formatTextWithMath);

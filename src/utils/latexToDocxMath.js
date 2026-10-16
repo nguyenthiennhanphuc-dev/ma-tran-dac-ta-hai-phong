@@ -100,6 +100,43 @@ function transformOutsideMath(str, transformFn) {
 }
 
 /**
+ * Chuẩn hóa các dấu bao quanh công thức toán từ AI:
+ * Chuyển đổi toàn bộ \(...\) thành $...$ và \[...\] thành $$...$$,
+ * đồng thời làm sạch các dấu $ lồng nhau hoặc bị rách để bảo đảm
+ * 100% công thức hợp lệ cho cả MathType OLE và Word Equation OMML.
+ */
+export function normalizeMathDelimiters(text) {
+  if (!text) return '';
+  let s = String(text);
+
+  // 1. Chuẩn hóa \[ ... \] thành $$ ... $$ (block math)
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => {
+    const clean = inner.replace(/\$/g, '').trim();
+    return '$$' + clean + '$$';
+  });
+
+  // 2. Chuẩn hóa \( ... \) thành $ ... $ (inline math)
+  // Loại bỏ mọi dấu $ nằm lẫn bên trong \( ... \) như \(AH=$\sqrt{16}$=4\)
+  s = s.replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) => {
+    const clean = inner.replace(/\$/g, '').trim();
+    return '$' + clean + '$';
+  });
+
+  // 3. Khắc phục các lỗi lồng nhau dạng $\( ... \)$ hoặc $\[ ... \]$
+  s = s.replace(/\$\\\(([\s\S]*?)\\\)\$/g, (_, inner) => '$' + inner.replace(/\$/g, '').trim() + '$');
+  s = s.replace(/\$\$\\\[([\s\S]*?)\\\]\$\$/g, (_, inner) => '$$' + inner.replace(/\$/g, '').trim() + '$$');
+
+  // 4. Dọn dẹp dấu $ thừa: 3 dấu $ trở lên -> tối đa $$
+  s = s.replace(/\${3,}/g, () => '$$');
+
+  // 5. Xóa các cặp $$ rỗng hoặc $ $ rỗng (không xóa $$ của block math)
+  s = s.replace(/\$\$\s*\$\$/g, '');
+  s = s.replace(/(^|[^\$])\$\s+\$([^\$]|$)/g, '$1$2');
+
+  return s;
+}
+
+/**
  * Tự động nhận diện các biểu thức công thức toán/lý/hóa trong câu hỏi & đáp án
  * chưa được bọc trong $...$ để bọc lại và chuẩn hóa cho Word Equation và MathType OLE
  */
@@ -111,6 +148,9 @@ export function autoEncloseMath(text) {
   // Loại bỏ các ký tự điều khiển cấm trong chuẩn XML 1.0 (trừ \t, \n, \r)
   s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   s = decodeHtmlEntities(s);
+
+  // BƯỚC QUAN TRỌNG: Chuẩn hóa toàn bộ delimiter \(...\) và \[...\] thành $...$ và $$...$$
+  s = normalizeMathDelimiters(s);
 
   // 1. Chuyển đổi số mũ & chỉ số Unicode
   s = transformOutsideMath(s, t => {
@@ -155,11 +195,15 @@ export function autoEncloseMath(text) {
     res = res.replace(/(\\(?:sqrt)(?:\[[^\]]+\])?\{[^}]+\})/g, '$$$1$$');
     res = res.replace(/(\\(?:vec|overrightarrow)\{[^}]+\})/g, '$$$1$$');
     res = res.replace(/\b([a-zA-Z][a-zA-Z0-9]*_\{[^{}]+\})/g, '$$$1$$');
+    // Bổ sung ký hiệu góc, song song, vuông góc, tam giác khi đứng ngoài $
+    res = res.replace(/(\\(?:angle|measuredangle|widehat)\s*\{?[A-Za-z0-9_]+\}?)/g, '$$$1$$');
+    res = res.replace(/([A-Z]{2,4}\s*\\parallel\s*[A-Z]{2,4})/g, '$$$1$$');
+    res = res.replace(/([A-Z]{2,4}\s*\\perp\s*[A-Z]{2,4})/g, '$$$1$$');
     return res;
   });
 
-  // 5. Dọn dẹp dấu $ thừa nếu có
-  s = s.replace(/\$\$\$+/g, '$').replace(/\$\s*\$/g, '');
+  // 5. Chuẩn hóa lần cuối các delimiter
+  s = normalizeMathDelimiters(s);
 
   return s;
 }

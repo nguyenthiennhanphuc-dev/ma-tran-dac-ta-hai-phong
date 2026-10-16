@@ -36,7 +36,7 @@ const createCell = (text, bold = false, align = AlignmentType.CENTER, rowSpan = 
   const strVal = String(displayValue !== undefined && displayValue !== null ? displayValue : "");
 
   let childrenRuns = [];
-  if (mathMode !== 'normal' && strVal.includes('$')) {
+  if (mathMode !== 'normal' && (strVal.includes('$') || strVal.includes('\\') || /[²³⁴₀₁₂₃₄₅₆₇₈₉\^_\+\-\*\/=]/.test(strVal))) {
     childrenRuns = parseMixedTextToRuns(strVal, 26, "Times New Roman", mathMode, bold);
   } else {
     childrenRuns = [new TextRun({ text: strVal, bold: bold, font: "Times New Roman", size: 26 })];
@@ -154,7 +154,8 @@ const buildOptionParagraphs = (dapAnA, dapAnB, dapAnC, dapAnD, fontSize = 28, is
     };
 
     const renderRunsForOpt = (text) => {
-        if (mathMode !== 'normal' && text && text.includes('$')) {
+        if (!text) return [new TextRun({ text: '', size: fontSize, font: 'Times New Roman' })];
+        if (mathMode !== 'normal') {
             return parseMixedTextToRuns(text, fontSize, 'Times New Roman', mathMode);
         }
         return [new TextRun({ text: text || '', size: fontSize, font: 'Times New Roman' })];
