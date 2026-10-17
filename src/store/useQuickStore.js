@@ -528,6 +528,16 @@ export const useQuickStore = create(
       })
     })),
 
+    updateTopicPhase: (topicId, isDau) => set((state) => ({
+      matrix: state.matrix.map(topic => {
+        if (topic.id !== topicId) return topic;
+        return {
+          ...topic,
+          donViKienThuc: (topic.donViKienThuc || []).map(dv => ({ ...dv, isNuaDauKi: isDau }))
+        };
+      })
+    })),
+
     addDonVi: (topicId) => set((state) => ({
       matrix: state.matrix.map(topic =>
         topic.id === topicId

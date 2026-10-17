@@ -494,6 +494,82 @@ assertEq(p4_8DiemVD, 2.0, 'Công nghệ 8: Tỉ lệ Vận dụng = 2.0đ (20%)'
 assertEq(p4_8DiemVDC, 1.0, 'Công nghệ 8: Tỉ lệ Vận dụng cao = 1.0đ (10%)');
 
 // ──────────────────────────────────────────────────────────
+// TEST 9: KHTN Cuối kì (CV 4956 - 25% Trước GK & 75% Sau GK)
+// ──────────────────────────────────────────────────────────
+console.log('\n🔒 TEST 9: KHTN Cuối kì (CV 4956 — 25% Trước GK & 75% Sau GK)');
+
+const khtnCuoiKiMatrix = [
+  { tenChuDe: 'Vật lí (Trước GK)', donViKienThuc: [makeDv('VL 1', 6, true), makeDv('VL 2', 6, true)] },
+  { tenChuDe: 'Vật lí (Sau GK)',   donViKienThuc: [makeDv('VL 3', 8, false), makeDv('VL 4', 8, false)] },
+  { tenChuDe: 'Hóa học (Trước GK)', donViKienThuc: [makeDv('HH 1', 6, true)] },
+  { tenChuDe: 'Hóa học (Sau GK)',   donViKienThuc: [makeDv('HH 2', 8, false), makeDv('HH 3', 8, false)] },
+  { tenChuDe: 'Sinh học (Trước GK)', donViKienThuc: [makeDv('SH 1', 6, true)] },
+  { tenChuDe: 'Sinh học (Sau GK)',   donViKienThuc: [makeDv('SH 2', 8, false), makeDv('SH 3', 8, false)] },
+];
+
+useExamStore.setState({
+  matrix: khtnCuoiKiMatrix,
+  examHeader: { monHoc: 'Khoa học tự nhiên', kyThi: 'Kiểm tra Cuối học kì 1' },
+  examConfig: { isCauTruc4213: true, isCauTrucKHTNVao10: false, isCauTrucToan3223: false },
+  config: { hasTuLuan: true, hasTraLoiNgan: true, isCuoiKi: '25-75' },
+  tuLuanConfig: { enabled: false, questions: [] },
+  dungSaiConfig: { enabled: false },
+});
+useExamStore.getState().autoFillMatrix();
+
+const m9 = useExamStore.getState().matrix;
+let ptsDau9 = 0, ptsSau9 = 0;
+let p1_9 = 0, p2_9Y = 0, p3_9 = 0;
+let p4_9TLSau = 0, p4_9TLDau = 0;
+let biet9 = 0, hieu9 = 0, vd9 = 0, vdc9 = 0;
+
+m9.forEach(t => t.donViKienThuc.forEach(dv => {
+  const p1 = ((dv.nhieuLuaChon?.biet || 0) + (dv.nhieuLuaChon?.hieu || 0)) * 0.25;
+  const p2 = ((dv.dungSai?.biet || 0) + (dv.dungSai?.hieu || 0) + (dv.dungSai?.vanDung || 0) + (dv.dungSai?.vanDungCao || 0)) * 0.25;
+  const p3 = ((dv.traLoiNgan?.biet || 0) + (dv.traLoiNgan?.hieu || 0) + (dv.traLoiNgan?.vanDung || 0) + (dv.traLoiNgan?.vanDungCao || 0)) * 0.25;
+  let p4 = 0;
+  if (dv.tuLuan?.subItems && dv.tuLuan.subItems.length > 0) {
+    p4 = dv.tuLuan.subItems.reduce((s, it) => s + (it.diem || 0), 0);
+    dv.tuLuan.subItems.forEach(s => {
+      if (s.level === 'biet') biet9 += s.diem || 0;
+      if (s.level === 'hieu') hieu9 += s.diem || 0;
+      if (s.level === 'vanDung') vd9 += s.diem || 0;
+      if (s.level === 'vanDungCao') vdc9 += s.diem || 0;
+    });
+  }
+
+  p1_9 += (dv.nhieuLuaChon?.biet || 0) + (dv.nhieuLuaChon?.hieu || 0);
+  p2_9Y += (dv.dungSai?.biet || 0) + (dv.dungSai?.hieu || 0) + (dv.dungSai?.vanDung || 0);
+  p3_9 += (dv.traLoiNgan?.biet || 0) + (dv.traLoiNgan?.hieu || 0) + (dv.traLoiNgan?.vanDung || 0);
+
+  biet9 += (dv.nhieuLuaChon?.biet || 0) * 0.25 + (dv.dungSai?.biet || 0) * 0.25;
+  hieu9 += (dv.nhieuLuaChon?.hieu || 0) * 0.25 + (dv.dungSai?.hieu || 0) * 0.25 + (dv.traLoiNgan?.hieu || 0) * 0.25;
+  vd9 += (dv.dungSai?.vanDung || 0) * 0.25 + (dv.traLoiNgan?.vanDung || 0) * 0.25;
+
+  const total = p1 + p2 + p3 + p4;
+  if (dv.isNuaDauKi) {
+    ptsDau9 += total;
+    if (p4 > 0) p4_9TLDau += p4;
+  } else {
+    ptsSau9 += total;
+    if (p4 > 0) p4_9TLSau += p4;
+  }
+}));
+
+assertEq(Math.round(ptsDau9 * 100) / 100, 2.5, 'KHTN Cuối kì: Điểm Trước GK = 2.5đ (25%)');
+assertEq(Math.round(ptsSau9 * 100) / 100, 7.5, 'KHTN Cuối kì: Điểm Sau GK = 7.5đ (75%)');
+assertEq(Math.round((ptsDau9 + ptsSau9) * 100) / 100, 10.0, 'KHTN Cuối kì: Tổng toàn đề = 10.0đ (100%)');
+assertEq(p1_9, 16, 'KHTN Cuối kì: P.I = 16 câu TN (4.0đ)');
+assertEq(p2_9Y, 8, 'KHTN Cuối kì: P.II = 8 ý Đúng/Sai (2 câu × 4 ý = 2.0đ)');
+assertEq(p3_9, 4, 'KHTN Cuối kì: P.III = 4 câu TLN (1.0đ)');
+assertEq(p4_9TLSau, 3.0, 'KHTN Cuối kì: 100% Tự luận (3.0đ) dồn vào Sau GK');
+assertEq(p4_9TLDau, 0, 'KHTN Cuối kì: 0đ Tự luận ở Trước GK');
+assertEq(Math.round(biet9 * 100) / 100, 4.0, 'KHTN Cuối kì: Tỉ lệ Nhận biết = 4.0đ (40%)');
+assertEq(Math.round(hieu9 * 100) / 100, 3.0, 'KHTN Cuối kì: Tỉ lệ Thông hiểu = 3.0đ (30%)');
+assertEq(Math.round(vd9 * 100) / 100, 2.0, 'KHTN Cuối kì: Tỉ lệ Vận dụng = 2.0đ (20%)');
+assertEq(Math.round(vdc9 * 100) / 100, 1.0, 'KHTN Cuối kì: Tỉ lệ Vận dụng cao = 1.0đ (10%)');
+
+// ──────────────────────────────────────────────────────────
 // KẾT QUẢ
 // ──────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(50)}`);

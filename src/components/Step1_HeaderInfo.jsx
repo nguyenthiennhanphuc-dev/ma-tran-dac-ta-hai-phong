@@ -182,6 +182,68 @@ export default function Step1_HeaderInfo() {
                       </span>
                     </button>
                   </div>
+
+                  {/* Tùy chọn Giữa kì / Cuối kì cho Cấu trúc Định kì 4-2-1-3 */}
+                  {examConfig.isCauTruc4213 && (
+                    <div className="p-2.5 bg-white border border-teal-200 rounded-xl shadow-xs space-y-2 mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                          <span>📅</span> Loại kỳ thi Định kì KHTN:
+                        </span>
+                        <span className="text-[10px] text-teal-700 font-semibold">
+                          {config.isCuoiKi === '25-75' ? '⚡ Chế độ Cuối kì: 25% Trước GK (2,5đ) — 75% Sau GK (7,5đ)' : 'Phân bổ theo số tiết thông thường'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateConfig('isCuoiKi', false);
+                            if (!examHeader.kyThi || /cuối/i.test(examHeader.kyThi)) {
+                              updateExamHeader('kyThi', 'ĐỀ KIỂM TRA GIỮA HỌC KÌ');
+                            }
+                          }}
+                          className={`p-2.5 rounded-lg border text-xs font-bold transition-all text-left flex flex-col gap-0.5 cursor-pointer ${
+                            !config.isCuoiKi
+                              ? 'bg-teal-600 text-white border-teal-700 shadow-sm'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>🎯 Đề Giữa kì</span>
+                            {!config.isCuoiKi && <span className="text-[10px] bg-teal-800 px-1.5 py-0.5 rounded text-white">Đang chọn</span>}
+                          </div>
+                          <span className={`text-[10px] font-normal ${!config.isCuoiKi ? 'text-teal-100' : 'text-slate-500'}`}>
+                            Nội dung đến giữa kì • Phân bổ theo số tiết
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateConfig('isCuoiKi', '25-75');
+                            if (!examHeader.kyThi || /giữa|định kì/i.test(examHeader.kyThi)) {
+                              updateExamHeader('kyThi', 'ĐỀ KIỂM TRA CUỐI HỌC KÌ');
+                            }
+                          }}
+                          className={`p-2.5 rounded-lg border text-xs font-bold transition-all text-left flex flex-col gap-0.5 cursor-pointer ${
+                            config.isCuoiKi === '25-75'
+                              ? 'bg-purple-600 text-white border-purple-700 shadow-sm'
+                              : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>📅 Đề Cuối kì (25% - 75%)</span>
+                            {config.isCuoiKi === '25-75' && <span className="text-[10px] bg-purple-800 px-1.5 py-0.5 rounded text-white font-bold">Đang chọn</span>}
+                          </div>
+                          <span className={`text-[10px] font-normal ${config.isCuoiKi === '25-75' ? 'text-purple-100' : 'text-slate-500'}`}>
+                            Trước GK: 2,5đ (25%) — Sau GK: 7,5đ (75%)
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

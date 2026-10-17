@@ -1702,8 +1702,26 @@ export const useExamStore = create(
             else if (state.config.isCuoiKi === '30-70') { budgetDau = 3.0; budgetSau = 7.0; }
             else if (state.config.isCuoiKi === '2.25-7.75') { budgetDau = 2.25; budgetSau = 7.75; }
 
-            const hasDau = allDvs.some(d => d.dv.isNuaDauKi);
-            const hasSau = allDvs.some(d => !d.dv.isNuaDauKi);
+            let hasDau = allDvs.some(d => d.dv.isNuaDauKi);
+            let hasSau = allDvs.some(d => !d.dv.isNuaDauKi);
+
+            // Tự động phân bổ giai đoạn nếu bật Cuối kì nhưng người dùng chưa kịp đánh dấu thủ công
+            if (isCuoiKiMode && !hasDau && allDvs.length >= 2) {
+              const halfCount = Math.floor(allDvs.length / 2);
+              for (let i = 0; i < halfCount; i++) {
+                allDvs[i].dv.isNuaDauKi = true;
+              }
+              hasDau = true;
+              hasSau = true;
+            } else if (isCuoiKiMode && !hasSau && allDvs.length >= 2) {
+              const halfCount = Math.floor(allDvs.length / 2);
+              for (let i = halfCount; i < allDvs.length; i++) {
+                allDvs[i].dv.isNuaDauKi = false;
+              }
+              hasDau = true;
+              hasSau = true;
+            }
+
             const hasBothPhases = isCuoiKiMode && hasDau && hasSau;
 
             const sumTietDau = allDvs.filter(d => d.dv.isNuaDauKi).reduce((s, d) => s + d.soTiet, 0);

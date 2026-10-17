@@ -500,18 +500,18 @@ export default function Step2_MatrixBuilder() {
                     <button
                       type="button"
                       onClick={() => updateTopicPhase(topic.id, true)}
-                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-all cursor-pointer"
-                      title="Gán tất cả bài trong chủ đề này là Nửa đầu kì (trước giữa kì)"
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-all cursor-pointer whitespace-nowrap"
+                      title="Gán tất cả bài trong chủ đề này là Trước giữa kì (25% điểm)"
                     >
-                      CĐ: Nửa đầu
+                      CĐ: Trước GK
                     </button>
                     <button
                       type="button"
                       onClick={() => updateTopicPhase(topic.id, false)}
-                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all cursor-pointer"
-                      title="Gán tất cả bài trong chủ đề này là Nửa sau kì (sau giữa kì)"
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all cursor-pointer whitespace-nowrap"
+                      title="Gán tất cả bài trong chủ đề này là Sau giữa kì (75% điểm)"
                     >
-                      CĐ: Nửa sau
+                      CĐ: Sau GK
                     </button>
                   </div>
                 )}
@@ -554,8 +554,8 @@ export default function Step2_MatrixBuilder() {
                         onChange={(e) => updateDonViPhase(topic.id, dv.id, e.target.value === 'dau')}
                         className={`text-[9px] px-1 py-0 rounded border font-semibold outline-none ${dv.isNuaDauKi ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
                       >
-                        <option value="sau">Nửa sau</option>
-                        <option value="dau">Nửa đầu</option>
+                        <option value="dau">Trước GK (25%)</option>
+                        <option value="sau">Sau GK (75%)</option>
                       </select>
                     )}
                     {dvCount > 1 && (

@@ -867,18 +867,18 @@ export default function Step2_MatrixBuilder() {
                     <button
                       type="button"
                       onClick={() => updateTopicPhase(topic.id, true)}
-                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-all cursor-pointer"
-                      title="Gán tất cả bài trong chủ đề này là Nửa đầu kì (trước giữa kì)"
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-300 transition-all cursor-pointer whitespace-nowrap"
+                      title="Gán tất cả bài trong chủ đề này là Trước giữa kì (25% điểm)"
                     >
-                      CĐ: Nửa đầu
+                      CĐ: Trước GK
                     </button>
                     <button
                       type="button"
                       onClick={() => updateTopicPhase(topic.id, false)}
-                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all cursor-pointer"
-                      title="Gán tất cả bài trong chủ đề này là Nửa sau kì (sau giữa kì)"
+                      className="text-[9px] px-1 py-0.5 rounded font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all cursor-pointer whitespace-nowrap"
+                      title="Gán tất cả bài trong chủ đề này là Sau giữa kì (75% điểm)"
                     >
-                      CĐ: Nửa sau
+                      CĐ: Sau GK
                     </button>
                   </div>
                 )}
@@ -942,8 +942,8 @@ export default function Step2_MatrixBuilder() {
                         onChange={(e) => updateDonViPhase(topic.id, dv.id, e.target.value === 'dau')}
                         className={`text-[9px] px-1 py-0 rounded border font-semibold outline-none ${dv.isNuaDauKi ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
                       >
-                        <option value="sau">Nửa sau</option>
-                        <option value="dau">Nửa đầu</option>
+                        <option value="dau">Trước GK (25%)</option>
+                        <option value="sau">Sau GK (75%)</option>
                       </select>
                     )}
                     {dvCount > 1 ? (
@@ -2344,16 +2344,16 @@ export default function Step2_MatrixBuilder() {
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <span className={`px-2.5 py-1 rounded-full font-bold border ${Math.abs(cuoiKiStats.sumDauPts - cuoiKiStats.targetDau) < 0.05 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'}`}>
-                      📘 Nửa đầu: {cuoiKiStats.sumDauPts.toFixed(2).replace('.00', '')} / {cuoiKiStats.targetDau}đ ({(cuoiKiStats.sumDauPts * 10).toFixed(0)}%)
+                      📘 Trước GK: {cuoiKiStats.sumDauPts.toFixed(2).replace('.00', '')} / {cuoiKiStats.targetDau}đ ({(cuoiKiStats.sumDauPts * 10).toFixed(0)}%)
                     </span>
                     <span className="text-slate-400 font-bold">+</span>
                     <span className={`px-2.5 py-1 rounded-full font-bold border ${Math.abs(cuoiKiStats.sumSauPts - cuoiKiStats.targetSau) < 0.05 ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-amber-50 text-amber-800 border-amber-300'}`}>
-                      📙 Nửa sau: {cuoiKiStats.sumSauPts.toFixed(2).replace('.00', '')} / {cuoiKiStats.targetSau}đ ({(cuoiKiStats.sumSauPts * 10).toFixed(0)}%)
+                      📙 Sau GK: {cuoiKiStats.sumSauPts.toFixed(2).replace('.00', '')} / {cuoiKiStats.targetSau}đ ({(cuoiKiStats.sumSauPts * 10).toFixed(0)}%)
                     </span>
                   </div>
                   {cuoiKiStats.countDauDvs === 0 ? (
                     <span className="text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                      💡 Chưa có bài nào chọn "Nửa đầu" (bấm nút "CĐ: Nửa đầu" ở cột Chủ đề để gán nhanh)
+                      💡 Chưa có bài nào chọn "Trước GK" (bấm nút "CĐ: Trước GK" ở cột Chủ đề hoặc bấm nút Tự động bên cạnh)
                     </span>
                   ) : cuoiKiStats.isBalanced ? (
                     <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
@@ -2361,18 +2361,36 @@ export default function Step2_MatrixBuilder() {
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300 flex items-center gap-1">
-                      ⚠️ Nửa đầu đang lệch {Math.abs(cuoiKiStats.sumDauPts - cuoiKiStats.targetDau).toFixed(2).replace('.00', '')}đ
+                      ⚠️ Trước GK đang lệch {Math.abs(cuoiKiStats.sumDauPts - cuoiKiStats.targetDau).toFixed(2).replace('.00', '')}đ
                     </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {cuoiKiStats.countDauDvs === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allDvs = [];
+                        matrix.forEach(t => (t.donViKienThuc || []).forEach(dv => allDvs.push({ tId: t.id, dvId: dv.id })));
+                        const half = Math.ceil(allDvs.length / 2);
+                        allDvs.forEach((item, idx) => {
+                          updateDonViPhase(item.tId, item.dvId, idx < half);
+                        });
+                        setTimeout(() => autoFillMatrix(), 50);
+                      }}
+                      className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                      title="Tự động đặt nửa số bài đầu là Trước GK, nửa sau là Sau GK và tính ma trận chuẩn"
+                    >
+                      <span>⚡</span> Tự động chia & Tính 25% - 75%
+                    </button>
+                  )}
                   {!cuoiKiStats.isBalanced && cuoiKiStats.countDauDvs > 0 && (
                     <button
                       type="button"
                       onClick={autoFillMatrix}
                       className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                      title="Tự động cân bằng chuẩn 2,5đ Nửa đầu và 7,5đ Nửa sau"
+                      title="Tự động cân bằng chuẩn 2,5đ Trước GK và 7,5đ Sau GK"
                     >
                       <span>⚡</span> Cân bằng 25% - 75%
                     </button>
