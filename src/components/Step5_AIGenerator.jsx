@@ -868,9 +868,14 @@ export default function Step5_AIGenerator() {
 
   const hasManualTLConfig = tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
 
-  const isCauTrucToan3223 = Boolean(examConfig?.isCauTrucToan3223);
-  const isCauTrucToan8_5050 = Boolean(examConfig?.isCauTrucToan8_5050);
-  const isCauTrucCongNghe8_7030 = Boolean(examConfig?.isCauTrucCongNghe8_7030);
+  const monHocCurrent = examHeader?.monHoc || '';
+  const isKHTNMonCurrent = /khoa\s*học\s*tự\s*nhiên|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHocCurrent);
+  const isCongNgheMonCurrent = /công\s*nghệ|cong\s*nghe/i.test(monHocCurrent);
+  const isToanMonCurrent = /toán|toan/i.test(monHocCurrent);
+
+  const isCauTrucToan3223 = isToanMonCurrent && Boolean(examConfig?.isCauTrucToan3223);
+  const isCauTrucToan8_5050 = isToanMonCurrent && Boolean(examConfig?.isCauTrucToan8_5050);
+  const isCauTrucCongNghe8_7030 = isCongNgheMonCurrent && Boolean(examConfig?.isCauTrucCongNghe8_7030);
 
   const handleCopyExamPrompt = async () => {
     const monHoc = examHeader?.monHoc || '';
@@ -886,7 +891,7 @@ export default function Step5_AIGenerator() {
       (!config.hasTuLuan && isKHTN && (examConfig?.tongDiemP1 === 5.5 || examConfig?.tongDiemP2 === 3.0)) ||
       (examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(examHeader.kyThi) && isKHTN && !config.hasTuLuan)
     );
-    const isCauTruc4213 = !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 || isKHTN);
+    const isCauTruc4213 = isKHTN && !isCauTrucKHTNVao10 && (examConfig?.isCauTruc4213 !== false);
 
     // Tính lớp: KHTN Vào 10 → mặc định lớp 9; KHTN thường → lấy từ nút chọn lớp; môn khác → bóc từ tên môn (vd "Toán 6" → "6")
     const _isKHTNForGrade = isKHTNMon;
@@ -899,6 +904,20 @@ export default function Step5_AIGenerator() {
     let prompt = '';
     if (isCauTrucKHTNVao10) {
       prompt = `Bạn là một chuyên gia ra đề thi tuyển sinh vào lớp 10 THPT xuất sắc. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ THI TUYỂN SINH VÀO LỚP 10 THPT MÔN KHOA HỌC TỰ NHIÊN (CHUẨN QUYẾT ĐỊNH 1038/QĐ-SGDĐT HẢI PHÒNG - THỜI GIAN LÀM BÀI: 60 PHÚT - 100% TRẮC NGHIỆM GỒM 40 LỆNH HỎI) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.\n`;
+    } else if (isCauTruc4213) {
+      const isCuoiKi2575 = config.isCuoiKi === '25-75';
+      prompt = `Bạn là một chuyên gia ra đề thi môn Khoa học tự nhiên cấp THCS xuất sắc, am hiểu sâu sắc Chương trình GDPT 2018. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC MÔN KHOA HỌC TỰ NHIÊN ${gradeName} (${isCuoiKi2575 ? 'ĐỀ KIỂM TRA CUỐI HỌC KÌ: 25% TRƯỚC GIỮA KÌ - 75% SAU GIỮA KÌ' : 'ĐỀ KIỂM TRA ĐỊNH KÌ'} - CHUẨN CÔNG VĂN 4956/BGDĐT - CƠ CẤU 4 - 2 - 1 - 3 - THỜI GIAN LÀM BÀI: 60/90 PHÚT - TỔNG 10,0 ĐIỂM - 25 CÂU HỎI LỚN) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.
+
+📊 CƠ CẤU ĐỀ THI CHUẨN KHTN THCS (CÔNG VĂN 4956 - 4-2-1-3 - 25 CÂU - 10,0 ĐIỂM):
+- TỈ LỆ MỨC ĐỘ NHẬN THỨC TOÀN ĐỀ: 40% Nhận biết (4,0 điểm) - 30% Thông hiểu (3,0 điểm) - 20% Vận dụng (2,0 điểm) - 10% Vận dụng cao (1,0 điểm).
+- PHẦN I (4,0 điểm): 16 câu trắc nghiệm nhiều phương án lựa chọn (Câu 1 đến Câu 16). Mỗi câu 0,25 điểm. Gồm 12 câu mức độ Nhận biết (3,0 điểm) và 4 câu mức độ Thông hiểu (1,0 điểm).${isCuoiKi2575 ? '\n  (Trong đó: 8 câu thuộc giai đoạn Trước GK [2,0đ: 6 Biết + 2 Hiểu] và 8 câu thuộc giai đoạn Sau GK [2,0đ: 6 Biết + 2 Hiểu])' : ''}
+- PHẦN II (2,0 điểm): 2 câu trắc nghiệm Đúng/Sai (Câu 17, Câu 18). Mỗi câu gồm 4 ý a, b, c, d (mỗi ý 0,25 điểm = 1,0 điểm/câu, tổng 8 ý = 2,0 điểm). Cơ cấu bắt buộc mỗi câu: 2 ý Nhận biết (ý a, b), 1 ý Thông hiểu (ý c), 1 ý Vận dụng (ý d). Tuyệt đối không có Vận dụng cao ở phần này.${isCuoiKi2575 ? '\n  (Toàn bộ 2 câu Đúng/Sai = 2,0 điểm thuộc về giai đoạn kiến thức Sau GK)' : ''}
+- PHẦN III (1,0 điểm): 4 câu trắc nghiệm trả lời ngắn (Câu 19 đến Câu 22). Mỗi câu 0,25 điểm. Gồm 2 câu mức độ Thông hiểu (0,5 điểm) và 2 câu mức độ Vận dụng (0,5 điểm). Mỗi câu độc lập, đáp án là 1 con số cụ thể (tối đa 4 chữ số).${isCuoiKi2575 ? '\n  (Trong đó: 2 câu thuộc giai đoạn Trước GK [0,5đ: 1 Hiểu + 1 VD] và 2 câu thuộc giai đoạn Sau GK [0,5đ: 1 Hiểu + 1 VD])' : ''}
+- PHẦN IV (3,0 điểm): 3 câu Tự luận (Câu 23 đến Câu 25). Mỗi câu 1,0 điểm:
+  + Câu 23 (1,0 điểm): Mức độ Thông hiểu
+  + Câu 24 (1,0 điểm): Mức độ Vận dụng
+  + Câu 25 (1,0 điểm): Mức độ Vận dụng cao
+  Trình bày lời giải chi tiết, chuẩn mực từng bước kèm thang điểm chi tiết cho từng câu.${isCuoiKi2575 ? '\n  (Toàn bộ 3 câu Tự luận = 3,0 điểm thuộc về giai đoạn kiến thức Sau GK)' : ''}\n`;
     } else if (isCauTrucToan8_5050) {
       prompt = `Bạn là một chuyên gia ra đề thi môn Toán cấp THCS xuất sắc, am hiểu sâu sắc Chương trình GDPT 2018. Dựa vào TÀI LIỆU SÁCH GIÁO KHOA/BÀI GIẢNG tôi đính kèm, hãy biên soạn một ĐỀ KIỂM TRA ĐÁNH GIÁ NĂNG LỰC MÔN TOÁN 8 (CƠ CẤU 50% TRẮC NGHIỆM : 50% TỰ LUẬN - CƠ CẤU 3 - 1 - 1 - 5 - THỜI GIAN LÀM BÀI: 90 PHÚT - TỔNG 10,0 ĐIỂM - 22 CÂU HỎI) BÁM SÁT MA TRẬN BẢN ĐẶC TẢ YÊU CẦU CẦN ĐẠT VÀ KHUNG ĐỀ KIỂM TRA.
 
