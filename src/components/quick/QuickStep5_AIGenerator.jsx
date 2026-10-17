@@ -1174,6 +1174,13 @@ Giải thích: [Giải thích ngắn gọn]
 - Ý c) mức Thông hiểu (0,25 điểm)
 - Ý d) mức Thông hiểu (0,25 điểm)
 (CỐ ĐỊNH 2 Ý BIẾT + 2 Ý HIỂU; TUYỆT ĐỐI KHÔNG CÓ VẬN DỤNG VÀ VẬN DỤNG CAO Ở CÂU ĐÚNG/SAI).\n`;
+    } else if (isCauTrucToan8_5050) {
+      prompt += `⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý (BẮT BUỘC THEO CẤU TRÚC TOÁN 8):
+- Ý a) mức Nhận biết (0,25 điểm)
+- Ý b) mức Nhận biết (0,25 điểm)
+- Ý c) mức Thông hiểu (0,25 điểm)
+- Ý d) mức Vận dụng (0,25 điểm)
+(TUYỆT ĐỐI KHÔNG CÓ VẬN DỤNG CAO Ở CÂU ĐÚNG/SAI).\n`;
     } else if (isCauTruc4213 || isCauTrucToan3223) {
       prompt += `⚠️ YÊU CẦU PHÂN MỨC ĐỘ 4 Ý (BẮT BUỘC THEO CÔNG VĂN 4956/SGDĐT & CẤU TRÚC TOÁN KHÁNH HÒA):
 - Ý a) mức Nhận biết
@@ -1198,7 +1205,7 @@ Giải thích: [Giải thích ngắn gọn]
       prompt += `b) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề b]\n`;
       prompt += `c) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề c]\n`;
       prompt += `d) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề d]\n`;
-    } else if (isCauTruc4213 || isCauTrucToan3223) {
+    } else if (isCauTruc4213 || isCauTrucToan3223 || isCauTrucToan8_5050) {
       prompt += `a) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề a]\n`;
       prompt += `b) (Mức độ: Nhận biết, Mã năng lực: ...) [Mệnh đề b]\n`;
       prompt += `c) (Mức độ: Thông hiểu, Mã năng lực: ...) [Mệnh đề c]\n`;
@@ -1217,6 +1224,20 @@ Giải thích: [Giải thích ngắn gọn]
         prompt += `⚠️ ĐẶC BIỆT (ĐỀ THI TUYỂN SINH VÀO 10 KHTN - QĐ 1038 HẢI PHÒNG):
 - Gồm 6 câu Trả lời ngắn là 6 câu ở mức độ VẬN DỤNG tính toán/xử lý số liệu thực tiễn (2 câu phân môn Vật lí, 2 câu phân môn Hóa học, 2 câu phân môn Sinh học).
 - Đáp án mỗi câu BẮT BUỘC là MỘT CON SỐ CỤ THỂ, TỐI ĐA 4 CHỮ SỐ (ví dụ: 15, 0.5, 120, 1500). Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
+`;
+      } else if (isCauTruc4213) {
+        prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC KHTN ĐỊNH KÌ - CV 4956 - 4-2-1-3):
+- Gồm 4 câu Trắc nghiệm trả lời ngắn (Câu 19 đến Câu 22), mỗi câu đúng được 0,25 điểm (Tổng 1,0 điểm).
+- Cơ cấu mức độ nhận thức: Gồm 2 câu Thông hiểu (0,5 điểm) và 2 câu Vận dụng (0,5 điểm).
+- BẮT BUỘC đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG LÀ MỘT CON SỐ CỤ THỂ (tối đa 4 chữ số, ví dụ: 5, 12, 150, 0.25, 12.5) hoặc phân số/kết quả tính toán ngắn gọn.
+- Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
+`;
+      } else if (isCauTrucToan8_5050) {
+        prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN 8 - 50% TRẮC NGHIỆM : 50% TỰ LUẬN):
+- Gồm 4 câu Trắc nghiệm trả lời ngắn (Câu 14 đến Câu 17), mỗi câu đúng được 0,25 điểm (Tổng 1,0 điểm).
+- Cơ cấu mức độ nhận thức: Gồm 3 câu Thông hiểu (0,75 điểm) và 1 câu Vận dụng (0,25 điểm).
+- BẮT BUỘC đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG LÀ MỘT CON SỐ CỤ THỂ (tối đa 4 chữ số, ví dụ: 5, 12, 150, 0.25, 12.5) hoặc phân số/biểu thức ngắn gọn.
+- Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
 `;
       } else if (isCauTrucToan3223) {
         prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN KHÁNH HÒA - 3-2-2-3):
@@ -1250,9 +1271,28 @@ Giải thích: [Cách giải/Lý do ngắn gọn]\n\n`;
     })();
 
     if (config.hasTuLuan) {
-      const _ktField = (hasManualTLConfig && tuLuanConfig?.questions?.some(q => q.kienThuc === 'hinh_hoc' || q.kienThuc === 'dai_so')) ? ', Kiến thức: [Hình học/Đại số]' : '';
+      const _ktField = (isCauTrucToan8_5050 || (hasManualTLConfig && tuLuanConfig?.questions?.some(q => q.kienThuc === 'hinh_hoc' || q.kienThuc === 'dai_so'))) ? ', Kiến thức: [Hình học/Đại số]' : '';
       prompt += `[LOẠI 4: TỰ LUẬN] (Tổng điểm toàn phần tự luận: ${tongDiemTuLuanThucTe} điểm)\n`;
-      if (isCauTrucToan3223) {
+      if (isCauTruc4213) {
+        prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC KHTN ĐỊNH KÌ - CV 4956 - 4-2-1-3):
+- Tổng điểm phần Tự luận: 3,0 điểm, gồm đúng 3 câu đơn ý (Câu 23 đến Câu 25), mỗi câu 1,0 điểm:
+  + Câu 23 (1,0 điểm): Mức độ Thông hiểu.
+  + Câu 24 (1,0 điểm): Mức độ Vận dụng.
+  + Câu 25 (1,0 điểm): Mức độ Vận dụng cao.
+- Mỗi câu là một bài tập/tình huống khoa học thực tiễn độc lập, trình bày lời giải chi tiết từng bước rõ ràng, kèm thang điểm cụ thể cho từng bước (cách nhau bằng " || [Điểm]").
+`;
+      } else if (isCauTrucToan8_5050) {
+        prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN 8 - 50% TRẮC NGHIỆM : 50% TỰ LUẬN):
+- Tổng điểm phần Tự luận: 5,0 điểm, gồm 5 câu (Câu 18 đến Câu 22), mỗi câu gồm 2 phần/ý a, b (mỗi phần 0,5 điểm).
+- Cơ cấu mức độ nhận thức phần Tự luận: 5 ý Thông hiểu (2,5đ) + 3 ý Vận dụng (1,5đ) + 2 ý Vận dụng cao (1,0đ).
+  + Câu 18 (1,0đ): Đại số - 2 ý Thông hiểu (18a: 0,5đ, 18b: 0,5đ).
+  + Câu 19 (1,0đ): Đại số - 2 ý Thông hiểu (19a: 0,5đ, 19b: 0,5đ).
+  + Câu 20 (1,0đ): Hình học - 1 ý Thông hiểu (20a: 0,5đ) + 1 ý Vận dụng (20b: 0,5đ).
+  + Câu 21 (1,0đ): Hình học - 2 ý Vận dụng (21a: 0,5đ, 21b: 0,5đ).
+  + Câu 22 (1,0đ): Đại số - 2 ý Vận dụng cao (22a: 0,5đ, 22b: 0,5đ).
+- Mỗi câu trình bày bài giải chi tiết từng bước rõ ràng, kèm thang điểm cụ thể cho từng bước (cách nhau bằng " || [Điểm]").
+`;
+      } else if (isCauTrucToan3223) {
         prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN KHÁNH HÒA - 3-2-2-3):
 - Tổng điểm phần Tự luận: 3,0 điểm.
 - Cơ cấu mức độ nhận thức: Mức độ Thông hiểu đạt 1,5 điểm và mức độ Vận dụng đạt 1,5 điểm.
@@ -1335,10 +1375,10 @@ Giải thích: [Ngắn gọn]
                ? 'Thông hiểu, Thông hiểu, Vận dụng, Vận dụng' 
                : isCauTrucCongNghe8_7030
                ? 'Nhận biết, Nhận biết, Thông hiểu, Thông hiểu'
-               : (isCauTruc4213 || isCauTrucToan3223)
+               : (isCauTruc4213 || isCauTrucToan3223 || isCauTrucToan8_5050)
                ? 'Nhận biết, Nhận biết, Thông hiểu, Vận dụng' 
                : 'Nhận biết, Thông hiểu, Vận dụng, Vận dụng cao';
-             const p2Num = (isCauTrucToan3223 || isCauTrucCongNghe8_7030) ? (12 + qIndexP2) : qIndexP2;
+             const p2Num = (isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? (12 + qIndexP2) : isCauTruc4213 ? (16 + qIndexP2) : qIndexP2;
              p2Text += `- Câu ${p2Num}: Đề bài chung + 4 ý (${dsMucDoDesc}), Thuộc chủ đề: ${tenChuDe} (${tenBai})\n`;
              qIndexP2++;
         }
@@ -1349,7 +1389,7 @@ Giải thích: [Ngắn gọn]
                 const count = Number(dv.traLoiNgan?.[level]) || 0;
                 for(let i=0; i<count; i++) {
                     const levelName = level === 'biet' ? 'Nhận biết' : level === 'hieu' ? 'Thông hiểu' : 'Vận dụng';
-                    const p3Num = isCauTrucToan3223 ? (14 + qIndexP3) : qIndexP3;
+                    const p3Num = isCauTrucToan8_5050 ? (13 + qIndexP3) : isCauTrucToan3223 ? (14 + qIndexP3) : isCauTruc4213 ? (18 + qIndexP3) : qIndexP3;
                     p3Text += `- Câu ${p3Num}: Mức độ ${levelName}, Thuộc chủ đề: ${tenChuDe} (${tenBai})\n`;
                     qIndexP3++;
                 }
@@ -1374,7 +1414,7 @@ Giải thích: [Ngắn gọn]
            tuLuanConfig.questions.forEach((q, i) => {
               const kienThuc = q.kienThuc === 'hinh_hoc' ? 'Hình học' : q.kienThuc === 'dai_so' ? 'Đại số' : 'Tổng hợp';
               const totalQDiem = q.subItems ? Math.round(q.subItems.reduce((s, sub) => s + (sub.diem || 0), 0) * 100) / 100 : 0;
-              const p4Num = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : (i + 1);
+              const p4Num = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan8_5050 ? (17 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : isCauTruc4213 ? (22 + i + 1) : (i + 1);
               p4Text += `- Câu ${p4Num}: Dạng ${kienThuc}, Số ý: ${q.subItems?.length || 1} ý (tổng ${totalQDiem} điểm).\n`;
               if (q.subItems && q.subItems.length > 1) {
                  q.subItems.forEach((sub, j) => {
@@ -1385,7 +1425,7 @@ Giải thích: [Ngắn gọn]
            });
        } else {
           localTuLuanGroups.forEach((group, index) => {
-               const p4Num = isCauTrucCongNghe8_7030 ? (16 + index + 1) : isCauTrucToan3223 ? (18 + index + 1) : (index + 1);
+               const p4Num = isCauTrucCongNghe8_7030 ? (16 + index + 1) : isCauTrucToan8_5050 ? (17 + index + 1) : isCauTrucToan3223 ? (18 + index + 1) : isCauTruc4213 ? (22 + index + 1) : (index + 1);
                if (group.items.length === 1) {
                    p4Text += `- Câu ${p4Num}: 1 ý (Mức độ: ${group.items[0].levelName}, ${group.items[0].diem} điểm, Chủ đề: ${group.items[0].tenChuDe} - ${group.items[0].tenBai})\n`;
                } else {
@@ -1748,6 +1788,8 @@ Giải thích: [Ngắn gọn]
                 prompt += ` - Tự luận [LOẠI 4]: ${totalYTL} ý${tlLevelStr} — tổng ${tongDiem}đ${indStr}\n`;
               } else if (isCauTrucCongNghe8_7030) {
                 prompt += ` - Tự luận [LOẠI 4]: ${totalYTL} phần/ý (2 câu × 2 ý a, b)${tlLevelStr} — tổng ${tongDiem}đ${indStr}\n`;
+              } else if (isCauTrucToan8_5050) {
+                prompt += ` - Tự luận [LOẠI 4]: ${totalYTL} phần/ý (5 câu × 2 ý a, b × 0,5đ)${tlLevelStr} — tổng ${tongDiem}đ${indStr}\n`;
               } else if (isCauTrucToan3223) {
                 prompt += ` - Tự luận [LOẠI 4]: ${totalYTL} câu tự luận (mỗi câu 1,0 điểm)${tlLevelStr} — tổng ${tongDiem}đ${indStr}\n`;
               } else if (isCauTruc4213 || isKHTN) {
@@ -1771,6 +1813,8 @@ Giải thích: [Ngắn gọn]
           prompt += `     ⚠️ BẮT BUỘC (QĐ 1038/QĐ-SGDĐT HẢI PHÒNG): 4 ý trong mỗi câu Đúng/Sai gồm: ý a) Thông hiểu, ý b) Thông hiểu, ý c) Vận dụng, ý d) Vận dụng. Tuyệt đối không có ý Nhận biết hay Vận dụng cao ở câu Đúng/Sai.\n`;
         } else if (isCauTrucCongNghe8_7030) {
           prompt += `     ⚠️ BẮT BUỘC (CẤU TRÚC CÔNG NGHỆ 8 - CÂU 13 ĐẾN 16): 4 ý trong mỗi câu Đúng/Sai gồm đúng: 2 ý Nhận biết (a, b) và 2 ý Thông hiểu (c, d). Tuyệt đối không có Vận dụng hay Vận dụng cao.\n`;
+        } else if (isCauTrucToan8_5050) {
+          prompt += `     ⚠️ BẮT BUỘC (CẤU TRÚC TOÁN 8 - CÂU 13): 4 ý trong câu Đúng/Sai này phải tuân thủ nghiêm ngặt mức độ nhận thức: ý a) Nhận biết, ý b) Nhận biết, ý c) Thông hiểu, ý d) Vận dụng. Tuyệt đối không có Vận dụng cao.\n`;
         } else if (isCauTruc4213 || isCauTrucToan3223) {
           prompt += `     ⚠️ BẮT BUỘC: 4 ý trong mỗi câu phải tuân thủ nghiêm ngặt cấu trúc đổi mới (CV 4956 / Toán Khánh Hòa): ý a) Nhận biết, ý b) Nhận biết, ý c) Thông hiểu, ý d) Vận dụng. Tuyệt đối không có Vận dụng cao ở câu Đúng/Sai.\n`;
         } else {
@@ -1784,6 +1828,10 @@ Giải thích: [Ngắn gọn]
       if (soCauTraLoiNgan > 0) {
         if (isCauTrucKHTNVao10) {
           prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trả lời ngắn độc lập ở mức độ VẬN DỤNG (2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học - đáp án là 1 con số cụ thể tối đa 4 chữ số, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
+        } else if (isCauTruc4213) {
+          prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trắc nghiệm trả lời ngắn độc lập (Câu 19 đến Câu 22, mỗi câu đúng 0,25đ; gồm 2 câu Thông hiểu và 2 câu Vận dụng, đáp án là 1 con số cụ thể, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
+        } else if (isCauTrucToan8_5050) {
+          prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trắc nghiệm trả lời ngắn độc lập (Câu 14 đến Câu 17, mỗi câu đúng 0,25đ; gồm 3 câu Thông hiểu và 1 câu Vận dụng, đáp án là 1 con số cụ thể, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
         } else if (isCauTrucToan3223) {
           prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trả lời ngắn độc lập (Câu 15 đến Câu 18, mỗi câu đúng 0,50đ; gồm 2 câu Thông hiểu và 2 câu Vận dụng, đáp án là 1 con số cụ thể, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
         } else {
@@ -1792,32 +1840,42 @@ Giải thích: [Ngắn gọn]
       }
       if (config.hasTuLuan && soCauTuLuan > 0) {
         if (hasManualTLConfig) {
+          const getQName = (q, i) => q.label || (isCauTrucCongNghe8_7030 ? `Câu ${16 + i + 1}` : (isCauTrucToan8_5050 ? `Câu ${17 + i + 1}` : (isCauTrucToan3223 ? `Câu ${18 + i + 1}` : (isCauTruc4213 ? `Câu ${22 + i + 1}` : `Câu ${i + 1}`))));
+          const getKienThuc = (q, i) => q.kienThuc || (isCauTrucToan8_5050 ? (i === 0 || i === 1 || i === 4 ? 'dai_so' : 'hinh_hoc') : '');
+
           const cauStructureDesc = tuLuanConfig.questions.map((q, i) => {
             const nY = q.subItems?.length || 1;
             const tongDiemQ = q.subItems ? Math.round(q.subItems.reduce((s, si) => s + (si.diem || 0), 0) * 100) / 100 : 0;
             const yDetails = q.subItems ? q.subItems.slice(0, nY).map((sub, j) => `ý ${['a', 'b', 'c'][j]}=${Number(sub.diem) || 0}đ`).join(', ') : '';
             const kieuY = q.kieuY || 'chung';
             const kieuDesc = nY > 1 ? (kieuY === 'chung' ? ' [đề bài chung]' : ' [ý độc lập]') : '';
-            const ktLabel = q.kienThuc === 'hinh_hoc' ? ' [Hình học]' : q.kienThuc === 'dai_so' ? ' [Đại số]' : '';
-            const p4Num = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : (i + 1);
-            return `câu ${p4Num}${ktLabel}: ${nY > 1 ? `${nY} ý (${yDetails})${kieuDesc} — tổng ${tongDiemQ}đ` : `1 ý — ${tongDiemQ}đ`}`;
+            const ktVal = getKienThuc(q, i);
+            const ktLabel = ktVal === 'hinh_hoc' ? ' [Hình học]' : ktVal === 'dai_so' ? ' [Đại số]' : '';
+            const p4Num = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan8_5050 ? (17 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : isCauTruc4213 ? (22 + i + 1) : (i + 1);
+            return `${getQName(q, i)}${ktLabel}: ${nY > 1 ? `${nY} ý (${yDetails})${kieuDesc} — tổng ${tongDiemQ}đ` : `1 ý — ${tongDiemQ}đ`}`;
           }).join('; ');
           prompt += `  → LOẠI 4: Tổng ${soCauTuLuan} Câu tự luận. CẤU TRÚC BẮT BUỘC: ${cauStructureDesc}. ⚠️ [đề bài chung] = 1 tình huống/bài toán chung, phát triển thành các ý a, b, c liên quan; [ý độc lập] = mỗi ý là câu hỏi riêng không liên quan nhau. TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
           // Thêm yêu cầu kienThuc chi tiết per câu nếu có
-          const hasKienThuc = tuLuanConfig.questions.some(q => q.kienThuc === 'hinh_hoc' || q.kienThuc === 'dai_so');
+          const hasKienThuc = tuLuanConfig.questions.some((q, i) => Boolean(getKienThuc(q, i)));
           if (hasKienThuc) {
             tuLuanConfig.questions.forEach((q, i) => {
-              if (q.kienThuc === 'hinh_hoc') {
-                prompt += `     ↳ Câu ${i + 1} [Hình học]: BẮT BUỘC ra câu hỏi thuộc lĩnh vực HÌNH HỌC (hình học phẳng, hình không gian, tọa độ, hình học giải tích...). KHÔNG ra câu đại số.\n`;
-              } else if (q.kienThuc === 'dai_so') {
-                prompt += `     ↳ Câu ${i + 1} [Đại số]: BẮT BUỘC ra câu hỏi thuộc lĩnh vực ĐẠI SỐ / GIẢI TÍCH (hàm số, phương trình, bất phương trình, tích phân, chuỗi số...). KHÔNG ra câu hình học.\n`;
+              const qName = getQName(q, i);
+              const ktVal = getKienThuc(q, i);
+              if (ktVal === 'hinh_hoc') {
+                prompt += `     ↳ ${qName} [Hình học]: BẮT BUỘC ra câu hỏi thuộc lĩnh vực HÌNH HỌC (hình học phẳng, hình không gian, tọa độ, hình học giải tích...). KHÔNG ra câu đại số.\n`;
+              } else if (ktVal === 'dai_so') {
+                prompt += `     ↳ ${qName} [Đại số]: BẮT BUỘC ra câu hỏi thuộc lĩnh vực ĐẠI SỐ / GIẢI TÍCH (hàm số, phương trình, bất phương trình, tích phân, chuỗi số...). KHÔNG ra câu hình học.\n`;
               }
             });
           }
         } else if (isCauTrucCongNghe8_7030) {
           prompt += `  → LOẠI 4: Xuất thành 2 Câu tự luận (Câu 17 [2,0đ Vận dụng: 2 ý a, b × 1,0đ] và Câu 18 [1,0đ Vận dụng cao: 2 ý a, b × 0,5đ]; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
+        } else if (isCauTrucToan8_5050) {
+          prompt += `  → LOẠI 4: Xuất thành 5 Câu tự luận (Câu 18 đến Câu 22, mỗi câu gồm 2 ý a, b mỗi ý 0,5đ; gồm 5 ý Thông hiểu [2,5đ], 3 ý Vận dụng [1,5đ], 2 ý Vận dụng cao [1,0đ - trọn vẹn Câu 22]; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
         } else if (isCauTrucToan3223) {
-          prompt += `  → LOẠI 4: Xuất thành ${soCauTuLuan} Câu tự luận (Câu 19 đến Câu 21, mỗi câu 1,0 điểm: gồm 1 câu Thông hiểu và 2 câu Vận dụng; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
+          prompt += `  → LOẠI 4: Xuất thành ${soCauTuLuan} Câu tự luận (Câu 19 đến Câu ${18 + soCauTuLuan}, gồm các câu mức Thông hiểu [tổng 1,5đ] và mức Vận dụng [tổng 1,5đ]; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
+        } else if (isCauTruc4213) {
+          prompt += `  → LOẠI 4: Xuất thành 3 Câu tự luận độc lập (Câu 23: 1,0đ Thông hiểu; Câu 24: 1,0đ Vận dụng; Câu 25: 1,0đ Vận dụng cao; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
         } else {
           const cauStructureDesc = localTuLuanGroups.map((group, i) => {
             const nY = group.items.length;
@@ -1828,6 +1886,7 @@ Giải thích: [Ngắn gọn]
           }).join('; ');
           prompt += `  → LOẠI 4: Tổng ${soCauTuLuan} Câu tự luận. CẤU TRÚC BẮT BUỘC: ${cauStructureDesc}. ⚠️ [đề bài chung] = 1 tình huống/bài toán chung, phát triển thành các ý a, b, c liên quan; [ý độc lập] = mỗi ý là câu hỏi riêng không liên quan nhau. TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
         }
+        prompt += `\n`;
       }
       prompt += `\n`;
     }
@@ -1988,6 +2047,14 @@ Giải thích: [Ngắn gọn]
     const monHocQuick = examHeader?.monHoc || '';
     const isCongNgheMonQuick = /công\s*nghệ|cong\s*nghe/i.test(monHocQuick);
     const isToanMonQuick = /toán|toan/i.test(monHocQuick);
+    const isKHTNMonQuick = /khoa\s*học\s*tự\s*nhiên|khoa\s*hoc\s*tu\s*nhien|khtn/i.test(monHocQuick);
+    const isKHTNQuick = isKHTNMonQuick || examConfig?.subject === 'khtn' || examConfig?.isCauTruc4213 || examConfig?.isCauTrucKHTNVao10;
+    const isCauTrucKHTNVao10Quick = Boolean(
+      examConfig?.isCauTrucKHTNVao10 ||
+      (!config.hasTuLuan && isKHTNQuick && (examConfig?.tongDiemP1 === 5.5 || examConfig?.tongDiemP2 === 3.0)) ||
+      (examHeader?.kyThi && /vào\s*10|tuyển\s*sinh/i.test(examHeader.kyThi) && isKHTNQuick && !config.hasTuLuan)
+    );
+    const isCauTruc4213 = isKHTNQuick && !isCauTrucKHTNVao10Quick && (examConfig?.isCauTruc4213 !== false);
 
     const isCauTrucToan3223 = isToanMonQuick && Boolean(examConfig?.isCauTrucToan3223);
     const isCauTrucToan8_5050 = isToanMonQuick && Boolean(examConfig?.isCauTrucToan8_5050);
@@ -2001,7 +2068,7 @@ Giải thích: [Ngắn gọn]
       const daDien = isSlotFilled(key);
       const meta = tfMetas[i * 4] || { name: '', inds: [] }; // Lấy label của ý đầu tiên trong nhóm 4 ý
       const dvktSuffix = meta.name ? ` - ${meta.name}` : '';
-      const displayNum = (isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? (12 + i + 1) : (i + 1);
+      const displayNum = (isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? (12 + i + 1) : isCauTruc4213 ? (16 + i + 1) : (i + 1);
       slots.push({ key, label: `Phần II - Câu ${displayNum} (Đúng/Sai)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 2, daDien, inds: meta.inds });
     }
 
@@ -2014,7 +2081,7 @@ Giải thích: [Ngắn gọn]
         const daDien = isSlotFilled(key);
         const meta = saMetas[i] || { name: '', inds: [] };
         const dvktSuffix = meta.name ? ` - ${meta.name}` : '';
-        const displayNum = isCauTrucToan8_5050 ? (13 + i + 1) : isCauTrucToan3223 ? (14 + i + 1) : (i + 1);
+        const displayNum = isCauTrucToan8_5050 ? (13 + i + 1) : isCauTrucToan3223 ? (14 + i + 1) : isCauTruc4213 ? (18 + i + 1) : (i + 1);
         slots.push({ key, label: `Phần III - Câu ${displayNum} (Trả lời ngắn)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 3, daDien, inds: meta.inds });
       }
     }
@@ -2064,7 +2131,7 @@ Giải thích: [Ngắn gọn]
         slotInds = meta.inds || [];
       }
       
-      const displayNum = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan8_5050 ? (17 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : (i + 1);
+      const displayNum = isCauTrucCongNghe8_7030 ? (16 + i + 1) : isCauTrucToan8_5050 ? (17 + i + 1) : isCauTrucToan3223 ? (18 + i + 1) : isCauTruc4213 ? (22 + i + 1) : (i + 1);
       slots.push({ key, label: `Phần ${phanTL === 4 ? 'IV' : 'III'} - Câu ${displayNum} (Tự luận)${dvktSuffix}${daDien ? ' ✅' : ''}`, loai: 4, daDien, inds: [...new Set(slotInds)] });
     }
 

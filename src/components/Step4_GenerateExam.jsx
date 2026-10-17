@@ -130,7 +130,7 @@ export default function Step4_GenerateExam() {
 
     setSimilarSlotKey(slotKey);
     setSimilarSlotData(slotData);
-    setSimilarMetaInfo({ ...metaInfo, indicators, isCauTrucKHTNVao10, isCauTruc4213, isCauTrucToan3223, isCauTrucToan8_5050 });
+    setSimilarMetaInfo({ ...metaInfo, indicators, isCauTrucKHTNVao10, isCauTruc4213, isCauTrucToan3223, isCauTrucToan8_5050, isCauTrucCongNghe8_7030 });
     setSimilarOtherQs(otherQs);
     setSimilarModalOpen(true);
   };
@@ -704,6 +704,9 @@ export default function Step4_GenerateExam() {
                     ? "PHẦN II. Câu trắc nghiệm đúng sai (2,0 điểm)"
                     : "PHẦN II. Câu trắc nghiệm đúng sai"}
                 </h3>
+                {isCauTruc4213 && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 17 đến câu 18. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai (chuẩn CV 4956).</p>
+                )}
                 {isCauTrucCongNghe8_7030 && (
                   <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 13 đến câu 16. Trong mỗi ý a), b), c), d) ở mỗi câu, thí sinh chọn đúng hoặc sai (mỗi câu gồm 2 ý Nhận biết và 2 ý Thông hiểu).</p>
                 )}
@@ -739,7 +742,7 @@ export default function Step4_GenerateExam() {
                     <div className="flex justify-between items-center font-bold text-orange-800 mb-3 border-b border-orange-200 pb-2">
                       <div className="flex-1 flex flex-col gap-1">
                         <span>
-                          {(isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? `Câu ${12 + qIndex + 1}.` : `Câu ${qIndex + 1}.`} 
+                          {(isCauTrucToan3223 || isCauTrucToan8_5050 || isCauTrucCongNghe8_7030) ? `Câu ${12 + qIndex + 1}.` : isCauTruc4213 ? `Câu ${16 + qIndex + 1}.` : `Câu ${qIndex + 1}.`} 
                           <span className="text-sm font-normal text-slate-500 italic"> (Gồm {qChunk.length} ý)</span>
                         </span>
                         {slotData?.noiDung && <span className="text-sm font-normal text-slate-700 mt-1">{slotData.noiDung.replace(/^(?:\*\*|__)?Câu\s*\d+\s*(?:\.|:|\))?(?:\*\*|__)?\s*/i, '')}</span>}
@@ -853,6 +856,9 @@ export default function Step4_GenerateExam() {
                     ? "PHẦN III. Câu trắc nghiệm trả lời ngắn (2,0 điểm)"
                     : "PHẦN III. Câu trắc nghiệm trả lời ngắn"}
                 </h3>
+                {isCauTruc4213 && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 19 đến câu 22. Mỗi câu hỏi thí sinh trả lời bằng cách điền kết quả vào ô tương ứng (mỗi câu đúng được 0,25 điểm).</p>
+                )}
                 {isCauTrucToan8_5050 && (
                   <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trả lời từ câu 14 đến câu 17. Mỗi câu hỏi thí sinh trả lời câu hỏi bằng cách điền kết quả vào ô tương ứng.</p>
                 )}
@@ -884,7 +890,7 @@ export default function Step4_GenerateExam() {
                   <div key={qIndex} className={`p-4 border rounded-lg text-slate-700 ${slotData ? 'bg-green-50 border-green-300' : 'bg-emerald-50/30 border-emerald-200'}`}>
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-bold text-emerald-800">
-                        {isCauTrucToan8_5050 ? `Câu ${13 + qIndex + 1}.` : isCauTrucToan3223 ? `Câu ${14 + qIndex + 1}.` : `Câu ${qIndex + 1}.`}
+                        {isCauTrucToan8_5050 ? `Câu ${13 + qIndex + 1}.` : isCauTrucToan3223 ? `Câu ${14 + qIndex + 1}.` : isCauTruc4213 ? `Câu ${18 + qIndex + 1}.` : `Câu ${qIndex + 1}.`}
                       </span>
                       <div className="flex items-center gap-2">
                         {slotData && (
@@ -983,6 +989,9 @@ export default function Step4_GenerateExam() {
                     ? "PHẦN IV. Tự luận (3,0 điểm)"
                     : (config.hasTraLoiNgan ? 'PHẦN IV. Câu hỏi tự luận' : 'PHẦN III. Câu hỏi tự luận')}
                 </h3>
+                {isCauTruc4213 && (
+                  <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trình bày lời giải chi tiết cho Câu 23 (1,0đ Thông hiểu), Câu 24 (1,0đ Vận dụng) và Câu 25 (1,0đ Vận dụng cao). Tổng điểm phần Tự luận: 3,0 điểm.</p>
+                )}
                 {isCauTrucCongNghe8_7030 && (
                   <p className="text-xs text-slate-500 italic mt-0.5">Thí sinh trình bày lời giải chi tiết cho Câu 17 (2,0 điểm - Vận dụng, gồm ý a, b) và Câu 18 (1,0 điểm - Vận dụng cao, gồm ý a, b). Tổng điểm phần Tự luận: 3,0 điểm.</p>
                 )}
@@ -1026,6 +1035,8 @@ export default function Step4_GenerateExam() {
                             ? (qChunk[0]?.qLabel ? `${qChunk[0].qLabel}.` : `Câu ${17 + qIndex + 1}.`) 
                             : isCauTrucToan3223 
                             ? (qChunk[0]?.qLabel ? `${qChunk[0].qLabel}.` : `Câu ${18 + qIndex + 1}.`) 
+                            : isCauTruc4213
+                            ? `Câu ${22 + qIndex + 1}.`
                             : `Câu ${qIndex + 1}.`}
                           <span className="text-sm font-normal text-red-600 ml-2">({qChunk.reduce((s, item) => s + (item.diem || 0), 0)} điểm)</span>
                           {kienThucQ === 'hinh_hoc' && <span className="ml-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">📐 Hình học</span>}

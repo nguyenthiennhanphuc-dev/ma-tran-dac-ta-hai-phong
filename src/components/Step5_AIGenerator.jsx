@@ -1058,6 +1058,13 @@ Giải thích: [Giải thích ngắn gọn]
 - Gồm 6 câu Trả lời ngắn là 6 câu ở mức độ VẬN DỤNG tính toán/xử lý số liệu thực tiễn (2 câu phân môn Vật lí, 2 câu phân môn Hóa học, 2 câu phân môn Sinh học).
 - Đáp án mỗi câu BẮT BUỘC là MỘT CON SỐ CỤ THỂ, TỐI ĐA 4 CHỮ SỐ (ví dụ: 15, 0.5, 120, 1500). Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
 `;
+      } else if (isCauTruc4213) {
+        prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC KHTN ĐỊNH KÌ - CV 4956 - 4-2-1-3):
+- Gồm 4 câu Trắc nghiệm trả lời ngắn (Câu 19 đến Câu 22), mỗi câu đúng được 0,25 điểm (Tổng 1,0 điểm).
+- Cơ cấu mức độ nhận thức: Gồm 2 câu Thông hiểu (0,5 điểm) và 2 câu Vận dụng (0,5 điểm).
+- BẮT BUỘC đặt câu hỏi sao cho ĐÁP ÁN CUỐI CÙNG LÀ MỘT CON SỐ CỤ THỂ (tối đa 4 chữ số, ví dụ: 5, 12, 150, 0.25, 12.5) hoặc phân số/kết quả tính toán ngắn gọn.
+- Tuyệt đối không hỏi lý thuyết chữ dài dòng. KHÔNG gom thành các ý a, b, c, d. Mỗi câu trả lời ngắn là một Câu hỏi độc lập.
+`;
       } else if (isCauTrucToan8_5050) {
         prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN 8 - 50% TRẮC NGHIỆM : 50% TỰ LUẬN):
 - Gồm 4 câu Trắc nghiệm trả lời ngắn (Câu 14 đến Câu 17), mỗi câu đúng được 0,25 điểm (Tổng 1,0 điểm).
@@ -1099,7 +1106,15 @@ Giải thích: [Cách giải/Lý do ngắn gọn]\n\n`;
     if (config.hasTuLuan) {
       const _ktField = (isCauTrucToan8_5050 || (hasManualTLConfig && tuLuanConfig?.questions?.some(q => q.kienThuc === 'hinh_hoc' || q.kienThuc === 'dai_so'))) ? ', Kiến thức: [Hình học/Đại số]' : '';
       prompt += `[LOẠI 4: TỰ LUẬN] (Tổng điểm toàn phần tự luận: ${tongDiemTuLuanThucTe} điểm)\n`;
-      if (isCauTrucToan8_5050) {
+      if (isCauTruc4213) {
+        prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC KHTN ĐỊNH KÌ - CV 4956 - 4-2-1-3):
+- Tổng điểm phần Tự luận: 3,0 điểm, gồm đúng 3 câu đơn ý (Câu 23 đến Câu 25), mỗi câu 1,0 điểm:
+  + Câu 23 (1,0 điểm): Mức độ Thông hiểu.
+  + Câu 24 (1,0 điểm): Mức độ Vận dụng.
+  + Câu 25 (1,0 điểm): Mức độ Vận dụng cao.
+- Mỗi câu là một bài tập/tình huống khoa học thực tiễn độc lập, trình bày lời giải chi tiết từng bước rõ ràng, kèm thang điểm cụ thể cho từng bước (cách nhau bằng " || [Điểm]").
+`;
+      } else if (isCauTrucToan8_5050) {
         prompt += `⚠️ ĐẶC BIỆT (CẤU TRÚC TOÁN 8 - 50% TRẮC NGHIỆM : 50% TỰ LUẬN):
 - Tổng điểm phần Tự luận: 5,0 điểm, gồm 5 câu (Câu 18 đến Câu 22), mỗi câu gồm 2 phần/ý a, b (mỗi phần 0,5 điểm).
 - Cơ cấu mức độ nhận thức phần Tự luận: 5 ý Thông hiểu (2,5đ) + 3 ý Vận dụng (1,5đ) + 2 ý Vận dụng cao (1,0đ).
@@ -1599,6 +1614,8 @@ Giải thích: [Ngắn gọn]
       if (soCauTraLoiNgan > 0) {
         if (isCauTrucKHTNVao10) {
           prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trả lời ngắn độc lập ở mức độ VẬN DỤNG (2 câu Vật lí, 2 câu Hóa học, 2 câu Sinh học - đáp án là 1 con số cụ thể tối đa 4 chữ số, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
+        } else if (isCauTruc4213) {
+          prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trắc nghiệm trả lời ngắn độc lập (Câu 19 đến Câu 22, mỗi câu đúng 0,25đ; gồm 2 câu Thông hiểu và 2 câu Vận dụng, đáp án là 1 con số cụ thể, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
         } else if (isCauTrucToan8_5050) {
           prompt += `  → LOẠI 3: Xuất thành ${soCauTraLoiNgan} Câu Trắc nghiệm trả lời ngắn độc lập (Câu 14 đến Câu 17, mỗi câu đúng 0,25đ; gồm 3 câu Thông hiểu và 1 câu Vận dụng, đáp án là 1 con số cụ thể, TUYỆT ĐỐI KHÔNG GOM vào chung 1 câu có ý a, b, c, d)\n`;
         } else if (isCauTrucToan3223) {
@@ -1609,7 +1626,7 @@ Giải thích: [Ngắn gọn]
       }
       if (config.hasTuLuan && soCauTuLuan > 0) {
         if (hasManualTLConfig) {
-          const getQName = (q, i) => q.label || (isCauTrucCongNghe8_7030 ? `Câu ${16 + i + 1}` : (isCauTrucToan8_5050 ? `Câu ${17 + i + 1}` : (isCauTrucToan3223 ? `Câu ${18 + i + 1}` : `Câu ${i + 1}`)));
+          const getQName = (q, i) => q.label || (isCauTrucCongNghe8_7030 ? `Câu ${16 + i + 1}` : (isCauTrucToan8_5050 ? `Câu ${17 + i + 1}` : (isCauTrucToan3223 ? `Câu ${18 + i + 1}` : (isCauTruc4213 ? `Câu ${22 + i + 1}` : `Câu ${i + 1}`))));
           const getKienThuc = (q, i) => q.kienThuc || (isCauTrucToan8_5050 ? (i === 0 || i === 1 || i === 4 ? 'dai_so' : 'hinh_hoc') : '');
 
           const cauStructureDesc = tuLuanConfig.questions.map((q, i) => {
@@ -1645,6 +1662,8 @@ Giải thích: [Ngắn gọn]
           prompt += `  → LOẠI 4: Xuất thành 5 Câu tự luận (Câu 18 đến Câu 22, mỗi câu gồm 2 ý a, b mỗi ý 0,5đ; gồm 5 ý Thông hiểu [2,5đ], 3 ý Vận dụng [1,5đ], 2 ý Vận dụng cao [1,0đ - trọn vẹn Câu 22]; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
         } else if (isCauTrucToan3223) {
           prompt += `  → LOẠI 4: Xuất thành ${soCauTuLuan} Câu tự luận (Câu 19 đến Câu ${18 + soCauTuLuan}, gồm các câu mức Thông hiểu [tổng 1,5đ] và mức Vận dụng [tổng 1,5đ]; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
+        } else if (isCauTruc4213) {
+          prompt += `  → LOẠI 4: Xuất thành 3 Câu tự luận độc lập (Câu 23: 1,0đ Thông hiểu; Câu 24: 1,0đ Vận dụng; Câu 25: 1,0đ Vận dụng cao; trình bày lời giải chi tiết và biểu điểm từng bước). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
         } else {
           prompt += `  → LOẠI 4: Xuất thành ${soCauTuLuan} Câu tự luận (mỗi câu theo cấu trúc đã mô tả ở từng đơn vị kiến thức phía trên). TỔNG ĐIỂM TỰ LUẬN: ${tongDiemTuLuanThucTe} điểm\n`;
         }
