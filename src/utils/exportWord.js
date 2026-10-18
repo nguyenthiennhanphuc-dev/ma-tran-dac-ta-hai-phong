@@ -1612,6 +1612,7 @@ export const exportToWord = async (options = {}) => {
     const storeState = useExamStore.getState();
     const tuLuanConfig = storeState.tuLuanConfig;
     if (isCauTrucToan8_5050) return 5;
+    if (isCauTrucCongNghe8_7030) return 2;
     const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
     if (hasManualTLConfig) {
         return tuLuanConfig.questions.length;
@@ -1652,7 +1653,7 @@ export const exportToWord = async (options = {}) => {
       matrix.forEach((topic) => {
         const tenChuDe = topic.tenChuDe || 'Chủ đề chưa đặt tên';
         (topic.donViKienThuc || []).forEach(dv => {
-          ['biet', 'hieu', 'vanDung', ...((isKHTNMon || isCauTrucToan8_5050) ? ['vanDungCao'] : [])].forEach(lvl => {
+          ['biet', 'hieu', 'vanDung', ...(hasSeparateVdc ? ['vanDungCao'] : [])].forEach(lvl => {
             const count = Number(dv.tuLuan?.[lvl]) || 0;
             for (let i = 0; i < count; i++) {
               tlItems.push({ tenChuDe });
@@ -1680,7 +1681,7 @@ export const exportToWord = async (options = {}) => {
     const items = [];
     matrix.forEach(t => {
       (t.donViKienThuc || []).forEach(dv => {
-        ['biet', 'hieu', 'vanDung', ...((isKHTNMon || isCauTrucToan8_5050) ? ['vanDungCao'] : [])].forEach(lvl => {
+        ['biet', 'hieu', 'vanDung', ...(hasSeparateVdc ? ['vanDungCao'] : [])].forEach(lvl => {
           const count = Number(dv.tuLuan?.[lvl]) || 0;
           for (let i = 0; i < count; i++) items.push(dv.noiDung || '');
         });
@@ -3137,8 +3138,9 @@ export const exportToWord = async (options = {}) => {
         if (slotData?.hinhAnh) {
           const imgData = await fetchGraphImage(slotData.hinhAnh);
           if (imgData) {
+            const cauNum = isCauTrucCongNghe8_7030 ? (16 + i + 1) : (isCauTrucToan8_5050 ? (17 + i + 1) : (i + 1));
             answerKeyParagraphs.push(new Paragraph({
-              children: [new TextRun({ text: `Hình minh họa Câu ${i + 1} (Tự luận):`, bold: true, italics: true, size: 20, font: "Times New Roman" })],
+              children: [new TextRun({ text: `Hình minh họa Câu ${cauNum} (Tự luận):`, bold: true, italics: true, size: 20, font: "Times New Roman" })],
               spacing: { before: 80, after: 40 }
             }));
             answerKeyParagraphs.push(createGraphParagraph(imgData));

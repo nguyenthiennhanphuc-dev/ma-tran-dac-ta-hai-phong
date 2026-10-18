@@ -1530,6 +1530,8 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
     const computeTLCauCount = () => {
         const storeState = useExamStore.getState();
         const tuLuanConfig = storeState.tuLuanConfig;
+        if (examConfig.isCauTrucToan8_5050) return 5;
+        if (examConfig.isCauTrucCongNghe8_7030) return 2;
         const hasManualTLConfig = tuLuanConfig?.enabled && tuLuanConfig?.questions?.length > 0 && tuLuanConfig.questions.some(q => q.subItems?.length > 0);
         if (hasManualTLConfig) {
             return tuLuanConfig.questions.length;
@@ -1570,7 +1572,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
             matrix.forEach((topic) => {
                 const tenChuDe = topic.tenChuDe || 'Chủ đề chưa đặt tên';
                 (topic.donViKienThuc || []).forEach(dv => {
-                    ['biet', 'hieu', 'vanDung'].forEach(lvl => {
+                    ['biet', 'hieu', 'vanDung', ...((isKHTNMon || examConfig.isCauTrucToan8_5050 || examConfig.isCauTrucCongNghe8_7030) ? ['vanDungCao'] : [])].forEach(lvl => {
                         const count = Number(dv.tuLuan?.[lvl]) || 0;
                         for (let i = 0; i < count; i++) {
                             tlItems.push({ tenChuDe });
@@ -1598,7 +1600,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
         const items = [];
         matrix.forEach(t => {
             (t.donViKienThuc || []).forEach(dv => {
-                ['biet', 'hieu', 'vanDung'].forEach(lvl => {
+                ['biet', 'hieu', 'vanDung', ...((isKHTNMon || examConfig.isCauTrucToan8_5050 || examConfig.isCauTrucCongNghe8_7030) ? ['vanDungCao'] : [])].forEach(lvl => {
                     const count = Number(dv.tuLuan?.[lvl]) || 0;
                     for (let i = 0; i < count; i++) items.push(dv.noiDung || '');
                 });
@@ -2524,7 +2526,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
     // --- PHẦN TỰ LUẬN ---
     if (hasTuLuan && tu_luan.length > 0) {
         const soCauTL = computeTLCauCount();
-        const phanTL = hasTraLoiNgan ? 4 : 3;
+        const phanTL = (examConfig.isCauTrucCongNghe8_7030 || hasTraLoiNgan) ? 4 : 3;
         // PHẦN II: TỰ LUẬN (nếu có Tự luận mode)
             if (examConfig.isCauTrucCongNghe8_7030) {
               html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
@@ -2643,7 +2645,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
         const soCauTL = computeTLCauCount();
         if (soCauTL > 0) {
             if (!isContinuous) globalQuestionIndex = 1;
-            const phanTL = hasTraLoiNgan ? 4 : 3;
+            const phanTL = (examConfig.isCauTrucCongNghe8_7030 || hasTraLoiNgan) ? 4 : 3;
             // PHẦN II: TỰ LUẬN (nếu có Tự luận mode)
             if (examConfig.isCauTrucCongNghe8_7030) {
               html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
@@ -2971,7 +2973,7 @@ export const exportToWordMath = async ({ latexMode = false } = {}) => {
             const soCauTL = computeTLCauCount();
             if (soCauTL > 0) {
                 if (!isContinuousAK) globalAnswerIndex = 1;
-                const phanTL = hasTraLoiNgan ? 4 : 3;
+                const phanTL = (examConfig.isCauTrucCongNghe8_7030 || hasTraLoiNgan) ? 4 : 3;
                 // Tiêu đề đáp án tự luận — dynamic theo mode
                 if (examConfig.isCauTrucCongNghe8_7030) {
                   html += `<p class="bold" style="font-size:14pt;">PHẦN IV. TỰ LUẬN (3,0 ĐIỂM)</p>`;
