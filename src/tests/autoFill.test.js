@@ -494,6 +494,44 @@ assertEq(p4_8DiemVD, 2.0, 'Công nghệ 8: Tỉ lệ Vận dụng = 2.0đ (20%)'
 assertEq(p4_8DiemVDC, 1.0, 'Công nghệ 8: Tỉ lệ Vận dụng cao = 1.0đ (10%)');
 
 // ──────────────────────────────────────────────────────────
+// TEST 8.1: Công nghệ 8 — Cân bằng tỉ lệ % điểm theo số tiết giữa các Chủ đề
+// ──────────────────────────────────────────────────────────
+console.log('\n🔒 TEST 8.1: Công nghệ 8 — Cân bằng tỉ lệ % điểm theo số tiết giữa các Chủ đề');
+const congNghe2TopicsMatrix = [
+  { tenChuDe: 'Vẽ kĩ thuật', donViKienThuc: [
+    makeDv('Bài 1', 1),
+    makeDv('Bài 2', 2),
+    makeDv('Bài 3', 2),
+    makeDv('Bài 4', 2),
+    makeDv('Bài 5', 2),
+  ]},
+  { tenChuDe: 'Cơ khí', donViKienThuc: [
+    makeDv('Bài 6', 2),
+    makeDv('Bài 7', 3),
+  ]},
+];
+
+useExamStore.getState().setCauTrucCongNghe8_7030();
+useExamStore.setState({
+  matrix: congNghe2TopicsMatrix,
+  examHeader: { monHoc: 'Công nghệ 8', lop: '8', thoiGian: '45 phút' },
+});
+useExamStore.getState().autoFillMatrix();
+
+const m8_2 = useExamStore.getState().matrix;
+const calcTopicScore = (t) => t.donViKienThuc.reduce((s, dv) => {
+  const p1 = ((dv.nhieuLuaChon?.biet || 0) + (dv.nhieuLuaChon?.hieu || 0)) * 0.25;
+  const p2 = ((dv.dungSai?.biet || 0) + (dv.dungSai?.hieu || 0)) * 0.25;
+  const p4 = (dv.tuLuan?.diemVanDung || 0) + (dv.tuLuan?.diemVanDungCao || 0);
+  return s + p1 + p2 + p4;
+}, 0);
+
+const topic1Score = calcTopicScore(m8_2[0]);
+const topic2Score = calcTopicScore(m8_2[1]);
+assertEq(topic1Score, 6.5, 'Chủ đề 1 (9 tiết) đạt 6.5đ (65% ~ target 64.3%)');
+assertEq(topic2Score, 3.5, 'Chủ đề 2 (5 tiết) đạt 3.5đ (35% ~ target 35.7%)');
+
+// ──────────────────────────────────────────────────────────
 // TEST 9: KHTN Cuối kì (CV 4956 - 25% Trước GK & 75% Sau GK)
 // ──────────────────────────────────────────────────────────
 console.log('\n🔒 TEST 9: KHTN Cuối kì (CV 4956 — 25% Trước GK & 75% Sau GK)');

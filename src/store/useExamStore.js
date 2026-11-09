@@ -3270,6 +3270,21 @@ export const useExamStore = create(
           flatDvs.forEach(f => {
             f.target = (f.soTiet / (tongSoTiet_CN || 1)) * 10.0;
           });
+          topics.forEach(t => {
+            const tTiet = (t.donViKienThuc || []).reduce((s, dv) => s + (Number(dv.soTiet) || 1), 0);
+            t.topicSoTiet = tTiet;
+            t.topicTarget = (tTiet / (tongSoTiet_CN || 1)) * 10.0;
+            t.topicCurrent = 0;
+          });
+
+          // Helper: Hàm tính điểm ưu tiên phân bổ 2 cấp độ (Chủ đề & Bài học)
+          // Điểm thiếu hụt cấp chủ đề có trọng số cao (x2.0) để đảm bảo không chủ đề nào bị đói điểm,
+          // kết hợp khoảng cách cấp bài học để tỉ lệ % bám sát số tiết từng bài.
+          const getHierarchicalScore = (f) => {
+            const tGap = (topics[f.ti]?.topicTarget || 0) - (topics[f.ti]?.topicCurrent || 0);
+            const lGap = f.target - f.current;
+            return tGap * 2.0 + lGap;
+          };
 
           // ─── P.IV: Tự luận (2 câu = 4 ý = 3,0đ: Câu 17 = 2.0đ VD + Câu 18 = 1.0đ VDC) ───
           // "Tảng đá lớn nhất": Phân bổ trước tiên vào bài có số tiết lớn, tránh dồn điểm.
@@ -3300,6 +3315,7 @@ export const useExamStore = create(
           }
           chosenTl1.hasTuLuan = true;
           chosenTl1.current += 2.0;
+          topics[chosenTl1.ti].topicCurrent += 2.0;
 
           // Nếu chưa chọn chosenTl2: chọn bài có số tiết lớn tiếp theo ở chủ đề khác và chưa có TL
           if (!chosenTl2) {
@@ -3309,6 +3325,7 @@ export const useExamStore = create(
           }
           chosenTl2.hasTuLuan = true;
           chosenTl2.current += 1.0;
+          topics[chosenTl2.ti].topicCurrent += 1.0;
 
           // Gán subItems Tự luận
           if (!Array.isArray(chosenTl1.dv.tuLuan.subItems)) chosenTl1.dv.tuLuan.subItems = [];
@@ -3347,10 +3364,10 @@ export const useExamStore = create(
               if (pool.length === 0) pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai);
               // Ưu tiên 3: Bài CHƯA có ĐS (cho phép bài đã có TL nếu số bài < 4)
               if (pool.length === 0) pool = flatDvs.filter(f => !f.hasDungSai);
-              // Fallback: chọn bài có gap lớn nhất
+              // Fallback: chọn bài có điểm ưu tiên phân cấp cao nhất
               if (pool.length === 0) pool = flatDvs;
 
-              chosenDs = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0] || flatDvs[0];
+              chosenDs = pool.slice().sort((a, b) => getHierarchicalScore(b) - getHierarchicalScore(a))[0] || flatDvs[0];
             }
 
             const targetDv = chosenDs.dv;
@@ -3360,6 +3377,7 @@ export const useExamStore = create(
             targetDv.dungSai.hieu += 2;
             chosenDs.hasDungSai = true;
             chosenDs.current += 1.0;
+            topics[chosenDs.ti].topicCurrent += 1.0;
             usedDsTopics.add(chosenDs.ti);
             usedDsDvKeys.add(`${chosenDs.ti}_${chosenDs.di}`);
 
@@ -3378,7 +3396,7 @@ export const useExamStore = create(
           }
 
           // ─── P.I: 12 câu Nhiều lựa chọn (8 Biết + 4 Hiểu) = 3,0đ ───
-          // Dùng để "lấp khoảng trống" (GAP FILLING) giúp tỉ lệ % điểm từng bài bám sát số tiết (target)
+          // Dùng để "lấp khoảng trống" (GAP FILLING) giúp tỉ lệ % điểm từng bài và từng chủ đề bám sát số tiết
           let remainingBiet = 8;
           let remainingHieu = 4;
 
@@ -3388,31 +3406,33 @@ export const useExamStore = create(
             if (f.current === 0 && remainingBiet > 0) {
               f.dv.nhieuLuaChon.biet += 1;
               f.current += 0.25;
+              topics[f.ti].topicCurrent += 0.25;
               remainingBiet--;
             }
           });
 
-          // Bước 2: Phân bổ số câu Biết còn lại theo khoảng cách (gap = target - current)
+          // Bước 2: Phân bổ số câu Biết còn lại theo điểm ưu tiên phân cấp 2 cấp độ (Chủ đề & Bài học)
           while (remainingBiet > 0) {
-            // Sắp xếp các bài theo gap giảm dần (bài nào đói điểm nhiều nhất so với số tiết sẽ nhận câu TN)
-            const pool = flatDvs.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current));
+            const pool = flatDvs.slice().sort((a, b) => getHierarchicalScore(b) - getHierarchicalScore(a));
             const chosen = pool[0];
             if (!chosen) break;
             chosen.dv.nhieuLuaChon.biet += 1;
             chosen.current += 0.25;
+            topics[chosen.ti].topicCurrent += 0.25;
             remainingBiet--;
           }
 
-          // Bước 3: Phân bổ 4 câu Hiểu theo khoảng cách (gap = target - current)
+          // Bước 3: Phân bổ 4 câu Hiểu theo điểm ưu tiên phân cấp 2 cấp độ (Chủ đề & Bài học)
           while (remainingHieu > 0) {
             // Ưu tiên các bài có số tiết >= 2 nếu có
             const multiTietPool = flatDvs.filter(f => f.soTiet >= 2);
             const poolCandidates = multiTietPool.length > 0 ? multiTietPool : flatDvs;
-            const pool = poolCandidates.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current));
+            const pool = poolCandidates.slice().sort((a, b) => getHierarchicalScore(b) - getHierarchicalScore(a));
             const chosen = pool[0];
             if (!chosen) break;
             chosen.dv.nhieuLuaChon.hieu += 1;
             chosen.current += 0.25;
+            topics[chosen.ti].topicCurrent += 0.25;
             remainingHieu--;
           }
 
