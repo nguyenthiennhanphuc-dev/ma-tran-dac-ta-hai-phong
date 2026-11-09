@@ -3358,11 +3358,15 @@ export const useExamStore = create(
             }
 
             if (!chosenDs) {
-              // Ưu tiên 1: Bài CHƯA có TL, CHƯA có ĐS, thuộc chủ đề chưa có ĐS
-              let pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai && !usedDsTopics.has(f.ti));
-              // Ưu tiên 2: Bài CHƯA có TL, CHƯA có ĐS (bất kể chủ đề)
+              // Ưu tiên 1: Bài CHƯA có TL, CHƯA có ĐS, chủ đề chưa có ĐS và còn room (>= 0.5đ)
+              let pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai && !usedDsTopics.has(f.ti) && (topics[f.ti].topicTarget - topics[f.ti].topicCurrent >= 0.5));
+              // Ưu tiên 2: Bài CHƯA có TL, CHƯA có ĐS, chủ đề còn room (>= 0.5đ) bất kể đã có ĐS ở bài khác
+              if (pool.length === 0) pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai && (topics[f.ti].topicTarget - topics[f.ti].topicCurrent >= 0.5));
+              // Ưu tiên 3: Bài CHƯA có TL, CHƯA có ĐS, chủ đề chưa có ĐS (fallback nếu không còn chủ đề room >= 0.5)
+              if (pool.length === 0) pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai && !usedDsTopics.has(f.ti));
+              // Ưu tiên 4: Bài CHƯA có TL, CHƯA có ĐS
               if (pool.length === 0) pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai);
-              // Ưu tiên 3: Bài CHƯA có ĐS (cho phép bài đã có TL nếu số bài < 4)
+              // Ưu tiên 5: Bài CHƯA có ĐS (cho phép bài đã có TL nếu số bài < 4)
               if (pool.length === 0) pool = flatDvs.filter(f => !f.hasDungSai);
               // Fallback: chọn bài có điểm ưu tiên phân cấp cao nhất
               if (pool.length === 0) pool = flatDvs;
