@@ -3257,20 +3257,164 @@ export const useExamStore = create(
                 soTiet: Number(dv.soTiet) || 1,
                 ti,
                 di,
+                current: 0,
+                hasTuLuan: false,
+                hasDungSai: false,
               });
             });
           });
 
           if (flatDvs.length === 0) return { matrix: topics };
 
-          // ─── P.I: 12 câu Nhiều lựa chọn (8 Biết + 4 Hiểu) = 3,0đ ───
-          // 1. Phân bổ 8 câu Biết theo tỉ lệ số tiết
-          const p1BietCounts = distributeLargestRemainder(8, flatDvs.map(f => f.soTiet));
-          p1BietCounts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.biet += cnt; });
+          const tongSoTiet_CN = flatDvs.reduce((s, d) => s + d.soTiet, 0);
+          flatDvs.forEach(f => {
+            f.target = (f.soTiet / (tongSoTiet_CN || 1)) * 10.0;
+          });
 
-          // 2. Phân bổ 4 câu Hiểu theo tỉ lệ số tiết
-          const p1HieuCounts = distributeLargestRemainder(4, flatDvs.map(f => f.soTiet));
-          p1HieuCounts.forEach((cnt, i) => { flatDvs[i].dv.nhieuLuaChon.hieu += cnt; });
+          // ─── P.IV: Tự luận (2 câu = 4 ý = 3,0đ: Câu 17 = 2.0đ VD + Câu 18 = 1.0đ VDC) ───
+          // "Tảng đá lớn nhất": Phân bổ trước tiên vào bài có số tiết lớn, tránh dồn điểm.
+          // Một bài đã nhận Tự luận sẽ KHÔNG nhận câu Đúng/Sai nữa để tỉ lệ % điểm cân bằng với số tiết!
+          const tlCfg = state.tuLuanConfig;
+          const hasCustomTL = Boolean(tlCfg?.enabled) && Array.isArray(tlCfg?.questions) && tlCfg.questions.length >= 2 && tlCfg.questions.some(q => q.subItems && q.subItems.length > 0);
+
+          let chosenTl1 = null;
+          let chosenTl2 = null;
+
+          if (hasCustomTL) {
+            // Tôn trọng cấu hình nếu người dùng chỉ định bài cụ thể
+            const q1Cfg = tlCfg.questions[0];
+            const q2Cfg = tlCfg.questions[1];
+            if (q1Cfg && q1Cfg.topicIndex !== null && q1Cfg.topicIndex !== undefined && q1Cfg.dvktIndex !== null && q1Cfg.dvktIndex !== undefined) {
+              chosenTl1 = flatDvs.find(f => f.ti === Number(q1Cfg.topicIndex) && f.di === Number(q1Cfg.dvktIndex));
+            }
+            if (q2Cfg && q2Cfg.topicIndex !== null && q2Cfg.topicIndex !== undefined && q2Cfg.dvktIndex !== null && q2Cfg.dvktIndex !== undefined) {
+              chosenTl2 = flatDvs.find(f => f.ti === Number(q2Cfg.topicIndex) && f.di === Number(q2Cfg.dvktIndex));
+            }
+          }
+
+          const sortedByTietAll = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
+
+          // Nếu chưa chọn chosenTl1: chọn bài có số tiết lớn nhất
+          if (!chosenTl1) {
+            chosenTl1 = sortedByTietAll[0] || flatDvs[0];
+          }
+          chosenTl1.hasTuLuan = true;
+          chosenTl1.current += 2.0;
+
+          // Nếu chưa chọn chosenTl2: chọn bài có số tiết lớn tiếp theo ở chủ đề khác và chưa có TL
+          if (!chosenTl2) {
+            chosenTl2 = sortedByTietAll.find(f => !f.hasTuLuan && f.ti !== chosenTl1.ti)
+              || sortedByTietAll.find(f => !f.hasTuLuan)
+              || (sortedByTietAll.length > 1 ? sortedByTietAll[1] : sortedByTietAll[0]);
+          }
+          chosenTl2.hasTuLuan = true;
+          chosenTl2.current += 1.0;
+
+          // Gán subItems Tự luận
+          if (!Array.isArray(chosenTl1.dv.tuLuan.subItems)) chosenTl1.dv.tuLuan.subItems = [];
+          chosenTl1.dv.tuLuan.subItems.push(
+            { id: `tl_vd_1_${Date.now()}`, y: '', diem: 1.0, level: 'vanDung', label: 'Câu 17a', qId: 'tl_q1', qLabel: 'Câu 17' },
+            { id: `tl_vd_2_${Date.now()}`, y: '', diem: 1.0, level: 'vanDung', label: 'Câu 17b', qId: 'tl_q1', qLabel: 'Câu 17' }
+          );
+
+          if (!Array.isArray(chosenTl2.dv.tuLuan.subItems)) chosenTl2.dv.tuLuan.subItems = [];
+          chosenTl2.dv.tuLuan.subItems.push(
+            { id: `tl_vdc_1_${Date.now()}`, y: '', diem: 0.5, level: 'vanDungCao', label: 'Câu 18a', qId: 'tl_q2', qLabel: 'Câu 18' },
+            { id: `tl_vdc_2_${Date.now()}`, y: '', diem: 0.5, level: 'vanDungCao', label: 'Câu 18b', qId: 'tl_q2', qLabel: 'Câu 18' }
+          );
+
+          // ─── P.II: 4 câu Đúng/Sai (Câu 13, 14, 15, 16) = 16 ý = 4,0đ ───
+          // Mỗi câu cố định: 2 ý Biết (0.25đ) + 2 ý Hiểu (0.25đ)
+          // NGUYÊN TẮC CỐT TỬ: ƯU TIÊN TUYỆT ĐỐI các bài CHƯA CÓ TỰ LUẬN (!hasTuLuan)
+          // Phân tán đều các chủ đề, mỗi bài tối đa 1 câu Đúng/Sai (nếu >= 4 bài)
+          const dsCfg = state.dungSaiConfig;
+          const hasCustomDS = Boolean(dsCfg?.enabled) && Array.isArray(dsCfg?.questions) && dsCfg.questions.length > 0;
+          const usedDsDvKeys = new Set();
+          const usedDsTopics = new Set();
+
+          for (let q = 0; q < 4; q++) {
+            const qCfg = hasCustomDS ? dsCfg.questions[q] : null;
+            let chosenDs = null;
+
+            if (qCfg && qCfg.topicIndex !== null && qCfg.topicIndex !== undefined && qCfg.dvktIndex !== null && qCfg.dvktIndex !== undefined) {
+              chosenDs = flatDvs.find(f => f.ti === Number(qCfg.topicIndex) && f.di === Number(qCfg.dvktIndex));
+            }
+
+            if (!chosenDs) {
+              // Ưu tiên 1: Bài CHƯA có TL, CHƯA có ĐS, thuộc chủ đề chưa có ĐS
+              let pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai && !usedDsTopics.has(f.ti));
+              // Ưu tiên 2: Bài CHƯA có TL, CHƯA có ĐS (bất kể chủ đề)
+              if (pool.length === 0) pool = flatDvs.filter(f => !f.hasTuLuan && !f.hasDungSai);
+              // Ưu tiên 3: Bài CHƯA có ĐS (cho phép bài đã có TL nếu số bài < 4)
+              if (pool.length === 0) pool = flatDvs.filter(f => !f.hasDungSai);
+              // Fallback: chọn bài có gap lớn nhất
+              if (pool.length === 0) pool = flatDvs;
+
+              chosenDs = pool.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current))[0] || flatDvs[0];
+            }
+
+            const targetDv = chosenDs.dv;
+            const bStart = targetDv.dungSai.biet;
+            const hStart = targetDv.dungSai.hieu;
+            targetDv.dungSai.biet += 2;
+            targetDv.dungSai.hieu += 2;
+            chosenDs.hasDungSai = true;
+            chosenDs.current += 1.0;
+            usedDsTopics.add(chosenDs.ti);
+            usedDsDvKeys.add(`${chosenDs.ti}_${chosenDs.di}`);
+
+            if (!Array.isArray(targetDv.dungSaiSubItems)) targetDv.dungSaiSubItems = [];
+            const qLabel = `Câu ${13 + q}`;
+            targetDv.dungSaiSubItems.push(
+              { label: `${qLabel}a`, level: 'biet', diem: 0.25, code: 'NB' },
+              { label: `${qLabel}b`, level: 'biet', diem: 0.25, code: 'NB' },
+              { label: `${qLabel}c`, level: 'hieu', diem: 0.25, code: 'TH' },
+              { label: `${qLabel}d`, level: 'hieu', diem: 0.25, code: 'TH' }
+            );
+            targetDv.indicatorMap[`dungSai_biet_${bStart}`] = { label: `${qLabel}a`, code: 'NB' };
+            targetDv.indicatorMap[`dungSai_biet_${bStart + 1}`] = { label: `${qLabel}b`, code: 'NB' };
+            targetDv.indicatorMap[`dungSai_hieu_${hStart}`] = { label: `${qLabel}c`, code: 'TH' };
+            targetDv.indicatorMap[`dungSai_hieu_${hStart + 1}`] = { label: `${qLabel}d`, code: 'TH' };
+          }
+
+          // ─── P.I: 12 câu Nhiều lựa chọn (8 Biết + 4 Hiểu) = 3,0đ ───
+          // Dùng để "lấp khoảng trống" (GAP FILLING) giúp tỉ lệ % điểm từng bài bám sát số tiết (target)
+          let remainingBiet = 8;
+          let remainingHieu = 4;
+
+          // Bước 1: Bảo đảm độ phủ 100% — Bài nào current === 0 (như bài 1 tiết hoặc bài chưa có ĐS/TL)
+          // BẮT BUỘC NHẬN NGAY 1 CÂU BIẾT (0.25đ) để không bài nào bị 0 điểm!
+          flatDvs.forEach(f => {
+            if (f.current === 0 && remainingBiet > 0) {
+              f.dv.nhieuLuaChon.biet += 1;
+              f.current += 0.25;
+              remainingBiet--;
+            }
+          });
+
+          // Bước 2: Phân bổ số câu Biết còn lại theo khoảng cách (gap = target - current)
+          while (remainingBiet > 0) {
+            // Sắp xếp các bài theo gap giảm dần (bài nào đói điểm nhiều nhất so với số tiết sẽ nhận câu TN)
+            const pool = flatDvs.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current));
+            const chosen = pool[0];
+            if (!chosen) break;
+            chosen.dv.nhieuLuaChon.biet += 1;
+            chosen.current += 0.25;
+            remainingBiet--;
+          }
+
+          // Bước 3: Phân bổ 4 câu Hiểu theo khoảng cách (gap = target - current)
+          while (remainingHieu > 0) {
+            // Ưu tiên các bài có số tiết >= 2 nếu có
+            const multiTietPool = flatDvs.filter(f => f.soTiet >= 2);
+            const poolCandidates = multiTietPool.length > 0 ? multiTietPool : flatDvs;
+            const pool = poolCandidates.slice().sort((a, b) => (b.target - b.current) - (a.target - a.current));
+            const chosen = pool[0];
+            if (!chosen) break;
+            chosen.dv.nhieuLuaChon.hieu += 1;
+            chosen.current += 0.25;
+            remainingHieu--;
+          }
 
           // Đánh số câu Phần I: Câu 1 đến Câu 12
           let p1Counter = 1;
@@ -3282,75 +3426,6 @@ export const useExamStore = create(
               f.dv.indicatorMap[`nhieuLuaChon_hieu_${i}`] = { label: `Câu ${p1Counter++}`, code: 'TH' };
             }
           });
-
-          // ─── P.II: 4 câu Đúng/Sai (Câu 13, 14, 15, 16) = 16 ý = 4,0đ ───
-          // Mỗi câu cố định: 2 ý Biết (0.25đ) + 2 ý Hiểu (0.25đ)
-          // Ưu tiên chọn 4 ĐVKT phân bổ đều theo các chủ đề hoặc theo số tiết lớn nhất
-          const sortedByTietAll = [...flatDvs].sort((a, b) => b.soTiet - a.soTiet);
-          const chosenDsDvs = [];
-          const usedTopicIndexes = new Set();
-
-          // Vòng 1: Chọn mỗi chủ đề 1 ĐVKT có số tiết lớn nhất
-          sortedByTietAll.forEach(f => {
-            if (chosenDsDvs.length < 4 && !usedTopicIndexes.has(f.ti)) {
-              chosenDsDvs.push(f);
-              usedTopicIndexes.add(f.ti);
-            }
-          });
-          // Vòng 2: Nếu chưa đủ 4, lấy thêm các ĐVKT có số tiết lớn còn lại
-          if (chosenDsDvs.length < 4) {
-            sortedByTietAll.forEach(f => {
-              if (chosenDsDvs.length < 4 && !chosenDsDvs.includes(f)) {
-                chosenDsDvs.push(f);
-              }
-            });
-          }
-          // Fallback: nếu flatDvs có ít hơn 4 bài, lặp vòng lại
-          while (chosenDsDvs.length < 4) {
-            chosenDsDvs.push(flatDvs[chosenDsDvs.length % flatDvs.length]);
-          }
-
-          chosenDsDvs.forEach((f, k) => {
-            const targetDv = f.dv;
-            const bStart = targetDv.dungSai.biet;
-            const hStart = targetDv.dungSai.hieu;
-            targetDv.dungSai.biet += 2;
-            targetDv.dungSai.hieu += 2;
-            if (!Array.isArray(targetDv.dungSaiSubItems)) targetDv.dungSaiSubItems = [];
-            const qLabel = `Câu ${13 + k}`;
-            targetDv.dungSaiSubItems.push(
-              { label: `${qLabel}a`, level: 'biet', diem: 0.25, code: 'NB' },
-              { label: `${qLabel}b`, level: 'biet', diem: 0.25, code: 'NB' },
-              { label: `${qLabel}c`, level: 'hieu', diem: 0.25, code: 'TH' },
-              { label: `${qLabel}d`, level: 'hieu', diem: 0.25, code: 'TH' }
-            );
-            targetDv.indicatorMap[`dungSai_biet_${bStart}`] = { label: `${qLabel}a`, code: 'NB' };
-            targetDv.indicatorMap[`dungSai_biet_${bStart + 1}`] = { label: `${qLabel}b`, code: 'NB' };
-            targetDv.indicatorMap[`dungSai_hieu_${hStart}`] = { label: `${qLabel}c`, code: 'TH' };
-            targetDv.indicatorMap[`dungSai_hieu_${hStart + 1}`] = { label: `${qLabel}d`, code: 'TH' };
-          });
-
-          // ─── P.III: Trả lời ngắn: KHÔNG CÓ (0 câu, 0 điểm) ───
-
-          // ─── P.IV: Tự luận (2 câu = 4 ý = 3,0đ: Câu 17 = 2.0đ VD + Câu 18 = 1.0đ VDC) ───
-          // Chọn 2 ĐVKT cho Tự luận (ưu tiên khác nhau và số tiết lớn)
-          const tlDvs = [...sortedByTietAll];
-          const chosenTl1 = tlDvs[0] || flatDvs[0];
-          const chosenTl2 = tlDvs.find(f => f.ti !== chosenTl1.ti) || (tlDvs.length > 1 ? tlDvs[1] : tlDvs[0]);
-
-          // Câu 17: Vận dụng 2.0đ (2 ý a, b mỗi ý 1.0đ)
-          if (!Array.isArray(chosenTl1.dv.tuLuan.subItems)) chosenTl1.dv.tuLuan.subItems = [];
-          chosenTl1.dv.tuLuan.subItems.push(
-            { id: `tl_vd_1_${Date.now()}`, y: '', diem: 1.0, level: 'vanDung', label: 'Câu 17a', qId: 'tl_q1', qLabel: 'Câu 17' },
-            { id: `tl_vd_2_${Date.now()}`, y: '', diem: 1.0, level: 'vanDung', label: 'Câu 17b', qId: 'tl_q1', qLabel: 'Câu 17' }
-          );
-
-          // Câu 18: Vận dụng cao 1.0đ (2 ý a, b mỗi ý 0.5đ)
-          if (!Array.isArray(chosenTl2.dv.tuLuan.subItems)) chosenTl2.dv.tuLuan.subItems = [];
-          chosenTl2.dv.tuLuan.subItems.push(
-            { id: `tl_vdc_1_${Date.now()}`, y: '', diem: 0.5, level: 'vanDungCao', label: 'Câu 18a', qId: 'tl_q2', qLabel: 'Câu 18' },
-            { id: `tl_vdc_2_${Date.now()}`, y: '', diem: 0.5, level: 'vanDungCao', label: 'Câu 18b', qId: 'tl_q2', qLabel: 'Câu 18' }
-          );
 
           // Đồng bộ các trường đếm, điểm và indicatorMap của tuLuan cho tất cả ĐVKT
           topics.forEach(t => {
@@ -3379,92 +3454,96 @@ export const useExamStore = create(
             });
           });
 
-          const finalTuLuanConfigCongNghe8 = {
-            enabled: false,
-            questions: [
-              {
-                id: 'tl_q1',
-                label: 'Câu 17',
-                kienThuc: 'vanDung',
-                kieuY: 'doc_lap',
-                phamVi: 'cac_chu_de_khac_nhau',
-                subItems: [
-                  { diem: 1.0, level: 'vanDung' },
-                  { diem: 1.0, level: 'vanDung' }
-                ]
-              },
-              {
-                id: 'tl_q2',
-                label: 'Câu 18',
-                kienThuc: 'vanDungCao',
-                kieuY: 'doc_lap',
-                phamVi: 'cac_chu_de_khac_nhau',
-                subItems: [
-                  { diem: 0.5, level: 'vanDungCao' },
-                  { diem: 0.5, level: 'vanDungCao' }
-                ]
-              },
-            ],
-          };
+          const finalTuLuanConfigCongNghe8 = hasCustomTL
+            ? { ...tlCfg, enabled: true }
+            : {
+                enabled: false,
+                questions: [
+                  {
+                    id: 'tl_q1',
+                    label: 'Câu 17',
+                    kienThuc: 'vanDung',
+                    kieuY: 'doc_lap',
+                    phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [
+                      { diem: 1.0, level: 'vanDung' },
+                      { diem: 1.0, level: 'vanDung' }
+                    ]
+                  },
+                  {
+                    id: 'tl_q2',
+                    label: 'Câu 18',
+                    kienThuc: 'vanDungCao',
+                    kieuY: 'doc_lap',
+                    phamVi: 'cac_chu_de_khac_nhau',
+                    subItems: [
+                      { diem: 0.5, level: 'vanDungCao' },
+                      { diem: 0.5, level: 'vanDungCao' }
+                    ]
+                  },
+                ],
+              };
 
-          const finalDungSaiConfigCongNghe8 = {
-            enabled: false,
-            mode: 'phan_tan_chu_de',
-            questions: [
-              {
-                id: 'ds_q1',
-                label: 'Câu 13',
-                topicIndex: null,
-                dvktIndex: null,
-                phamVi: 'cung_bai',
-                subItems: [
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 }
+          const finalDungSaiConfigCongNghe8 = hasCustomDS
+            ? { ...dsCfg, enabled: true }
+            : {
+                enabled: false,
+                mode: 'phan_tan_chu_de',
+                questions: [
+                  {
+                    id: 'ds_q1',
+                    label: 'Câu 13',
+                    topicIndex: null,
+                    dvktIndex: null,
+                    phamVi: 'cung_bai',
+                    subItems: [
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 }
+                    ]
+                  },
+                  {
+                    id: 'ds_q2',
+                    label: 'Câu 14',
+                    topicIndex: null,
+                    dvktIndex: null,
+                    phamVi: 'cung_bai',
+                    subItems: [
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 }
+                    ]
+                  },
+                  {
+                    id: 'ds_q3',
+                    label: 'Câu 15',
+                    topicIndex: null,
+                    dvktIndex: null,
+                    phamVi: 'cung_bai',
+                    subItems: [
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 }
+                    ]
+                  },
+                  {
+                    id: 'ds_q4',
+                    label: 'Câu 16',
+                    topicIndex: null,
+                    dvktIndex: null,
+                    phamVi: 'cung_bai',
+                    subItems: [
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'biet', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 },
+                      { level: 'hieu', diem: 0.25 }
+                    ]
+                  },
                 ]
-              },
-              {
-                id: 'ds_q2',
-                label: 'Câu 14',
-                topicIndex: null,
-                dvktIndex: null,
-                phamVi: 'cung_bai',
-                subItems: [
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 }
-                ]
-              },
-              {
-                id: 'ds_q3',
-                label: 'Câu 15',
-                topicIndex: null,
-                dvktIndex: null,
-                phamVi: 'cung_bai',
-                subItems: [
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 }
-                ]
-              },
-              {
-                id: 'ds_q4',
-                label: 'Câu 16',
-                topicIndex: null,
-                dvktIndex: null,
-                phamVi: 'cung_bai',
-                subItems: [
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'biet', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 },
-                  { level: 'hieu', diem: 0.25 }
-                ]
-              },
-            ]
-          };
+              };
 
           console.log(`✅ Công nghệ 8 (70% TN - 30% TL): P.I=12câu NLC (8B+4H), P.II=4câu DS (16 ý: 8B+8H), P.III=0câu TLN, P.IV=2câu TL (4 ý: 2VD [2đ] + 2VDC [1đ])`);
           return { matrix: topics, tuLuanConfig: finalTuLuanConfigCongNghe8, dungSaiConfig: finalDungSaiConfigCongNghe8 };
